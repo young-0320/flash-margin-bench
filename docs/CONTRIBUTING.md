@@ -17,7 +17,7 @@ repo/flash-margin-bench/
 ├── host/               # 호스트 PC Python — 무거운 로직 전부, 코드량 최대 영역
 │   ├── analysis/       # [한영웅] sweep_runner, 몬테카를로, 교정 곡선, 오차 정량화
 │   └── viz/            # [팀원 B] plot_bathtub/shmoo, chipdb
-├── sim/                # [한영웅] cocotb 프레임워크, Winbond 행동 모델, golden model
+├── sim/                # cocotb 검증 — tb/ [팀원 A], golden/ [한영웅]
 ├── hw/                 # [팀원 B] DUT 보드 KiCad, BOM, 결선도, 열 이력 시료
 ├── docs/               # roles, milestone, decisions 등 프로젝트 문서
 │   └── interface/      # [한영웅] 레지스터 맵, UART 프로토콜, CSV 스키마 (동결 후 3인 합의로만 수정)
@@ -52,7 +52,7 @@ repo/flash-margin-bench/
 | `host/`             | —     | 호스트 PC에서 도는 Python. 무거운 로직 전부, 코드량 최대 영역.                                                                                                                                                                                                                 |
 | `host/analysis/`    | 한영웅 | sweep_runner(시나리오 자동화), 몬테카를로, 교정 곡선 구축, 오차 정량화.                                                                                                                                                                                                        |
 | `host/viz/`         | 팀원 B | plot_bathtub/shmoo, chipdb(칩 이력 DB).                                                                                                                                                                                                                                        |
-| `sim/`              | 한영웅 | 시뮬레이터에서 도는 것: cocotb 프레임워크, Winbond 행동 모델(models/), golden model, 테스트 계획. RTL(fpga 소유물)을 Python(host 담당 언어)으로 검증하는 경계 영역이라`fpga/`에도 `host/`에도 넣지 않고 독립. 회귀 실행·승인은 팀원 A 몫이라는 비대칭도 독립 폴더의 근거. |
+| `sim/`              | 분할   | 시뮬레이터에서 도는 것 전부. `tb/`(팀원 A): cocotb 환경, Winbond 행동 모델 통합, 회귀 실행. `golden/`(한영웅): golden model(몬테카를로). 회귀 승인 기준은 한영웅의 테스트 계획 문서. RTL(fpga 소유물)을 Python(host 담당 언어)으로 검증하는 경계 영역이라 `fpga/`에도 `host/`에도 넣지 않고 독립. |
 | `hw/`               | 팀원 B | 실행 코드가 아닌 물리 설계물. DUT 보드 KiCad, BOM, 결선도, 열 이력 시료 기록. 레벨 시프터·히터·보호 회로가 여기서 결정된다.                                                                                                                                                  |
 | `docs/`             | —     | roles.md(역할·소유권), milestone-bathtub.md(G0~G4 스코프), decisions-hyw.md(개인 결정 레지스터), decisions.md(팀 공용 설계 결정 A~D).                                                                                                                                        |
 | `docs/interface/`   | 한영웅 | 레지스터 맵, UART 프로토콜, CSV 스키마. 동결 후 수정은 3인 합의.                                                                                                                                                                                                               |

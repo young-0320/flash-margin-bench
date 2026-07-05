@@ -1,4 +1,4 @@
-# 역할 분담 초안
+# 역할 분담 (최종본)
 
 Updated: 2026-07-06
 
@@ -6,8 +6,8 @@ Updated: 2026-07-06
 
 | 사람   | 한 줄 정의                                   | 소유 폴더                                                             |
 | ------ | -------------------------------------------- | --------------------------------------------------------------------- |
-| 한영웅 | 실험 설계·데이터 오너 / 계측 엔진 아키텍트 | `fpga/rtl/core/`, `sim/`, `host/analysis/`, `docs/interface/` |
-| 팀원 A | SPI/트랜잭션 서브시스템 오너                 | `fpga/rtl/flash/`, `fpga/constraints/`, `fpga/scripts/`         |
+| 한영웅 | 실험 설계·데이터 오너 / 계측 엔진 아키텍트 | `fpga/rtl/core/`, `sim/golden/`, `host/analysis/`, `docs/interface/` |
+| 팀원 A | SPI/트랜잭션 서브시스템 오너                 | `fpga/rtl/flash/`, `fpga/constraints/`, `fpga/scripts/`, `sim/tb/`         |
 | 팀원 B | 실험 인프라·신뢰성 실험 오너                | `hw/`, `ps/`, `host/viz/`, `data/`(스키마 관리)               |
 
 ---
@@ -23,9 +23,7 @@ Updated: 2026-07-06
 
 ### 검증 인프라
 
-- cocotb 환경 구축
-- Winbond 행동 모델 통합
-- golden model(몬테카를로)
+- golden model(몬테카를로) — `sim/golden/`
 - 테스트 계획 문서 — **팀원 A의 승인 기준이 되는 문서. 먼저 작성해야 회귀 승인이 가능**
 
 ### 실험 설계
@@ -45,9 +43,9 @@ Updated: 2026-07-06
 
 - 레지스터 맵, UART 프로토콜, 측정 레코드 스키마
 
-**소유 폴더:** `fpga/rtl/core/`, `sim/`(프레임워크·golden model), `host/analysis/`, `docs/interface/`
+**소유 폴더:** `fpga/rtl/core/`, `sim/golden/`, `host/analysis/`, `docs/interface/`
 
-**하지 않는 것:** flash 서브시스템 내부 설계, 열 이력 실험 세부, 회귀 PASS 자가 승인
+**하지 않는 것:** flash 서브시스템 내부 설계, 검증 환경 구축·회귀 실행, 열 이력 실험 세부, 회귀 PASS 자가 승인
 
 ---
 
@@ -65,10 +63,12 @@ Updated: 2026-07-06
 
 ### 검증 운영
 
+- cocotb 환경 구축 (`sim/tb/`)
+- Winbond 행동 모델 통합
 - cocotb 회귀 실행
 - 결과 리뷰 및 마일스톤 PASS 승인 (기준: 한영웅의 테스트 계획 문서)
 
-**소유 폴더:** `fpga/rtl/flash/`, `fpga/constraints/`, `fpga/scripts/`
+**소유 폴더:** `fpga/rtl/flash/`, `fpga/constraints/`, `fpga/scripts/`, `sim/tb/`
 
 ---
 
