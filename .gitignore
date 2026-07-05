@@ -1,0 +1,61 @@
+# ---------- Vivado ----------
+build/
+*.jou
+*.log
+*.str
+.Xil/
+*.xpr
+*.cache/
+*.runs/
+*.gen/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.bit
+*.ltx
+*.wdb
+*.xsa
+
+# ---------- Vitis ----------
+.metadata/
+.analytics
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ---------- 시뮬레이션 (cocotb) ----------
+sim_build/
+results.xml
+*.vcd
+*.fst
+*.ghw
+
+# ---------- KiCad ----------
+*-backups/
+*.kicad_prl
+fp-info-cache
+_autosave-*
+*.lck
+
+# ---------- 측정 데이터 (스키마·샘플만 커밋) ----------
+data/*
+!data/README.md
+!data/schema/
+!data/samples/
+
+# ---------- OS / 편집기 ----------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+~$*
+.idea/
+.vscode/
+.claude/settings.local.json
