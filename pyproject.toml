@@ -1,0 +1,11 @@
+[project]
+name = "flash-margin-bench"
+version = "0.1.0"
+description = "FPGA 기반 플래시 메모리 마진 계측 플랫폼 — 호스트 Python (분석·golden model)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "matplotlib>=3.8",
+]
+
+# cocotb는 sim/tb/ 전용 (팀원 A 환경, 시뮬레이터와 함께 설치) — 여기 넣지 않음

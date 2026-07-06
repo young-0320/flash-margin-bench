@@ -62,6 +62,18 @@ repo/flash-margin-bench/
 | `docs/reports/`     | —     | 보고서·발표 게재물의 승격처. `build/`에서 사람이 선별 복사한 것 + 보고서 초안만 — 생산 스크립트가 여기에 직접 쓰지 않는다.                                                                                                                                                |
 | `data/`             | —     | 측정 CSV.`.gitignore`하되 스키마 정의와 샘플 몇 줄만 커밋. 재현성은 원본 데이터가 아니라 생성 스크립트+파라미터+chip_id로 확보.                                                                                                                                              |
 
+## 1.5 파이썬 환경 (uv)
+
+호스트 Python(`host/`, `sim/golden/`)의 의존성은 리포 루트 `pyproject.toml` + `uv.lock`으로 관리한다. 개인 venv·pip 수동 설치 금지 — 세 명이 같은 환경이어야 "내 컴에선 되는데"가 없다.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # uv 설치 (최초 1회)
+uv sync                                            # .venv 생성 + 의존성 설치 (락파일 기준)
+uv run python host/analysis/bathtub_analysis.py --selftest   # 실행은 uv run 으로 (activate 불필요)
+```
+
+의존성 추가는 `uv add <패키지>` — pyproject.toml과 uv.lock이 같이 갱신되므로 둘 다 커밋한다. 예외: `sim/tb/`의 cocotb는 시뮬레이터(iverilog)와 함께 설치되는 별도 환경(팀원 A 관리).
+
 ## 2. 파일 네이밍 규칙
 
 1. 모든 파일명은 소문자 + 언더스코어 방식으로 작성한다.
