@@ -2,7 +2,7 @@
 name = "flash-margin-bench"
 version = "0.1.0"
 description = "FPGA 기반 플래시 메모리 마진 계측 플랫폼 — 호스트 Python (분석·golden model)"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.0",
     "matplotlib>=3.8",
