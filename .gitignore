@@ -59,3 +59,7 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/settings.local.json
+
+# ---------- local ----------
+temp.md
+TODO.md
