@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""위상당 읽기 횟수 N 결정 몬테카를로 (docs/workflow/1.md 병렬 저비용 항목).
+"""위상 스윕 파라미터(N, theta) 결정 몬테카를로 (docs/workflow/1.md 병렬 저비용 항목).
 
 가상 실험: 경계가 가우시안 지터 비탈(erfc)인 진짜 욕조 곡선을 가정하고,
 "위상 스텝마다 N회 x B비트 읽기 -> 이항 분포로 에러 발생 -> 경계 판정 -> 폭 계산"을
@@ -42,7 +42,7 @@ N*B*theta >= ~20 이 정한다 -> B=2048 이면 N >= 100.
 국소 통계로 결정되므로 결과는 sigma_j, dphi, theta, N*B 에만 의존한다.
 
 theta 채택 근거: --thetas 목록을 N 과 같은 방식으로 스윕해 "폭 편차 vs theta" 곡선
-(mc_theta_sweep.png)을 만들고, 채택값(--theta)이 저편차 구간에 있음을 보인다.
+(monte_carlo_theta_selection.png)을 만들고, 채택값(--theta)이 저편차 구간에 있음을 보인다.
 본실험 분석에서는 채택 theta 외에 1e-2 / 1e-3 / 1e-4 세 폭을 병행 기록한다
 (노화가 경계 위치가 아니라 기울기를 바꾸는 경우 포착용).
 
@@ -311,7 +311,7 @@ def main():
         }
 
     # 생성물은 build/ 하위 — 보고서 게재 시 docs/reports/로 수동 승격 (CONTRIBUTING 생성물 흐름)
-    csv_path = REPO / "build" / "data" / "mc_reads_per_phase.csv"
+    csv_path = REPO / "build" / "data" / "monte_carlo_sweep_params.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     fields = list(next(iter(rows.values())).keys())
     with open(csv_path, "w", newline="") as f:
@@ -327,9 +327,9 @@ def main():
                 f"{args.trials} trials; ring = smallest N meeting rule)")
     png_path = make_plot(rows, sigmas, n_list, args.theta, args.dphi, time_of_n,
                          subtitle, args.n_ref,
-                         REPO / "build" / "plots" / "mc_reads_per_phase.png")
+                         REPO / "build" / "plots" / "monte_carlo_n_selection.png")
     theta_png = make_theta_plot(rows, sigmas, thetas, args.n_ref, args.theta, args.dphi,
-                                REPO / "build" / "plots" / "mc_theta_sweep.png")
+                                REPO / "build" / "plots" / "monte_carlo_theta_selection.png")
 
     print(f"sweep span = UI = {ui_ps / 1000:.1f} ns @ {args.f_sclk / 1e6:g} MHz "
           f"-> {n_steps} steps of {args.dphi:g} ps")

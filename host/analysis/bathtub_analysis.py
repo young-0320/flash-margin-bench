@@ -14,14 +14,14 @@
 !!                      => FPGA error logger 가 이 값을 누적하도록 인터페이스에
 !!                         반영해야 함 (합계 외에 제곱합 누적기 1개 추가)
 
-theta 확정 체크리스트 (mc_reads_per_phase.py docstring 의 사전 선언과 동기):
+theta 확정 체크리스트 (monte_carlo_sweep_params.py docstring 의 사전 선언과 동기):
  1. 가우시안 꼬리 판정 — probit 직선화: erfcinv(2*BER) 이 위상에 대해 선형이면
     가우시안. (주의: log-BER 은 가우시안 꼬리에서 2차 곡선이므로 log 선형성이
     아니라 probit 선형성이 올바른 검사다. R^2 >= R2_MIN 이면 PASS)
  2. BER floor — 윈도우 중앙 구간의 잔류 에러율 < FLOOR_MAX 이면 PASS
     (병행 기록 최저 theta=1e-4 가 오염되지 않을 조건)
  3. sigma_j 추출 — probit 기울기의 역수. PASS/FAIL 이 아니라 측정값이며,
-    이 값으로 mc_reads_per_phase.py 를 재실행해 N=100 을 재확인한다.
+    이 값으로 monte_carlo_sweep_params.py 를 재실행해 N=100 을 재확인한다.
  4. 버스트성 — 경계 구간에서 읽기 단위 에러 수의 과분산 F = 실측분산/이항분산.
     F <= F_MAX 이면 비트 독립 가정 유효.
 
@@ -38,8 +38,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mc_reads_per_phase import (BASELINE, GRID, INK, INK2, MUTED, RAMP, SURFACE,
-                                edge_estimate, _style_axes)
+from monte_carlo_sweep_params import (BASELINE, GRID, INK, INK2, MUTED, RAMP, SURFACE,
+                                      edge_estimate, _style_axes)
 
 REPO = Path(__file__).resolve().parents[2]
 
