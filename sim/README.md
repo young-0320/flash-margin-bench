@@ -6,6 +6,7 @@
 
 - `tb/` — **팀원 A**: cocotb 환경, Winbond 행동 모델 통합, 회귀 실행
 - `golden/` — **한영웅**: golden model(몬테카를로)
+- `smoke/` — **한영웅**: 블록 단위 스모크 TB (iverilog 순수 Verilog, cocotb 회귀 확립 전 임시 최소 회귀)
 
 회귀 승인 기준은 한영웅의 테스트 계획 문서. 승인은 팀원 A 몫.
 
