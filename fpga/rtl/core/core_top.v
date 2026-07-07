@@ -16,7 +16,13 @@ module core_top (
     input  wire        mmcm_rst,        // 비동기 high
     input  wire        aresetn,         // clk_core 동기, active low
 
+    // X_INTERFACE_*: BD 모듈 참조(Add Module)용 — s_axi를 clk_core에 연관시키고
+    // 출력 클럭 주파수를 BD에 전파한다 (없으면 Vivado가 s_axi 클럭을 오추론)
+    (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 clk_core CLK" *)
+    (* X_INTERFACE_PARAMETER = "ASSOCIATED_BUSIF s_axi, ASSOCIATED_RESET aresetn, FREQ_HZ 25000000" *)
     output wire        clk_core,
+    (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 clk_sample CLK" *)
+    (* X_INTERFACE_PARAMETER = "FREQ_HZ 25000000" *)
     output wire        clk_sample,
     output wire        mmcm_locked,
 

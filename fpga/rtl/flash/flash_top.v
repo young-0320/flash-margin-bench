@@ -17,6 +17,9 @@
 module flash_top (
     input  wire        clk_core,
     input  wire        clk_sample,
+    // X_INTERFACE_*: BD 모듈 참조용 극성 명시 (proc_sys_reset peripheral_aresetn 연결)
+    (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 rstn RST" *)
+    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_LOW" *)
     input  wire        rstn,            // clk_core 동기
 
     // 계약 §2 (전부 clk_core 동기)
