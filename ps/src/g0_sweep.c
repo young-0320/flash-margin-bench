@@ -191,8 +191,11 @@ int main(void)
            스턱). 창 밖(BER≈0.5) 유효 스텝은 노이즈라 두 스텝이 동일할 수 없고,
            죽은 라인은 결정론이라 항상 동일 — 스텝 2에서 중단. 검사를 행 출력 뒤에
            두어 중단 시점까지의 데이터(=결정론 고장의 전체 정보)가 캡처에 남는다.
-           루프백 단선은 TIMEOUT(무효 ①)이 먼저 잡아 여기 못 온다. */
-        if (err_reads == (uint32_t)N_READS_CFG) {
+           루프백 단선은 TIMEOUT(무효 ①)이 먼저 잡아 여기 못 온다.
+           !low_seen 게이트(7/8 실측): 저노이즈 채널은 욕조 벽 평탄부에서 연속
+           스텝 벡터가 결정론적으로 동일할 수 있다(루프백 스텝 952=953 실측).
+           죽은 라인은 저에러 스텝을 낼 수 없으므로 low_seen=0인 동안만 검사. */
+        if (err_reads == (uint32_t)N_READS_CFG && !low_seen) {
             if (dead_armed) {
                 uint32_t same = 1;
                 for (uint32_t i = 0; i < N_READS_CFG; i++)
