@@ -51,4 +51,4 @@ ps7_post_config
 
 dow $elf
 con
-puts "== running — UART에서 JEDEC ID 출력 확인 (기대: EF 40 17)"
+puts "== running: [file tail $elf] 시작됨 — UART(miniterm /dev/ttyUSB1 115200)에서 출력 확인"
