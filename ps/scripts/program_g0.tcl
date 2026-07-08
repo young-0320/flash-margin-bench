@@ -23,7 +23,13 @@ foreach f [list $bit $elf $psinit] {
 }
 
 connect
-targets -set -filter {name =~ "APU*"}
+# 케이블 인식 지연 대비 재시도 — 없으면 원인 짚는 에러로
+set ok 0
+for {set i 0} {$i < 10} {incr i} {
+    if {![catch {targets -set -filter {name =~ "APU*"}}]} { set ok 1; break }
+    after 1000
+}
+if {!$ok} { error "JTAG 타겟 없음 — 보드 USB 연결·전원·JP5(JTAG 모드) 확인" }
 rst -system
 after 1000
 
