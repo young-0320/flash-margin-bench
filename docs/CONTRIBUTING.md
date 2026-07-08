@@ -35,7 +35,7 @@ repo/flash-margin-bench/
 
 문서 배치: `docs/spec/`는 설계가 바뀔 때 같이 업데이트한다.
 
-**생성물 흐름 (build/ → docs/reports/)**: 스크립트로 재생성할 수 있는 산출물(그림, 표, 시뮬레이션 CSV)은 전부 `build/` 하위에 생성한다 — 세부 폴더(`build/plots/`, `build/data/` 등)는 생산 스크립트가 정한다. `build/`는 통째로 `.gitignore`. 이 중 중간보고서·최종보고서·최종발표에 실제 게재되는 것만 **사람이 직접** `docs/reports/`로 복사해 승격하고, 승격본만 커밋한다. 즉 `docs/reports/`에 있다는 것 자체가 "보고서·발표 게재물"이라는 선언이다. 단, 실칩 측정 원본은 재현 불가능하므로 `build/`가 아니라 `data/`에 둔다(아래 표).
+**생성물 흐름 (build/ → docs/results/)**: 스크립트로 재생성할 수 있는 산출물(그림, 표, 시뮬레이션 CSV)은 전부 `build/` 하위에 생성한다 — 세부 폴더(`build/plots/`, `build/data/` 등)는 생산 스크립트가 정한다. `build/`는 통째로 `.gitignore`. 이 중 중간보고서·최종보고서·최종발표에 실제 게재되는 것만 **사람이 직접** `docs/results/`로 복사해 승격하고, 승격본만 커밋한다. 즉 `docs/results/`에 있다는 것 자체가 "보고서·발표 게재물"이라는 선언이다. 단, 실칩 측정 원본은 재현 불가능하므로 `build/`가 아니라 `data/`에 둔다(아래 표).
 
 ### 폴더별 역할 상세
 
@@ -58,8 +58,8 @@ repo/flash-margin-bench/
 | `hw/`               | 팀원 B | 실행 코드가 아닌 물리 설계물. DUT 보드 KiCad, BOM, 결선도, 열 이력 시료 기록. 레벨 시프터·히터·보호 회로가 여기서 결정된다.                                                                                                                                                  |
 | `docs/`             | —     | roles.md(역할·소유권), milestone-bathtub.md(G0~G4 스코프), decisions-hyw.md(개인 결정 레지스터), decisions.md(팀 공용 설계 결정 A~D).                                                                                                                                        |
 | `docs/interface/`   | 한영웅 | 레지스터 맵, UART 프로토콜, CSV 스키마. 동결 후 수정은 3인 합의.                                                                                                                                                                                                               |
-| `build/`            | —     | 재현 가능한 생성물 전부 — Vivado 산출물(`.xpr/.runs/.cache`)과 분석 스크립트 출력(그림·표·시뮬레이션 CSV — `build/plots/`, `build/data/`). `.gitignore` 대상 — 커밋되는 순간 리포가 무거워지고 충돌원이 된다. 보고서 게재분만 사람이 `docs/reports/`로 승격.        |
-| `docs/reports/`     | —     | 보고서·발표 게재물의 승격처. `build/`에서 사람이 선별 복사한 것 + 보고서 초안만 — 생산 스크립트가 여기에 직접 쓰지 않는다.                                                                                                                                                |
+| `build/`            | —     | 재현 가능한 생성물 전부 — Vivado 산출물(`.xpr/.runs/.cache`)과 분석 스크립트 출력(그림·표·시뮬레이션 CSV — `build/plots/`, `build/data/`). `.gitignore` 대상 — 커밋되는 순간 리포가 무거워지고 충돌원이 된다. 보고서 게재분만 사람이 `docs/results/`로 승격.        |
+| `docs/results/`     | —     | 보고서·발표 게재물의 승격처. `build/`에서 사람이 선별 복사한 것 + 보고서 초안만 — 생산 스크립트가 여기에 직접 쓰지 않는다.                                                                                                                                                |
 | `data/`             | —     | 측정 CSV.`.gitignore`하되 스키마 정의와 샘플 몇 줄만 커밋. 재현성은 원본 데이터가 아니라 생성 스크립트+파라미터+chip_id로 확보.                                                                                                                                              |
 
 ## 1.5 파이썬 환경 (uv)
