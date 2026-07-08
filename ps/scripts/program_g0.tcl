@@ -22,7 +22,8 @@ foreach f [list $bit $elf $psinit] {
     if {![file exists $f]} { error "missing: $f — build_g0_loopback.tcl 먼저" }
 }
 
-connect
+# 원격 hw_server: xsct ps/scripts/program_g0.tcl tcp:<호스트>:3121 (기본: 로컬 자동 기동)
+if {$argc >= 1} { connect -url [lindex $argv 0] } else { connect }
 # 케이블 인식 지연 대비 재시도 — 없으면 원인 짚는 에러로
 set ok 0
 for {set i 0} {$i < 10} {incr i} {
