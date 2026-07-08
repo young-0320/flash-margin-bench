@@ -11,7 +11,9 @@
 //  - mmcm_rst는 평시 0 고정 (재로크 필요 시에만)
 //  - clk_sample은 flash 블록 MISO 캡처 경로 전용 (계약 §1 A안)
 
-module core_top (
+module core_top #(
+    parameter integer O_DIV = 45       // MMCM CLKOUT 분주 — 클럭 사다리용 (core_mmcm 헤더)
+) (
     input  wire        clk125,          // 보드 125MHz, K17 (계약 §5)
     input  wire        mmcm_rst,        // 비동기 high
     input  wire        aresetn,         // clk_core 동기, active low
@@ -64,7 +66,7 @@ module core_top (
     wire signed [31:0] phase_pos;
     wire        phase_cmd, phase_incdec;
 
-    core_mmcm u_mmcm (
+    core_mmcm #(.O_DIV(O_DIV)) u_mmcm (
         .clk_in_125 (clk125),
         .rst        (mmcm_rst),
         .clk_core   (clk_core),

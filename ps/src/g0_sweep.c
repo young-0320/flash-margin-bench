@@ -65,6 +65,24 @@
 #define POLL_LIMIT      100000000u
 
 static uint16_t ei[2048];              /* R6: N ≤ 2,048 */
+static uint16_t ei_prev[2048];         /* 무반응 라인 자가진단용 직전 스텝 e_i */
+static uint32_t dead_armed;
+static uint32_t low_seen;              /* BER<0.25 스텝 관측 여부 (no_window 판정) */
+
+#define NEAR(a, b) ((a) >= (b) ? (a) - (b) <= 6u : (b) - (a) <= 6u)
+
+/* 진단용 PRBS-15 (flash_prbs15.v와 동일 컨벤션) — line_dead 극성 분류에만 사용 */
+static uint32_t prbs_ones(uint16_t idx, uint32_t nbits)
+{
+    uint16_t lfsr = (uint16_t)(0x4000u | (idx & 0x3FFFu));
+    uint32_t ones = 0;
+    for (uint32_t k = 0; k < nbits; k++) {
+        ones += (lfsr >> 14) & 1u;
+        lfsr = (uint16_t)(((lfsr << 1) | (((lfsr >> 14) ^ (lfsr >> 13)) & 1u))
+                          & 0x7FFFu);
+    }
+    return ones;
+}
 
 static void print_u64(uint64_t v)      /* xil_printf는 64비트 미지원 */
 {
@@ -154,18 +172,59 @@ int main(void)
         for (uint32_t i = 0; i < N_READS_CFG; i++)
             xil_printf("R,%u,%u,%u\r\n", step, i, ei[i]);
 
-        /* phase_ps = step × (40,000,000fs / 2,520) — 정수 fs 연산, 소수 3자리 출력 */
-        uint64_t fs = (uint64_t)step * 40000000ull / SWEEP_STEPS;
+        /* phase_ps = step × Δφ. Δφ = VCO주기/56 = 10⁶/63 fs — VCO 고정이라
+           클럭 사다리 공통 (25MHz의 UI/SWEEP_STEPS = 40×10⁶/2520과 동일값).
+           정수 fs 연산, 소수 3자리 출력 */
+        uint64_t fs = (uint64_t)step * 1000000ull / 63u;
         xil_printf("M,%u,%u.%03u,%u,%u,%u,%u,", step,
                    (uint32_t)(fs / 1000u), (uint32_t)(fs % 1000u),
                    N_READS_CFG, BURST_BITS_CFG, err_bits, err_reads);
         print_u64(sq_sum);
         xil_printf(",%u,%s\r\n", F_SCLK_HZ, DPHI_PS_STR);
+
+        /* 저에러 스텝 관측 (BER < 0.25 상당) — 종료 시 no_window 판정용 */
+        if (err_bits < (uint32_t)N_READS_CFG * BURST_BITS_CFG / 4u)
+            low_seen = 1;
+
+        /* 무반응 라인 자가진단 (리뷰 wf_16617fb7 #1, 결정 7/8): 위상을 바꿨는데
+           e_i 벡터가 비트 단위로 동일 + 전 읽기 유에러 = 위상 무반응(무칩·단선·
+           스턱). 창 밖(BER≈0.5) 유효 스텝은 노이즈라 두 스텝이 동일할 수 없고,
+           죽은 라인은 결정론이라 항상 동일 — 스텝 2에서 중단. 검사를 행 출력 뒤에
+           두어 중단 시점까지의 데이터(=결정론 고장의 전체 정보)가 캡처에 남는다.
+           루프백 단선은 TIMEOUT(무효 ①)이 먼저 잡아 여기 못 온다. */
+        if (err_reads == (uint32_t)N_READS_CFG) {
+            if (dead_armed) {
+                uint32_t same = 1;
+                for (uint32_t i = 0; i < N_READS_CFG; i++)
+                    if (ei[i] != ei_prev[i]) { same = 0; break; }
+                if (same) {
+                    /* stuck 극성 분류: 기대 PRBS의 1 개수와 대조. 허용 ±6은
+                       3후보 min의 창 오프셋 슬롭. 둘 다 아니거나 겹치면 unknown */
+                    uint32_t on0 = prbs_ones(0, BURST_BITS_CFG);
+                    uint32_t on1 = prbs_ones(1, BURST_BITS_CFG);
+                    uint32_t s0 = NEAR(ei[0], on0) && NEAR(ei[1], on1);
+                    uint32_t s1 = NEAR(ei[0], BURST_BITS_CFG - on0) &&
+                                  NEAR(ei[1], BURST_BITS_CFG - on1);
+                    xil_printf("#G0 DIAG line_dead e0=%u e1=%u ones0=%u ones1=%u"
+                               " b=%u\r\n", ei[0], ei[1], on0, on1, BURST_BITS_CFG);
+                    if (s0 && !s1)      end_sweep(0, "line_dead_stuck0");
+                    else if (s1 && !s0) end_sweep(0, "line_dead_stuck1");
+                    else                end_sweep(0, "line_dead_unknown");
+                }
+            }
+            for (uint32_t i = 0; i < N_READS_CFG; i++) ei_prev[i] = ei[i];
+            dead_armed = 1;
+        } else
+            dead_armed = 0;
     }
 
     /* 무효 ⑥: 스윕 종료 시 CMD_ERR 1회 검사 (※7/8 추인 대상) */
     if (Xil_In32(REG_STATUS) & ST_CMD_ERR)
         end_sweep(0, "cmd_err");
+    /* 애매한 고장 층 (결정 7/8): 완주했는데 저에러 스텝이 하나도 없으면 유효
+       창이 없다 — 간헐 접촉·전원 문제류. 전체 에러 목록은 위에서 이미 출력됨 */
+    if (!low_seen)
+        end_sweep(0, "no_window");
     end_sweep(1, "complete");
     return 0;
 }

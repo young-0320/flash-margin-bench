@@ -10,7 +10,12 @@
 //   clk_core ↔ clk_sample 상대 위상만이 계측 대상
 // - PSCLK = clk_core: 위상 제어 FSM(core_phase_ctrl)과 같은 도메인
 
-module core_mmcm (
+// O_DIV: CLKOUT 분주 (기본 45 = 25MHz). 클럭 상향 사다리(로그 10 결정 ⑤)는
+// 45→25→15 (25→45→75MHz). VCO 고정이라 Δφ=15.87ps는 전 사다리 공통,
+// 스윕 스텝 수만 56×O_DIV로 변한다.
+module core_mmcm #(
+    parameter integer O_DIV = 45
+) (
     input  wire clk_in_125,   // 보드 125MHz (K17, 계약 §5)
     input  wire rst,          // 비동기 high — MMCM 재로크용, 평시 0 고정
     output wire clk_core,     // 25MHz 고정 위상
@@ -31,8 +36,8 @@ module core_mmcm (
         .CLKIN1_PERIOD      (8.000),      // 125MHz
         .DIVCLK_DIVIDE      (1),          // D=1 — 지터 최선 구성 (결정 16)
         .CLKFBOUT_MULT_F    (9.000),      // M=9 → VCO 1,125MHz
-        .CLKOUT0_DIVIDE_F   (45.000),     // clk_core 25MHz
-        .CLKOUT1_DIVIDE     (45),         // clk_sample 25MHz
+        .CLKOUT0_DIVIDE_F   (O_DIV * 1.0),  // clk_core = 1,125/O_DIV MHz
+        .CLKOUT1_DIVIDE     (O_DIV),        // clk_sample 동일 주파수
         .CLKOUT1_USE_FINE_PS("TRUE"),     // 위상 시프트는 clk_sample에만 (계약 §1 A안)
         .COMPENSATION       ("INTERNAL")
     ) u_mmcm (
