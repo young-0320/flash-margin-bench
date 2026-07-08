@@ -6,7 +6,8 @@
 입력 CSV 스키마 = docs/interface/contract.md §6 (2026-07-07 확정). 소비 컬럼:
   phase_ps, n_reads, b_bits, bit_errors (+선택: reads_with_error, bit_err_sq_sum).
   나머지 계약 컬럼(phase_step, f_sclk_hz, dphi_ps, target, generated_at, git_rev)은
-  있으면 검증에 활용(phase_step 연속성 = 결측 금지 규약), 없어도 동작한다.
+  있으면 검증에 활용(phase_step 연속성 = 결측 금지 규약, phase_ps=step×dphi_ps
+  재계산 대조 = UART 행 오염 검출), 없어도 동작한다.
 동반 파일 <stem>_reads.csv (phase_step, read_idx, err_count — 읽기별 에러 수 원본,
 contract 결정 3-4 (A)) 가 옆에 있으면 자동 인식한다:
   - R8 무결성 검사: sum(e_i)==bit_errors, count(e_i>0)==reads_with_error,
@@ -55,9 +56,9 @@ REPO = Path(__file__).resolve().parents[2]
 
 THETAS = [1e-2, 1e-3, 1e-4]   # 병행 기록 3종 (채택: 1e-2, 잠정)
 FIT_BAND = (1e-4, 5e-2)       # probit 적합에 쓰는 BER 구간
-R2_MIN = 0.98                 # 체크 1 잠정 문턱
-FLOOR_MAX = 1e-5              # 체크 2 잠정 문턱
-F_MAX = 2.0                   # 체크 4 잠정 문턱
+R2_MIN = 0.98                 # 체크 1 문턱 (2026-07-07 확정)
+FLOOR_MAX = 1e-5              # 체크 2 문턱 (2026-07-07 확정)
+F_MAX = 2.0                   # 체크 4 문턱 (2026-07-07 확정)
 JUMP_LO, JUMP_HI = 1e-3, 0.25  # 체크 5: 한 스텝에 lo -> hi 점프 = 프레이밍 서명
 
 
@@ -86,6 +87,11 @@ def load_sweep(path):
         steps = np.array([int(r["phase_step"]) for r in rows])
         if not np.array_equal(steps, np.arange(steps[0], steps[0] + len(steps))):
             raise SystemExit(f"{path.name}: phase_step 결측/비연속 — 무효 런 (contract §6)")
+        if "dphi_ps" in rows[0] and rows[0]["dphi_ps"] != "":
+            dphi = float(rows[0]["dphi_ps"])
+            if np.any(np.abs(phis - steps * dphi) > dphi / 2):
+                raise SystemExit(f"{path.name}: phase_ps ≠ phase_step×dphi_ps (>Δφ/2)"
+                                 " — UART 행 오염 의심, 무효 런")
     rwe = None
     if "reads_with_error" in rows[0] and rows[0]["reads_with_error"] != "":
         rwe = np.array([int(r["reads_with_error"]) for r in rows])
