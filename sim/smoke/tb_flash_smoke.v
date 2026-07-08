@@ -10,9 +10,9 @@
 //  - R10 워치독(루프백 단선): T_max에 done+timeout 동시 펄스, 이후 정상 복구
 //  - N=2,048 풀 버퍼 경계
 //
-// 실행 (이 디렉터리에서):
-//   iverilog -g2005 -o /tmp/tb_flash.vvp tb_flash_smoke.v ../../fpga/rtl/flash/*.v \
-//     && vvp /tmp/tb_flash.vvp
+// 실행 (이 디렉터리에서 — unisim_stub은 flash_top_spi의 ODDR 때문에 필요):
+//   iverilog -g2005 -o /tmp/tb_flash.vvp tb_flash_smoke.v unisim_stub.v \
+//     ../../fpga/rtl/flash/*.v && vvp /tmp/tb_flash.vvp
 // 성공 기준: 마지막 줄 "PASS: all checks passed"
 
 module tb_flash_smoke;

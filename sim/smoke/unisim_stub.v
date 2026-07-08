@@ -66,3 +66,22 @@ endmodule
 module BUFG (input wire I, output wire O);
     assign O = I;
 endmodule
+
+// ODDR SAME_EDGE 행동 모델 — D1/D2 모두 rising에서 캡처, Q는 그 사이클의
+// 전반부에 D1, 후반부에 D2. flash_top_spi의 SCLK 포워딩(R9)이 사용.
+module ODDR #(
+    parameter DDR_CLK_EDGE = "SAME_EDGE",
+    parameter INIT = 1'b0,
+    parameter SRTYPE = "SYNC"
+) (
+    output reg  Q,
+    input  wire C, CE, D1, D2, R, S
+);
+    reg d2q;
+    initial begin Q = INIT; d2q = INIT; end
+    always @(posedge C) if (CE) begin
+        Q   <= R ? 1'b0 : D1;
+        d2q <= R ? 1'b0 : D2;
+    end
+    always @(negedge C) if (CE) Q <= d2q;
+endmodule
