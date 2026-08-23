@@ -19,8 +19,14 @@ repo/flash-margin-bench/
 │   └── viz/            # [팀원 B] plot_bathtub/shmoo, chipdb
 ├── sim/                # cocotb 검증 — tb/ [팀원 A], golden/ [한영웅]
 ├── hw/                 # [팀원 B] DUT 보드 KiCad, BOM, 결선도, 열 이력 시료
-├── docs/               # roles, milestone, decisions 등 프로젝트 문서
-│   └── interface/      # [한영웅] 레지스터 맵, UART 프로토콜, CSV 스키마 (동결 후 3인 합의로만 수정)
+├── docs/               # 문서가 1급 산출물 — 루트에 project_context.md · roles.md · chip_registry.md · CONTRIBUTING.md
+│   ├── interface/      # [한영웅] 계약 — 레지스터 맵, UART 프로토콜, CSV 스키마 (동결 후 3인 합의로만 수정) + amendments/ 수정안
+│   ├── spec/           # [한영웅] 사양서·합격 기준 — 수신자 1인, 인수 기준으로 닫힘
+│   ├── concepts/       # [한영웅] 배경 개념 해설 (일반론 + 비유)
+│   ├── workflow/       # [한영웅] 국면별 실행 절차 — 게이트 지도·런북·재개 계획
+│   ├── log/young/      # 작업 일지 — 사람별 하위 폴더
+│   ├── ref/            # 외부 레퍼런스 PDF — 판번 기록 필수
+│   └── results/        # 게재 확정 산출물 승격처 — plots/ · data/ · captures/
 ├── build/          (.gitignore)   # 재현 가능한 생성물 전부 (Vivado 산출물, 분석 그림·표) — 커밋 금지
 └── data/           (.gitignore, 스키마·샘플만 커밋)   # 측정 데이터
 ```
@@ -33,7 +39,7 @@ repo/flash-margin-bench/
 2. **폴더 = 소유자 1명** — 하위 경계까지 포함해서 소유자가 한 명이다. 타인 폴더는 PR로만 수정한다.
 3. **소스와 생성물 분리** — 사람이 쓴 텍스트만 커밋한다. 생성물(`.xpr`, 비트스트림, 측정 CSV)은 스크립트로 재생성한다.
 
-문서 배치: `docs/spec/`는 설계가 바뀔 때 같이 업데이트한다.
+문서 배치: **계약(`docs/interface/`)과 사양서(`docs/spec/`)를 혼동하지 않는다** — 3인이 동시에 지키는 합의는 계약이고, 한 사람에게 보내는 구현 지시는 사양서다. 둘 다 설계가 바뀌면 같이 업데이트한다.
 
 **생성물 흐름 (build/ → docs/results/)**: 스크립트로 재생성할 수 있는 산출물(그림, 표, 시뮬레이션 CSV)은 전부 `build/` 하위에 생성한다 — 세부 폴더(`build/plots/`, `build/data/` 등)는 생산 스크립트가 정한다. `build/`는 통째로 `.gitignore`. 이 중 중간보고서·최종보고서·최종발표에 실제 게재되는 것만 **사람이 직접** `docs/results/`로 복사해 승격하고, 승격본만 커밋한다. 즉 `docs/results/`에 있다는 것 자체가 "보고서·발표 게재물"이라는 선언이다. 단, 실칩 측정 원본은 재현 불가능하므로 `build/`가 아니라 `data/`에 둔다(아래 표).
 
@@ -56,8 +62,13 @@ repo/flash-margin-bench/
 | `host/viz/`         | 팀원 B | plot_bathtub/shmoo, chipdb(칩 이력 DB).                                                                                                                                                                                                                                        |
 | `sim/`              | 분할   | 시뮬레이터에서 도는 것 전부. `tb/`(팀원 A): cocotb 환경, Winbond 행동 모델 통합, 회귀 실행. `golden/`(한영웅): golden model(몬테카를로). 회귀 승인 기준은 한영웅의 테스트 계획 문서. RTL(fpga 소유물)을 Python(host 담당 언어)으로 검증하는 경계 영역이라 `fpga/`에도 `host/`에도 넣지 않고 독립. |
 | `hw/`               | 팀원 B | 실행 코드가 아닌 물리 설계물. DUT 보드 KiCad, BOM, 결선도, 열 이력 시료 기록. 레벨 시프터·히터·보호 회로가 여기서 결정된다.                                                                                                                                                  |
-| `docs/`             | —     | roles.md(역할·소유권), milestone-bathtub.md(G0\~G4 스코프), decisions-hyw.md(개인 결정 레지스터), decisions.md(팀 공용 설계 결정 A\~D).                                                                                                                                        |
-| `docs/interface/`   | 한영웅 | 레지스터 맵, UART 프로토콜, CSV 스키마. 동결 후 수정은 3인 합의.                                                                                                                                                                                                               |
+| `docs/`             | —     | 문서가 1급 산출물. 루트에는 전 인원이 읽는 것만 둔다 — `project_context.md`(프로젝트 전모·마일스톤), `roles.md`(역할·소유권), `chip_registry.md`(시료 등록부), `CONTRIBUTING.md`. 그 외는 전부 아래 하위 폴더로 내린다. |
+| `docs/interface/`   | 한영웅 | **계약** — 레지스터 맵, UART 프로토콜, CSV 스키마. 3인이 동시에 지키는 합의라 동결 후 수정은 3인 합의. 수정안은 `amendments/`에 상정안으로 두고, 승인 전까지 `contract.md` 본문은 손대지 않는다. |
+| `docs/spec/`        | 한영웅 | **사양서·합격 기준** — 수신자가 한 명이고 인수 기준 판정으로 닫히는 문서. 구현 전에 합격 조건을 못 박는 것이 목적이라 착수 전에 동결한다. 계약과의 구분은 위 "문서 배치". |
+| `docs/concepts/`    | 한영웅 | 배경 개념 해설. 일반론 + 비유 톤 — 특정 측정 결과가 아니라 "이 개념이 왜 필요한가"를 남긴다. |
+| `docs/workflow/`    | 한영웅 | 국면별 실행 절차 — 게이트 지도, 실칩의 날 런북, 재개 계획. 명령·기대 출력·함정 판독표까지 적어 그대로 따라 할 수 있게 쓴다. |
+| `docs/log/young/`   | 각자   | 작업 일지. 사람별 하위 폴더로 나눠 소유권 충돌을 없앤다. **무엇을 왜 그렇게 결정했는가**가 본체이며, 결과 수치는 `results/`, 확정 사양은 `spec/`으로 나간다. |
+| `docs/ref/`         | —     | 벤더 데이터시트·매뉴얼. **판번(rev)이 핵심** — 파일명과 등록부 표에 판번을 기록한다(`ref/README.md`). |
 | `build/`            | —     | 재현 가능한 생성물 전부 — Vivado 산출물(`.xpr/.runs/.cache`)과 분석 스크립트 출력(그림·표·시뮬레이션 CSV — `build/plots/`, `build/data/`). `.gitignore` 대상 — 커밋되는 순간 리포가 무거워지고 충돌원이 된다. 보고서 게재분만 사람이 `docs/results/`로 승격.        |
 | `docs/results/`     | —     | 보고서·발표 게재물의 승격처. `build/`에서 사람이 선별 복사한 것 + 보고서 초안만 — 생산 스크립트가 여기에 직접 쓰지 않는다.                                                                                                                                                |
 | `data/`             | —     | 측정 CSV.`.gitignore`하되 스키마 정의와 샘플 몇 줄만 커밋. 재현성은 원본 데이터가 아니라 생성 스크립트+파라미터+chip_id로 확보.                                                                                                                                              |
@@ -113,9 +124,9 @@ git add <파일 경로>
 예시:
 
 ```
-git add rtl/simple_cpu/alu.v
-git add sim/tb/tb_alu.v
-git add docs/spec/simple_cpu.md
+git add fpga/rtl/core/core_top.v
+git add sim/smoke/tb_core_smoke.v
+git add docs/spec/s1.wear_bench_spec.md
 ```
 
 모든 변경사항을 의도적으로 커밋할 때만 `git add .`를 사용한다.

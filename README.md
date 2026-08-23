@@ -94,7 +94,8 @@ PASS/FAIL이라는 1비트짜리 답 대신, 단위가 있는 연속적인 물�
 ```
 docs/                     문서가 1급 산출물
   project_context.md      ← 프로젝트 전모: 문제 정의·범위·마일스톤 (가장 먼저 읽을 것)
-  interface/contract.md   3인 병렬 개발의 인터페이스 계약 (동결)
+  interface/contract.md   3인 병렬 개발의 인터페이스 계약 (동결) · amendments/ 수정안
+  spec/                   사양서·합격 기준 (수신자 1인, 인수 기준으로 닫힘)
   concepts/               배경 개념 11편 (몬테카를로, MMCM 위상, CDC, PRBS, BER 스케일 …)
   workflow/               게이트 지도 · 실칩의 날 런북 (명령·기대 출력·함정 판독표)
   results/                게재 확정 산출물 — plots/ · data/(요약 CSV + 유래 md) · captures/
@@ -113,7 +114,6 @@ host/analysis/            욕조 곡선 판정, 반복성 집계, 몬테카를�
 host/viz/                 시각화·chipdb
 
 sim/smoke/                블록 단위 스모크 TB (iverilog)
-sim/test_plan.md          회귀 승인 기준
 
 data/                     측정 원본 CSV 보관처 (커밋 금지 — 스키마·README만 추적)
 hw/                       DUT 보드 물리 설계물 (KiCad·BOM·결선도)
