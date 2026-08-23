@@ -7,7 +7,7 @@
   - `amendments/2.n_reads_112.md` — N 100 → 112 (측정 조건). #1과 독립
 - 이 문서가 계약의 유일한 원본이다. 결정 과정(후보·장단점·상세 근거)은 `docs/log/young/4.interface_decision_records.md`.
 - 7/7 심야 core RTL 착수 중 추가 제안 4건(§2 `meas_timeout`·`cfg_err` 신호 / §3 CTRL 단일 명령 규칙 + STATUS bit6 `CMD_ERR` / R11 "유효 START" 조작적 정의 / §6 무효 ⑥)은 **7/8 본문 확정**(위 정정 참조 — 추인 절차 없음). 경위: `docs/log/young/6.core_rtl_implementation.md`
-- 경계: **core 블록**(`fpga/rtl/core/` — MMCM 위상 제어·AXI-Lite 레지스터) ↔ **flash 블록**(`fpga/rtl/flash/` — 패턴 생성·캡처·비교기·에러 로거·e_i 버퍼 + SPI 마스터/루프백 프런트엔드). 담당은 사람이 아니라 블록 기준 — 중간보고서까지 총력전이라 작업 배정은 유동(`docs/workflow/1.md`), 결과물이 기준.
+- 경계: **core 블록**(`fpga/rtl/core/` — MMCM 위상 제어·AXI-Lite 레지스터) ↔ **flash 블록**(`fpga/rtl/flash/` — 패턴 생성·캡처·비교기·에러 로거·e_i 버퍼 + SPI 마스터/루프백 프런트엔드). 담당은 사람이 아니라 블록 기준 — 중간보고서까지 총력전이라 작업 배정은 유동(`docs/workflow/1.midterm_report_workflow.md`), 결과물이 기준.
 
 ## 1. 위상 아키텍처 (전체 전제)
 
