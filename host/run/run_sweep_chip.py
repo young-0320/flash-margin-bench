@@ -10,6 +10,7 @@ CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 �
       세션1  program_g2 + flash_prep  →  #PREP UID → 라벨 역조회 → chip_pe.md +1
       세션2  program_g3 + 스윕        →  CSV 2개   (×N, --reseat 면 회차 사이 재장착 프롬프트)
     [종료]  "k/N 완료" 요약 + build/data/session_<label>_<uid>_<batch_id>.log
+            (로그는 시작부터 session_<batch_id>.log 로 쓰이다가 라벨을 알면 개명된다)
 
 제약 — **배치 중 칩이 바뀌지 않는다고 가정한다.** UID 를 배치 시작 시 한 번만 읽고 그 값을
 배치 전체 CSV 에 박는다 (로그 23 부록 A). 여러 칩을 다루는 배치는 run_newchip.py 가 맡으며,
@@ -49,12 +50,14 @@ class Abort(SystemExit):
 
 
 class Session:
-    """세션 로그 — 라벨·UID 를 알기 전엔 메모리에 쌓고, 알면 파일로 내린다."""
+    """세션 로그 — 시작부터 디스크에 쓴다 (session_<batch_id>.log). 라벨·UID 를 알면 이름만
+    바꾼다. 메모리 버퍼를 두지 않으므로 Ctrl-C·예외·강제 종료 어느 경우에도 그 순간까지의
+    기록(#PREP UID 포함)이 남는다 (로그 25 중요 2)."""
 
     def __init__(self, batch_id):
         self.batch_id = batch_id
-        self.buf = []
-        self.path = None
+        self.path = cap.DEFAULT_OUTDIR / f"session_{batch_id}.log"
+        self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, msg):
         line = f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] {msg}"
@@ -62,18 +65,11 @@ class Session:
         self.write(line)
 
     def write(self, text):          # 화면에 안 찍고 로그에만 (xsct 출력 등)
-        if self.path:
-            with open(self.path, "a") as f:
-                f.write(text + "\n")
-        else:
-            self.buf.append(text)
-
-    def open(self, name):
-        self.path = cap.DEFAULT_OUTDIR / f"session_{name}_{self.batch_id}.log"
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "a") as f:
-            f.write("\n".join(self.buf) + "\n")
-        self.buf = []
+            f.write(text + "\n")
+
+    def rename(self, name):
+        self.path = self.path.rename(self.path.with_name(f"session_{name}_{self.batch_id}.log"))
 
 
 def run_xsct(args, ses, what):
@@ -131,8 +127,12 @@ def resolve_label(uid, ses, today):
     require_tty(f"UID {uid} 는 등록부에 없다 (신규 칩). 라벨 입력 필요")
     free = [l for l, u in chip_registry.parse().items() if u is None]
     print(f"\n신규 UID {uid}. 등록부의 UID 공란 라벨: {' '.join(free) or '(없음)'}", file=sys.stderr)
-    label = input("이 칩의 라벨 (chipNN): ").strip()
-    chip_registry.register(label, uid, today)      # 규칙 위반이면 여기서 SystemExit
+    while True:                                    # 오타로 죽지 않는다 — prep 은 이미 끝났다
+        label = input("이 칩의 라벨 (chipNN): ").strip()
+        if label in free:
+            break
+        print(f"  {label!r} 는 후보가 아니다. 후보: {' '.join(free) or '(없음)'}", file=sys.stderr)
+    chip_registry.register(label, uid, today)
     ses.log(f"등록부 기입: {label} ← {uid} (docs/chip_registry.md — git diff 로 확인할 것)")
     return label
 
@@ -192,16 +192,16 @@ def main():
                 label = chip_registry.label_for(uid)
                 if label is None:
                     raise Abort(f"--uid {uid} 는 등록부에 없다. 신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
-                ses.open(f"{label}_{uid}")
+                ses.rename(f"{label}_{uid}")
                 ses.log(f"--no-prep: 사람이 준 UID {uid} → {label} (기계 확인 없음 — 세션 규칙에 의존)")
             else:
                 try:
                     uid = run_prep(ser, ses)
                 except Abort:
-                    ses.open("prepfail")
+                    ses.rename("prepfail")
                     raise
                 label = resolve_label(uid, ses, today)
-                ses.open(f"{label}_{uid}")
+                ses.rename(f"{label}_{uid}")
                 chip_pe.append_pe(today, label, uid, PREP_SECTORS, "+1",
                                   f"flash_prep (batch {batch_id})", blind=args.blind)
                 ses.log(f"chip_pe.md: {label} {PREP_SECTORS} {'(봉인)' if args.blind else '+1'}")
@@ -232,6 +232,10 @@ def main():
         ses.log("Ctrl-C — 배치 중단")
     except Abort as e:
         ses.log(str(e))
+        ses.log(f"{done}/{args.repeat} 완료 (invalid {invalid}) — 중단")
+        raise
+    except Exception as e:                 # 포트·xsct 타임아웃·파일 충돌 등 — 요약은 남기고 그대로 던진다
+        ses.log(f"예외 {e!r}")
         ses.log(f"{done}/{args.repeat} 완료 (invalid {invalid}) — 중단")
         raise
     ses.log(f"{done}/{args.repeat} 완료 (invalid {invalid})")

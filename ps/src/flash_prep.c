@@ -117,14 +117,16 @@ int main(void)
 
     /* 0b. UID(4Bh) — 배선 확인 후, 칩을 건드리기 전. SPI에는 체크섬이 없어 접촉이
        튀면 XST_SUCCESS로 틀린 값이 오므로, 위 JEDEC 검사가 값(EF 40 17)을 보듯 UID는
-       3회 읽어 자기 일관성(전부 일치)을 요구한다 (로그 23 §5). 전송 실패는 3회 재시도 */
+       3회 읽어 자기 일관성(전부 일치)을 요구한다 (로그 23 §5). 전송 실패는 3회 재시도.
+       재시도 중에는 xfer()를 쓰지 않는다 — "#PREP ERROR"는 이 앱의 다른 모든 경로에서
+       종료 신호라 호스트 래퍼가 그 줄에서 중단한다 (로그 25 중요 1). 포기할 때만 FAIL */
     u8 uid[3][UID_LEN];
     for (int k = 0; k < 3; k++) {
         int err = -1;
         for (int t = 0; t < 3 && err; t++) {
             tx[0] = CMD_UID;
             for (u32 i = 1; i < 5 + UID_LEN; i++) tx[i] = 0;
-            err = xfer(tx, rx, 5 + UID_LEN);
+            err = (XSpiPs_PolledTransfer(&spi, tx, rx, 5 + UID_LEN) == XST_SUCCESS) ? 0 : -1;
         }
         if (err) {
             xil_printf("#PREP FAIL uid transfer (4Bh) 3회 실패 — 배선/전원 확인\r\n");

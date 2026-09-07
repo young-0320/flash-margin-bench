@@ -113,7 +113,9 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
                 line = ser.readline().decode(errors="replace").strip()
                 if not line:
                     continue
-                if line.startswith("#G0"):
+                i = line.find("#G0")            # rst 쓰레기가 줄바꿈 없이 첫 줄에 붙어도 잡는다 (run_prep 과 동일)
+                if i >= 0:
+                    line = line[i:]
                     print(line, file=log)
                     if "SWEEP BEGIN" in line:
                         began = True
