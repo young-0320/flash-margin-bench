@@ -109,7 +109,8 @@ fpga/scripts/             Vivado 재생성 tcl — .xpr이 아니라 tcl이 소�
 ps/src/                   Zynq 베어메탈 C — g0_sweep, g3_sweep, flash_jedec, flash_prep
 ps/scripts/               빌드(vitis) · 프로그래밍(xsct) 스크립트
 
-host/capture/             UART 스윕 캡처 → CSV
+host/capture/             UART 스윕 캡처 → CSV, 등록부 파서                        [한영웅]
+host/run/                 실험 절차 래퍼 — run_sweep_chip (prep→UID→스윕 ×N)     [한영웅]
 host/analysis/            욕조 곡선 판정, 반복성 집계, 몬테카를로 golden model  [한영웅]
 host/viz/                 시각화·chipdb
 

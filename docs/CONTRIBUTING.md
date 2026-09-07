@@ -15,7 +15,9 @@ repo/flash-margin-bench/
 │   └── scripts/        # [팀원 A] Vivado 프로젝트 재생성 tcl (build.tcl이 소스)
 ├── ps/                 # [팀원 B] Zynq 베어메탈 C — UART 명령 서버, 온도 PID + vitis tcl
 ├── host/               # 호스트 PC Python — 무거운 로직 전부, 코드량 최대 영역
-│   ├── analysis/       # [한영웅] sweep_runner, 몬테카를로, 교정 곡선, 오차 정량화
+│   ├── capture/        # [한영웅] UART 스윕 캡처 → 계약 §6 CSV. 계약이 바뀌면 바뀐다
+│   ├── run/            # [한영웅] 실험 절차 래퍼 (run_sweep_chip). 절차가 바뀌면 바뀐다
+│   ├── analysis/       # [한영웅] 몬테카를로, 교정 곡선, 오차 정량화
 │   └── viz/            # [팀원 B] plot_bathtub/shmoo, chipdb
 ├── sim/                # cocotb 검증 — tb/ [팀원 A], golden/ [한영웅]
 ├── hw/                 # [팀원 B] DUT 보드 KiCad, BOM, 결선도, 열 이력 시료
@@ -58,7 +60,9 @@ repo/flash-margin-bench/
 | `fpga/scripts/`     | 팀원 A | vivado`build.tcl`. `.xpr`을 커밋하는 대신 프로젝트를 재생성하는 스크립트가 소스다.                                                                                                                                                                                         |
 | `ps/`               | 팀원 B | Zynq ARM 코어에서 도는 베어메탈 C + vitis tcl. UART 명령 서버, 온도 PID, JEDEC ID 식별. "PS는 얇게" 원칙에 따라 최소 로직만. vitis tcl이 여기 있는 이유: vivado의 출력(.xsa)을 소비하는 별도 공정이고 소유자가 다르므로`fpga/`가 아니다.                                     |
 | `host/`             | —     | 호스트 PC에서 도는 Python. 무거운 로직 전부, 코드량 최대 영역.                                                                                                                                                                                                                 |
-| `host/analysis/`    | 한영웅 | sweep_runner(시나리오 자동화), 몬테카를로, 교정 곡선 구축, 오차 정량화.                                                                                                                                                                                                        |
+| `host/capture/`     | 한영웅 | UART 스윕 스트림 → 계약 §6 CSV (`sweep_uart_capture.py`) + 등록부 파서(`chip_registry.py`). **계약 §6이 바뀌면 바뀐다** — 열·파일명·`_invalid`·생성 거부 규칙이 여기 있다. 모든 스윕 경로가 이 파일을 지난다. |
+| `host/run/`         | 한영웅 | 실험 절차 래퍼 — `run_sweep_chip.py`(prep→UID→스윕 ×N), 이후 `run_newchip.py`·`run_wear.py`. **실험 절차가 바뀌면 바뀐다** (반복·재장착·칩 순회). 캡처를 import 해 쓰며 `ps/scripts/*.tcl`을 호출한다. 이름은 자기가 만드는 산출물을 따른다(`run_sweep_chip` → `sweep_chip*`). 종전 `sweep_runner` 항목은 여기로 이관. |
+| `host/analysis/`    | 한영웅 | 몬테카를로, 교정 곡선 구축, 오차 정량화 (CSV → 수치. 하드웨어를 모른다).                                                                                                                                                                                                        |
 | `host/viz/`         | 팀원 B | plot_bathtub/shmoo, chipdb(칩 이력 DB).                                                                                                                                                                                                                                        |
 | `sim/`              | 분할   | 시뮬레이터에서 도는 것 전부. `tb/`(팀원 A): cocotb 환경, Winbond 행동 모델 통합, 회귀 실행. `golden/`(한영웅): golden model(몬테카를로). 회귀 승인 기준은 한영웅의 테스트 계획 문서. RTL(fpga 소유물)을 Python(host 담당 언어)으로 검증하는 경계 영역이라 `fpga/`에도 `host/`에도 넣지 않고 독립. |
 | `hw/`               | 팀원 B | 실행 코드가 아닌 물리 설계물. DUT 보드 KiCad, BOM, 결선도, 열 이력 시료 기록. 레벨 시프터·히터·보호 회로가 여기서 결정된다.                                                                                                                                                  |
