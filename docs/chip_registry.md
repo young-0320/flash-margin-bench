@@ -50,6 +50,9 @@ README·유래 md·로그 13·15·워크플로가 전부 `chip01` 표기를 참�
 끊는다. 대신:
 
 - 워크플로 5 **D 트랙**(드리프트 확인)에서 chip01을 다시 꽂을 때 UID를 읽어 이 표에 기입
+  - **2026-08-23 D 1차 측정에서는 확보하지 못했다** — `flash_prep`에 `4Bh`가 아직 없다
+    (B-1b, 장세은). 그 스윕 CSV에도 `#UID` 헤더가 없다. 다음 chip01 세션으로 이월
+    (`docs/log/young/22.d_track_drift_sweep.md` §5)
 - `docs/results/data/sweep_chip01_20260708T164931Z.md` 등 유래 문서에 UID 한 줄 추가
 - 파일명의 `chip01`은 별칭으로 유지하되, 이 등록부가 UID와의 대응을 보증한다
 
