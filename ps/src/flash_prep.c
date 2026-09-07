@@ -13,6 +13,10 @@
  *   3. xsct ps/scripts/program_g2.tcl build/vitis_prep/flash_prep/build/flash_prep.elf
  *   4. UART에서 "#PREP PASS" 확인 → 스윕 비트스트림(build_g3_chip.tcl)으로 재프로그램
  *
+ * UID: JEDEC 통과 직후 4Bh(Read Unique ID)를 3회 읽어 일치하면 "#PREP UID <16hex>"
+ * 출력. 개체 식별자(docs/chip_registry.md)이며 호스트 래퍼가 등록부 역조회·CSV
+ * 열 기입에 쓴다. 계약 §6 밖(PS SPI 경로)이라 승인 없이 추가.
+ *
  * PRBS-15 (계약 결정 19): x^15+x^14+1, 시드 {1, page[13:0]}, dout=lfsr[14] 후
  * 시프트, MSB-first 바이트 패킹 — flash_prbs15.v와 비트 단위 동일 (시드·방출
  * 컨벤션이 어긋나면 스윕이 전부 에러로 보인다).
@@ -36,6 +40,8 @@
 #define CMD_SE      0x20            /* 4KB sector erase */
 #define CMD_PP      0x02            /* page program */
 #define CMD_READ    0x03            /* 저클럭 검증 읽기 */
+#define CMD_UID     0x4B            /* Read Unique ID: [4Bh][더미 4][UID 8] = 13바이트, 주소 없음 */
+#define UID_LEN     8u
 
 static XSpiPs spi;
 static u8 tx[PAGE_BYTES + 4], rx[PAGE_BYTES + 4];
@@ -108,6 +114,33 @@ int main(void)
         xil_printf("#PREP FAIL jedec mismatch (want EF 40 17) — 배선/전원 확인\r\n");
         return 1;
     }
+
+    /* 0b. UID(4Bh) — 배선 확인 후, 칩을 건드리기 전. SPI에는 체크섬이 없어 접촉이
+       튀면 XST_SUCCESS로 틀린 값이 오므로, 위 JEDEC 검사가 값(EF 40 17)을 보듯 UID는
+       3회 읽어 자기 일관성(전부 일치)을 요구한다 (로그 23 §5). 전송 실패는 3회 재시도 */
+    u8 uid[3][UID_LEN];
+    for (int k = 0; k < 3; k++) {
+        int err = -1;
+        for (int t = 0; t < 3 && err; t++) {
+            tx[0] = CMD_UID;
+            for (u32 i = 1; i < 5 + UID_LEN; i++) tx[i] = 0;
+            err = xfer(tx, rx, 5 + UID_LEN);
+        }
+        if (err) {
+            xil_printf("#PREP FAIL uid transfer (4Bh) 3회 실패 — 배선/전원 확인\r\n");
+            return 1;
+        }
+        for (u32 i = 0; i < UID_LEN; i++) uid[k][i] = rx[5 + i];
+    }
+    for (int k = 1; k < 3; k++)
+        for (u32 i = 0; i < UID_LEN; i++)
+            if (uid[k][i] != uid[0][i]) {
+                xil_printf("#PREP FAIL uid mismatch across 3 reads — SPI 경로 불안정\r\n");
+                return 1;
+            }
+    xil_printf("#PREP UID ");           /* 16hex 대문자 — 호스트 파서와 맞춤 (xil_printf는 64비트 미지원이라 바이트별) */
+    for (u32 i = 0; i < UID_LEN; i++) xil_printf("%02X", uid[0][i]);
+    xil_printf("\r\n");
 
     xil_printf("#PREP BEGIN n_pages=%u prbs15 seed={1,page}\r\n", N_PAGES);
 
