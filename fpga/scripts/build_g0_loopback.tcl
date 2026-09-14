@@ -9,7 +9,7 @@
 # core/flash는 Package IP가 아니라 BD 모듈 참조(Add Module)로 들어간다 —
 # RTL 수정이 재패키징 없이 다음 빌드에 바로 반영된다.
 
-# 버전 가드 (운영 결정: 2025.2 단독 빌드 — 팀 통일, 워크플로 7)
+# 버전 가드 (운영 결정: 2025.2 단독 빌드 — 팀 통일, 워크플로 8)
 if {![string match "2025.2*" [version -short]]} {
     error "Vivado 2025.2 필요 (현재: [version -short])"
 }
