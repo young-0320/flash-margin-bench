@@ -1,144 +1,218 @@
-# 빌드 재현 절차 — 무엇을, 어떤 순서로, 어떤 명령으로 만드나
+# 빌드 재현 절차 — 소스에서 보드 프로그래밍까지
 
-- **작성일**: 2026-09-14. Vivado/Vitis **2025.2** 기준. 표의 `검증` 열은 이 날 영웅 PC(Ubuntu 24)에서 실제로 통과한 기록.
-- **재현의 정의**: 저장소의 소스(RTL·XDC·tcl·C)로부터 `build/` 아래 산출물(비트스트림·XSA·ELF)을 다시 만드는 것. `build/`는 커밋하지 않으므로 **측정하는 PC마다 이 절차로 만든다.** 남의 `build/`를 복사하면 어느 소스·어느 버전으로 만든 계측기인지 추적이 끊긴다.
-- **측정·분석 절차는 이 문서 범위 밖**: 루프백은 런북 3 C절, 실칩 당일은 워크플로 7, 래퍼 옵션은 `host/run/run_sweep_chip.py --help`.
+이 문서는 저장소 소스(RTL·XDC·tcl·C)에서 `build/` 산출물(비트스트림·XSA·ELF)을 만들고
+보드에 굽기까지의 전체 절차를 담는다. `build/`는 커밋하지 않으므로 **측정하는 PC마다 이
+절차로 만든다** — 남의 `build/`를 복사하면 어느 소스·어느 버전으로 만든 계측기인지 추적이
+끊긴다. 레포 소개와 결과 요약은 최상위 `README.md`, 게이트(G0~G5)와 설계 이름(`g0_*`)의
+정의는 `docs/workflow/4.gate_map.md`, 측정 당일 절차는 런북 3(`docs/workflow/3.*`)·워크플로
+7(`docs/workflow/7.*`), 파이썬 환경 규칙은 `docs/CONTRIBUTING.md` §1.5 참고.
+
+표기 `[검증 2026-09-14]`는 그 날 영웅 PC(Ubuntu 24, Vivado/Vitis 2025.2)에서 실제로 통과한 명령.
+
+## 전체 흐름
+
+레포는 두 개의 루프로 굴러간다. 보드 없이 도는 검증 루프와, 보드에 올리는 빌드·측정 루프다.
+
+```
+[검증 루프 — 보드 불필요]
+sim/smoke/  iverilog 스모크 TB 4개 (core · flash · spi · g0)   → 전부 PASS
+host/       파이썬 셀프테스트 3개 (분석기 · 등록부 · P/E 이력) → 전부 PASS
+sim/tb/     cocotb + Winbond 모델 회귀 = G1 (박지민, 구축 중)   → 기준 docs/spec/s3.g1_test_plan.md
+
+[빌드·측정 루프 — 보드 필요]
+fpga/scripts/*.tcl  →  build/vivado*/   bit · XSA        (Vivado)
+ps/scripts/*.py     →  build/vitis*/    ELF              (vitis -s, XSA 소비)
+ps/scripts/*.tcl    →  보드              JTAG 프로그래밍  (xsct)
+host/capture/       →  build/data/      CSV              (UART 수신)
+host/analysis/      →  build/plots/     욕조 곡선 · 폭    (판정)
+```
+
+RTL을 바꾸면 검증 루프부터. 측정만 재현하려면 빌드·측정 루프만 돌면 된다. **g1 빌드는 없다** —
+G1은 시뮬레이션 게이트라 비트스트림·ELF를 만들지 않는다.
 
 ## 목차
 
-1. [전제](#1-전제) — 셸에 2025.2, 리포 루트
-2. [빌드 순서와 의존 관계](#2-빌드-순서와-의존-관계)
-3. [단계별: 산출물 · 명령 · 검증](#3-단계별-산출물--명령--검증)
-4. [산출물 트리](#4-산출물-트리)
-5. [재현됐는지 확인](#5-재현됐는지-확인)
-6. [산출물을 보드에 굽는 명령](#6-산출물을-보드에-굽는-명령)
+1. [파이썬 환경 준비](#1-파이썬-환경-준비) — uv 환경, 시리얼 포트
+2. [전제: 도구와 버전](#2-전제-도구와-버전) — Vivado/Vitis 2025.2, iverilog 등 도구
+3. [빌드 파이프라인](#3-빌드-파이프라인) — 빌드 루프 전체
+   1. [g0 — 루프백 계측기](#31-g0--루프백-계측기) — bit·XSA·ELF
+   2. [g2 — 실칩 JEDEC 브링업 비트](#32-g2--실칩-jedec-브링업-비트) — bit·XSA
+   3. [prep — 사전 쓰기·UID 앱](#33-prep--사전-쓰기uid-앱) — ELF
+   4. [g3 — 실칩 스윕 계측기 (클럭별)](#34-g3--실칩-스윕-계측기-클럭별) — ×3 클럭
+   5. [빌드 확인](#35-빌드-확인) — 존재·타이밍·기준값 대조
+4. [산출물을 보드에 굽는 명령](#4-산출물을-보드에-굽는-명령)
+5. [검증 파이프라인](#5-검증-파이프라인) — 검증 루프 전체
+   1. [RTL 스모크 시뮬레이션](#51-rtl-스모크-시뮬레이션)
+   2. [호스트 셀프테스트](#52-호스트-셀프테스트)
+6. [빠른 재빌드](#6-빠른-재빌드) — C 앱만 바뀐 경우의 지름길
+7. [산출물 트리](#7-산출물-트리) — `build/` 트리
+8. [디버그·과거 흐름](#8-디버그과거-흐름) — 스모크 앱·보험 비트·옛 명령
 
----
+## 1. 파이썬 환경 준비
 
-## 1. 전제
+PC 측 캡처·분석은 bare `python` 대신 프로젝트 `uv` 환경을 사용한다. 의존성은
+`pyproject.toml`에 선언되어 있다 (Python ≥ 3.13). 개인 venv·pip 수동 설치 금지.
 
 ```bash
-source <설치루트>/2025.2/Vitis/settings64.sh   # Vivado·xsct·vitis 전부 PATH에 오른다
-which vivado && vivado -version | head -1        # <설치루트>/2025.2/Vivado/bin/vivado, "v2025.2"
-cd <리포 루트>                                   # 모든 명령은 여기서
+uv sync
+uv run python host/analysis/bathtub_analysis.py --selftest
 ```
 
-- 버전 가드: 빌드 tcl 3개가 `2025.2*`가 아니면 즉시 에러. 2024.2·2025.1 불가.
-- `.bashrc`에 settings64.sh는 **한 줄만**. 두 버전을 연달아 source하면 PATH가 섞인다.
-- 파이썬(`uv sync`)은 빌드에 필요 없다. 측정·분석 때 필요.
+PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 파이썬이 필요 없다.
+시리얼 포트 이름은 머신마다 다르다:
 
-## 2. 빌드 순서와 의존 관계
+| 호스트 OS | 흔한 UART 포트 | 비고 |
+| --- | --- | --- |
+| Linux/Ubuntu | `/dev/ttyUSB1` (기본값) | 사용자를 `dialout` 그룹에 추가 후 재로그인 |
+| Windows | `COM3`, `COM4`, etc. | FT2232의 A(JTAG)·B(UART) 둘 다 COM으로 잡힌다 — 장치 관리자에서 부모가 "USB Serial Converter **B**"인 쪽. `--port COM<N>` |
+
+## 2. 전제: 도구와 버전
+
+AMD Vivado + Vitis **2025.2**가 하드웨어/bare-metal 빌드에 필요하다. 다른 버전은 빌드 tcl의
+버전 가드가 거부한다. Lab Edition은 프로그래밍만 되고 빌드가 안 된다. 설치 요령과 함정은
+`docs/workflow/8.vivado_2025_2_migration_and_rebaseline.md` W8-I.
+
+빌드 터미널마다 2025.2 환경 스크립트를 source한다. 2025.2는 `<루트>/2025.2/<툴>` 배치다
+(2024.2의 `<루트>/<툴>/2024.2`와 다름). Vitis 쪽 스크립트가 Vivado·xsct·vitis를 전부 올린다.
+
+```bash
+export VITIS_SETTINGS=$HOME/Xilinx/2025.2/Vitis/settings64.sh
+source "$VITIS_SETTINGS"
+
+which vivado xsct vitis          # 셋 다 <루트>/2025.2/ 아래
+vivado -version | head -1        # vivado v2025.2
+```
+
+`.bashrc`에 넣는다면 **한 줄만**. 두 버전을 한 셸에서 연달아 source하면 PATH가 섞인다.
+
+기타 도구:
+
+| 도구 | 용도 |
+| --- | --- |
+| `uv` + Python 3.13 | 캡처·분석·셀프테스트 |
+| `iverilog` 11+ / `vvp` | RTL 스모크 시뮬레이션 |
+| `xsct` (Vitis 동봉) | JTAG 프로그래밍 |
+| Digilent Zybo Z7-20 board files | `fpga/boards/`에 벤더링 — 별도 설치 불필요 |
+
+## 3. 빌드 파이프라인
+
+소스에서 보드 프로그래밍 직전까지의 최단 경로다. 각 tcl은 프로젝트를 처음부터 재생성한다
+(`.xpr`을 열어 이어 빌드하지 않는다). 순서와 의존:
 
 ```
-g0  ─────────────────────────────────────────────►  루프백 계측기 (독립)
-g2  ──► prep (g2 XSA 소비)  ─────────────────────►  실칩 사전 쓰기·UID
+g0  ─────────────────────────────►  루프백 계측기 (독립)
+g2  ──► flash_prep (g2 XSA 소비) ─►  실칩 사전 쓰기·UID
 g3-25 ┐
-g3-45 ├──────────────────────────────────────────►  실칩 스윕 계측기 (클럭별, 서로 독립)
+g3-45 ├──────────────────────────►  실칩 스윕 계측기 (클럭별, 서로 독립)
 g3-75 ┘
 ```
 
-- **g0**만 있으면 루프백 측정(G0)이 된다.
-- **실칩**은 g2 → prep → g3-25 세 개가 최소. 45·75는 클럭 사다리 때.
-- g3 세 벌은 서로 독립이라 어느 순서든 된다. 단 g2보다 뒤에 만들 이유는 없고 앞에 만들 이유도 없다.
-- 각 tcl은 프로젝트를 **처음부터 재생성**한다. `.xpr`을 열어 이어 빌드하지 않는다.
-
-## 3. 단계별: 산출물 · 명령 · 검증
+루프백만 할 사람은 3.1만. 실칩을 할 사람은 3.1~3.4 전부 (g3는 우선 25만, 45·75는 클럭 사다리 때).
 
 ### 3.1 g0 — 루프백 계측기
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit` (PL 비트스트림) · `build/vivado/g0_loopback.xsa` (하드웨어 플랫폼, 비트 포함) · `build/vitis/g0_sweep/build/g0_sweep.elf` (PS 스윕 앱) · `build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl` (PS 초기화, 프로그래밍 때 사용) |
-| **입력** | `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top.v` 계열 · `fpga/constraints/g0_*.xdc` · `fpga/boards/`(벤더링 보드파일) · `ps/src/g0_sweep.c` |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl` |
-| **내부 순서** | 프로젝트 생성 → BD 조립 → 합성 → 구현 → 비트스트림 → XSA → `vitis -s ps/scripts/build_g0_sweep.py`(ELF) |
-| **소요** | 약 8분 |
-| **검증** | 마지막 줄 `== all done: bit=… elf=…` · `== timing: WNS=양수 WHS=양수` |
-| **검증 기록** | 2026-09-14 22:58 통과. WNS 29.811 / WHS 0.096, LUT 900 / FF 1,013 |
+레포 루트에서:
 
-부분 실행: `-tclargs bd`(BD 검증만) · `-tclargs bit`(ELF 생략).
+```bash
+source "$VITIS_SETTINGS"
+vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl
+```
+
+내부 순서: 프로젝트 생성 → BD 조립 → 합성 → 구현 → 비트스트림 → XSA → `vitis -s
+ps/scripts/build_g0_sweep.py`(ELF). 입력은 `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top.v`
+계열 · `fpga/constraints/g0_*.xdc` · `ps/src/g0_sweep.c`. 약 8분.
+
+기대 산출물:
+
+```text
+build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit     PL 비트스트림
+build/vivado/g0_loopback.xsa                            하드웨어 플랫폼 (비트 포함)
+build/vitis/g0_sweep/build/g0_sweep.elf                 PS 스윕 앱
+build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl           PS 초기화 (프로그래밍 때 사용)
+```
+
+기대 출력: 로그 끝에 `== timing: WNS=양수 WHS=양수` 와 `== all done: bit=… elf=…`.
+`[검증 2026-09-14]` 22:58 통과, WNS 29.811 / WHS 0.096, LUT 900 / FF 1,013.
+
+부분 실행: `-tclargs bd`(BD 검증까지) · `-tclargs bit`(ELF 생략).
 
 ### 3.2 g2 — 실칩 JEDEC 브링업 비트
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado_g2/g2_jedec.xsa` · `build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit` |
-| **입력** | `fpga/constraints/g2_jedec_pins.xdc` · 보드파일. PL 로직 없음 — PS SPI0을 EMIO로 JB 핀에 라우팅만 |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl` |
-| **소요** | 약 1분 |
-| **검증** | 마지막 줄 `== done: …/g2_jedec.xsa (bit: …)` |
-| **검증 기록** | 2026-09-14 23:00 통과 |
+```bash
+vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl
+```
 
-### 3.3 prep — 사전 쓰기·UID 앱 (g2 XSA 소비)
+PL 로직 없음 — PS SPI0을 EMIO로 JB 핀에 라우팅만 한다. 입력은 `fpga/constraints/g2_jedec_pins.xdc`.
+약 1분.
 
-| | |
-| - | - |
-| **재현 대상** | `build/vitis_prep/flash_prep/build/flash_prep.elf` |
-| **입력** | `build/vivado_g2/g2_jedec.xsa` (3.2) · `ps/src/flash_prep.c` |
-| **명령** | `vitis -s ps/scripts/build_flash_prep.py` |
-| **소요** | 약 20초 |
-| **검증** | 마지막 줄 `== done: …/flash_prep.elf` |
-| **검증 기록** | 2026-09-14 23:00 통과 |
+기대 산출물:
 
-같은 방식의 다른 앱: `vitis -s ps/scripts/build_flash_jedec.py` → `build/vitis_jedec/flash_jedec/build/flash_jedec.elf` (G2 JEDEC 확인용, 실칩 측정엔 불필요).
+```text
+build/vivado_g2/g2_jedec.xsa
+build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit
+```
+
+기대 출력: `== done: …/g2_jedec.xsa (bit: …)`. `[검증 2026-09-14]` 23:00 통과.
+
+### 3.3 prep — 사전 쓰기·UID 앱
+
+g2 XSA에서 Vitis 플랫폼과 앱을 만든다. 사전 쓰기(PRBS 2,048페이지) + UID(4Bh) 읽기 앱.
+
+```bash
+vitis -s ps/scripts/build_flash_prep.py
+```
+
+입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_prep.c`. 약 20초.
+
+기대 산출물:
+
+```text
+build/vitis_prep/flash_prep/build/flash_prep.elf
+```
+
+기대 출력: `== done: …/flash_prep.elf`. `[검증 2026-09-14]` 23:00 통과.
 
 ### 3.4 g3 — 실칩 스윕 계측기 (클럭별)
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado_g3_<mhz>/g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit` · `build/vivado_g3_<mhz>/g3_chip_<mhz>.xsa` · `build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf` |
-| **입력** | `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top_spi.v` 계열 · `fpga/constraints/g3_*.xdc` · 보드파일 · `ps/src/g0_sweep.c`(g3도 같은 스윕 앱, `G3_MHZ`로 분기) |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 25` — `45`, `75`도 같은 식 |
-| **내부 순서** | g0과 동일 골격. 차이는 SPI 프런트엔드, JB 핀 XDC, 클럭별 분주 파라미터, 클럭별 프로젝트 폴더 분리 |
-| **소요** | 약 2분/클럭 |
-| **검증** | `== timing: WNS=양수` · `== all done: bit=… elf=…` |
-| **검증 기록** | 2026-09-14 세 벌 전부 통과 (25: 23:02 · 45: 23:04 · 75: 23:06). 수치는 §5 표 |
-
-보험 비트(PAY_LEAD 어긋날 때): `-tclargs bit 25 <k>` → `build/vivado_g3_25_pl<k>/…`. 평소엔 만들지 않는다.
-
-### 3.5 한 번에 전부
+클럭별로 프로젝트 폴더가 분리된다. g0과 같은 골격이며 차이는 SPI 프런트엔드
+(`flash_top_spi.v`), JB 핀 XDC(`g3_*.xdc`), 클럭별 분주 파라미터. 스윕 앱은 g0과 같은
+`ps/src/g0_sweep.c`를 `G3_MHZ`로 분기해 쓴다.
 
 ```bash
-vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl
-vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl
-vitis  -s ps/scripts/build_flash_prep.py
 vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 25
 vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 45
 vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 75
 ```
 
-약 15분. 하나가 실패하면 그 자리에서 멈추고 로그(`vivado.log`, 리포 루트에 생김)를 본다.
+약 2분/클럭.
 
-## 4. 산출물 트리
+기대 산출물 (`<mhz>` = 25 · 45 · 75):
 
-```
-build/
-├── vivado/                 g0: g0_loopback.xsa, g0_loopback.runs/impl_1/g0_wrapper.bit, 리포트(.rpt)
-├── vitis/                  g0: g0_plat/(플랫폼), g0_sweep/build/g0_sweep.elf, g0_sweep/_ide/psinit/ps7_init.tcl
-├── vivado_g2/              g2: g2_jedec.xsa, g2_jedec.runs/impl_1/g2_wrapper.bit
-├── vitis_prep/             prep: flash_prep/build/flash_prep.elf
-├── vitis_jedec/            (선택) flash_jedec/build/flash_jedec.elf
-├── vivado_g3_25/ 45/ 75/   g3: g3_chip_<mhz>.xsa, g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit
-├── vitis_g3_25/ 45/ 75/    g3: g3_sweep/build/g3_sweep.elf
-├── data/                   측정 CSV (빌드 산출물 아님 — 측정 때 생김)
-└── plots/                  분석 그림 (빌드 산출물 아님)
+```text
+build/vivado_g3_<mhz>/g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit
+build/vivado_g3_<mhz>/g3_chip_<mhz>.xsa
+build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf
 ```
 
-전부 `.gitignore`. `rm -rf build`로 지우고 §3.5로 처음부터 다시 만들 수 있어야 한다 — 그것이 재현이다.
+기대 출력: 클럭마다 `== timing: WNS=양수` · `== all done: bit=… elf=…`.
+`[검증 2026-09-14]` 25: 23:02 · 45: 23:04 · 75: 23:06 전부 통과 (수치는 §3.5 표).
 
-## 5. 재현됐는지 확인
+### 3.5 빌드 확인
 
-**존재 + 타이밍**:
+존재 + 타이밍:
 
 ```bash
 ls build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit build/vitis/g0_sweep/build/g0_sweep.elf \
    build/vivado_g2/g2_jedec.xsa build/vitis_prep/flash_prep/build/flash_prep.elf \
    build/vivado_g3_25/g3_chip_25.runs/impl_1/g3_wrapper.bit build/vitis_g3_25/g3_sweep/build/g3_sweep.elf
 grep -L "All user specified timing constraints are met" build/vivado*/*.runs/impl_1/*_timing_summary_routed.rpt
-# ↑ 아무 파일도 출력되지 않아야 한다. 출력된 파일 = 타이밍 위반 = 그 비트로 측정 금지
 ```
 
-**수치 대조** — 같은 커밋·같은 2025.2면 조원 PC에서도 같은 값이 나와야 한다. `.bit` 자체는 헤더에 생성 시각이 들어가 해시 비교가 안 되므로 타이밍·자원 수치로 대조한다.
+기대 결과: `ls`는 전부 존재, `grep -L`은 **아무 파일도 출력하지 않는다** (출력된 파일 =
+타이밍 위반 = 그 비트로 측정 금지).
+
+수치 대조 — 같은 커밋·같은 2025.2면 다른 PC에서도 같은 값이 나와야 한다. `.bit` 자체는
+헤더에 생성 시각이 들어가 해시 비교가 안 되므로 타이밍·자원 수치로 대조한다:
 
 ```bash
 for R in build/vivado/g0_loopback.runs/impl_1/g0_wrapper build/vivado_g3_*/g3_chip_*.runs/impl_1/g3_wrapper; do
@@ -151,23 +225,124 @@ done
 기준값 (영웅 PC, 2026-09-14 23:06, RTL·tcl은 `e229b04` 이후 변경 없음):
 
 | 빌드 | WNS / WHS (ns) | Slice LUTs / Registers |
-| ---- | -------------- | ---------------------- |
+| --- | --- | --- |
 | g0 | 29.811 / 0.096 | 900 / 1,013 |
 | g3-25 | 5.366 / 0.111 | 912 / 1,035 |
 | g3-45 | 6.201 / 0.105 | 913 / 1,035 |
 | g3-75 | 2.957 / 0.082 | 913 / 1,035 |
 
-값이 다르면 실패는 아니지만 로그에 적는다. 소스가 같은데 배치가 다르다는 뜻이고, 그 차이가 폭 측정에 나타나는지는 측정으로만 안다.
+값이 다르면 실패는 아니지만 로그에 적는다. 소스가 같은데 배치가 다르다는 뜻이고, 그
+차이가 폭 측정에 나타나는지는 측정으로만 안다.
 
-## 6. 산출물을 보드에 굽는 명령
+## 4. 산출물을 보드에 굽는 명령
 
-빌드 산출물을 쓰는 첫 행위. 보드 USB 연결, JP5=JTAG. 측정 절차 자체는 원전(런북 3 · 워크플로 7)을 따른다.
+빌드 산출물을 쓰는 첫 행위. 보드 USB 연결(JTAG+UART 겸용 1개), JP5 = **JTAG** 부팅 모드.
+측정 절차 자체(캡처 순서·배선·판정)는 런북 3 · 워크플로 7을 따른다.
 
 | 무엇을 | 명령 | 쓰는 산출물 |
-| ------ | ---- | ----------- |
+| --- | --- | --- |
 | 루프백 계측기 | `xsct ps/scripts/program_g0.tcl` | g0 bit + elf + ps7_init.tcl |
 | 사전 쓰기·UID (실칩) | `xsct ps/scripts/program_g2.tcl build/vitis_prep/flash_prep/build/flash_prep.elf` | g2 bit(XSA에서 자동 추출) + prep elf |
 | 실칩 스윕 | `xsct ps/scripts/program_g3.tcl 25` (`45`/`75`, 보험 `25 pl4`) | g3-<mhz> bit + elf |
 | 실칩 전 과정 한 줄 | `uv run python host/run/run_sweep_chip.py --mhz 25` | 위 둘을 래퍼가 순서대로 호출 |
 
+루프백 최소 확인 (점퍼 JE1↔JE2). 캡처를 **먼저** 켠다 — 첫 줄(BEGIN)부터 받아야 한다:
+
+```bash
+uv run python host/capture/sweep_uart_capture.py --loopback --port /dev/ttyUSB1   # 터미널 1
+xsct ps/scripts/program_g0.tcl                                                     # 터미널 2
+```
+
+기대 결과: 터미널 1에 수 초 내 `#G0 SWEEP BEGIN …`, 약 10분 뒤
+`#G0 SWEEP END valid=1 reason=complete`, `build/data/sweep_loopback_<stamp>.csv` 생성.
+`TIMEOUT`이면 점퍼 미접촉, BEGIN 자체가 안 뜨면 포트(§1).
+
 `BUILD_DIR=<폴더>` 환경변수를 앞에 붙이면 `build/` 대신 그 폴더의 산출물을 굽는다 (기본 `build`).
+
+## 5. 검증 파이프라인
+
+RTL을 바꾸거나 결과를 기록하기 전에 사용한다. 보드가 필요 없다.
+
+### 5.1 RTL 스모크 시뮬레이션
+
+cocotb 회귀(G1)가 확립되기 전까지의 최소 회귀. 순수 Verilog TB + `unisim_stub.v`(MMCM·ODDR 스텁).
+`sim/smoke/` 디렉터리에서:
+
+```bash
+cd sim/smoke
+iverilog -g2005 -o /tmp/tb_core.vvp  tb_core_smoke.v      unisim_stub.v ../../fpga/rtl/core/*.v                          && vvp /tmp/tb_core.vvp
+iverilog -g2005 -o /tmp/tb_flash.vvp tb_flash_smoke.v     unisim_stub.v ../../fpga/rtl/flash/*.v                         && vvp /tmp/tb_flash.vvp
+iverilog -g2005 -o /tmp/tb_spi.vvp   tb_flash_spi_smoke.v unisim_stub.v ../../fpga/rtl/flash/*.v                         && vvp /tmp/tb_spi.vvp
+iverilog -g2005 -o /tmp/tb_g0.vvp    tb_g0_smoke.v        unisim_stub.v ../../fpga/rtl/core/*.v ../../fpga/rtl/flash/*.v && vvp /tmp/tb_g0.vvp
+cd ../..
+```
+
+기대 결과: 네 TB 모두 `PASS` 줄을 찍고 FAIL/ERROR 없이 `$finish`. `[검증 2026-09-14]` 4/4 PASS.
+
+G1 cocotb 회귀(`sim/tb/`, 박지민)는 구축 중이다. 기준은 `docs/spec/s3.g1_test_plan.md`,
+커버리지 대조는 `python3 sim/check_coverage.py --results sim/build/results.xml`.
+
+### 5.2 호스트 셀프테스트
+
+```bash
+uv run python host/analysis/bathtub_analysis.py --selftest
+uv run python host/capture/chip_registry.py --selftest
+uv run python host/run/chip_pe.py --selftest
+```
+
+기대 결과: 등록부·P/E 이력은 `selftest PASS`, 분석기는 셀프테스트 그림(`build/plots/bathtub_selftest_*.png`)과 체크리스트 PASS. `[검증 2026-09-14]` 3/3 통과.
+
+## 6. 빠른 재빌드
+
+RTL·XDC는 그대로이고 `ps/src/*.c`만 바뀐 경우, Vivado를 다시 돌리지 않고 기존 XSA에서 ELF만
+재생성한다 (워크스페이스는 지우고 다시 만들지만 20초 안팎):
+
+```bash
+vitis -s ps/scripts/build_g0_sweep.py                  # g0 스윕 앱   ← build/vivado/g0_loopback.xsa
+vitis -s ps/scripts/build_flash_prep.py                # prep 앱      ← build/vivado_g2/g2_jedec.xsa
+G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← build/vivado_g3_25/g3_chip_25.xsa
+```
+
+기대 산출물: 해당 `build/vitis*/…/*.elf` 갱신. 이후 프로그래밍은 반드시 **전체 경로**
+(`program_*.tcl`)로 — ELF만 재로드하면 MMCM 위상이 남아 `phase_pos_mismatch`로 거부된다
+(의도된 방어).
+
+RTL이 바뀌었으면 지름길이 없다 — 해당 tcl을 처음부터 (§3).
+
+## 7. 산출물 트리
+
+```text
+build/
+├── vivado/                 g0: g0_loopback.xsa, g0_loopback.runs/impl_1/g0_wrapper.bit, 리포트(.rpt)
+├── vitis/                  g0: g0_plat/(플랫폼), g0_sweep/build/g0_sweep.elf, g0_sweep/_ide/psinit/ps7_init.tcl
+├── vivado_g2/              g2: g2_jedec.xsa, g2_jedec.runs/impl_1/g2_wrapper.bit
+├── vitis_prep/             flash_prep/build/flash_prep.elf
+├── vitis_jedec/            (선택) flash_jedec/build/flash_jedec.elf
+├── vitis_smoke/            (선택) core_smoke/build/core_smoke.elf
+├── vivado_g3_25/ 45/ 75/   g3: g3_chip_<mhz>.xsa, g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit
+├── vitis_g3_25/ 45/ 75/    g3: g3_sweep/build/g3_sweep.elf
+├── data/                   측정 CSV·세션 로그 (빌드 산출물 아님 — 측정 때 생김)
+└── plots/                  분석 그림 (빌드 산출물 아님)
+```
+
+전부 `.gitignore`. `rm -rf build`로 지우고 §3으로 처음부터 다시 만들 수 있어야
+한다 — 그것이 재현이다. 측정 원본 CSV는 `build/data/`에서 `data/`로 옮겨 보관한다(CONTRIBUTING).
+
+## 8. 디버그·과거 흐름
+
+메인 재현 경로가 아니라 브링업·근본원인 도구로 남아 있는 것들:
+
+- **core_smoke** — PS↔PL AXI-Lite 스모크 앱 (세은). `vitis -s ps/scripts/build_core_smoke.py`
+  → `xsct ps/scripts/program_core_smoke.tcl` → miniterm에서 6개 테스트 PASS/FAIL.
+  TEST4·5는 JE1↔JE2 점퍼가 있어야 완주.
+- **flash_jedec** — G2 JEDEC ID(`EF 40 17`) 확인 앱. `vitis -s ps/scripts/build_flash_jedec.py`
+  → `xsct ps/scripts/program_g2.tcl build/vitis_jedec/flash_jedec/build/flash_jedec.elf`.
+  실칩 측정엔 불필요 (flash_prep이 JEDEC 검사를 포함).
+- **PAY_LEAD 보험 비트** — 실칩에서 전 위상 BER≈0.5(정렬 창 이탈)일 때만.
+  `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs bit 25 <k>` (k=4|6) →
+  `build/vivado_g3_25_pl<k>/` → `xsct ps/scripts/program_g3.tcl 25 pl<k>` 또는 래퍼 `--pl <k>`.
+- **UART 직접 보기** — `uv run python -m serial.tools.miniterm /dev/ttyUSB1 115200`.
+  캡처와 같은 포트라 동시에 못 연다.
+- **옛 명령** — 런북 3·로그 13의 `sweep_uart_capture.py --target …`은 로그 24에서
+  `--loopback` / `--uid <16hex>`로 바뀌었다. 실칩은 래퍼(`host/run/run_sweep_chip.py`)가 정식 경로.
+- 브링업 고장 판독(TIMEOUT·line_dead·no_window·FF FF FF …)은 런북 3 표 E.
