@@ -80,7 +80,7 @@ vivado -version | head -1                      # "vivado v2025.2"
 
 | 단계 | 무엇을 | 명령 | 산출물 | 소요 |
 | ---- | ------ | ---- | ------ | ---- |
-| 3.1 g0 | 루프백 계측기 (RTL → BD → 비트 → XSA → ELF 원샷) | `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl` | `build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit` · `build/vitis/g0_sweep/build/g0_sweep.elf` | 10~20분 |
+| 3.1 g0 `[검증 2026-09-14]` | 루프백 계측기 (RTL → BD → 비트 → XSA → ELF 원샷) | `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl` | `build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit` · `build/vitis/g0_sweep/build/g0_sweep.elf` | 10~20분 |
 | 3.2 g2 | 실칩 JEDEC 브링업 비트 (PS SPI → JB) | `vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl` | `build/vivado_g2/g2_jedec.xsa` | 5분 |
 | 3.3 prep | 사전 쓰기 + UID 앱 (g2 XSA 소비) | `vitis -s ps/scripts/build_flash_prep.py` | `build/vitis_prep/flash_prep/build/flash_prep.elf` | 2분 |
 | 3.4 g3 | 실칩 스윕 계측기, 클럭별 3벌 | `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 25` (45·75도 같은 식) | `build/vivado_g3_<mhz>/…/g3_wrapper.bit` · `build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf` | 10분/클럭 |
@@ -95,7 +95,15 @@ grep -L "All user specified timing constraints are met" build/vivado*/*.runs/imp
 # ↑ 아무것도 출력되지 않아야 한다 (출력된 파일 = 타이밍 위반 → 측정 금지)
 ```
 
-**빌드 재현성 확인 (선택)**: `md5sum build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit`를 다른 조원 값과 비교. 같은 소스·같은 버전이면 같아야 한다. 다르면 로그에 적는다 (실패는 아님).
+**빌드 재현성 확인 (선택)**: `.bit`는 헤더에 생성 시각이 들어가 md5로는 비교할 수 없다. 대신 타이밍 요약의 WNS와 자원 사용량을 조원끼리 비교한다 — 같은 소스·같은 버전이면 같아야 한다.
+
+```bash
+R=build/vivado/g0_loopback.runs/impl_1/g0_wrapper
+grep -A8 'Design Timing Summary' ${R}_timing_summary_routed.rpt | grep -E '^\s+-?[0-9]+\.' | head -1 | awk '{print "WNS="$1, "TNS="$2, "WHS="$5}'
+grep -E '^\| (Slice LUTs|Slice Registers)' ${R}_utilization_placed.rpt | head -2
+```
+
+영웅 PC 2026-09-14 값은 `docs/log/young/27.vivado_2025_2_migration_plan.md` §빌드 결과 표에 있다.
 
 ## 4. 루프백 측정 (칩 없이)
 
