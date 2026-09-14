@@ -5,7 +5,7 @@
 # 선행:  build_g3_chip.tcl (해당 mhz), 사전 쓰기 #PREP PASS (flash_prep, 로그 10 ④)
 # 재실행 규칙: 반드시 이 전체 경로로 — ELF만 재로드하면 MMCM 위상이 남아
 #   phase_pos_mismatch로 거부된다 (temp.md/로그 10 재실행 규칙, 의도된 방어).
-# UART 캡처: .venv/bin/python host/capture/sweep_uart_capture.py --target chip01
+# UART 캡처: .venv/bin/python host/capture/sweep_uart_capture.py --uid <16hex> (래퍼 run_sweep_chip.py 권장)
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo       [file normalize $script_dir/../..]
@@ -58,4 +58,4 @@ ps7_post_config
 
 dow $elf
 con
-puts "== running ($mhz MHz) — sweep_uart_capture.py --target chip01 로 수집"
+puts "== running ($mhz MHz) — sweep_uart_capture.py --uid <16hex> (래퍼 run_sweep_chip.py 권장) 로 수집"

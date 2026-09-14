@@ -8,8 +8,8 @@
 # build_g0_loopback.tcl과 동일 골격 — 차이는 flash_top_spi(SPI 프런트엔드),
 # JB 핀 XDC, core O_DIV 파라미터(45/25/15), 클럭별 프로젝트 분리(사전 빌드 3벌).
 
-if {![string match "2024.2*" [version -short]]} {
-    error "Vivado 2024.2 필요 (현재: [version -short])"
+if {![string match "2025.2*" [version -short]]} {
+    error "Vivado 2025.2 필요 (현재: [version -short])"
 }
 
 set stage "all"
