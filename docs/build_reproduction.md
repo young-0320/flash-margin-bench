@@ -47,53 +47,45 @@ g3-75 ┘
 
 ### 3.1 g0 — 루프백 계측기
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit` (PL 비트스트림) · `build/vivado/g0_loopback.xsa` (하드웨어 플랫폼, 비트 포함) · `build/vitis/g0_sweep/build/g0_sweep.elf` (PS 스윕 앱) · `build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl` (PS 초기화, 프로그래밍 때 사용) |
-| **입력** | `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top.v` 계열 · `fpga/constraints/g0_*.xdc` · `fpga/boards/`(벤더링 보드파일) · `ps/src/g0_sweep.c` |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl` |
-| **내부 순서** | 프로젝트 생성 → BD 조립 → 합성 → 구현 → 비트스트림 → XSA → `vitis -s ps/scripts/build_g0_sweep.py`(ELF) |
-| **소요** | 약 8분 |
-| **검증** | 마지막 줄 `== all done: bit=… elf=…` · `== timing: WNS=양수 WHS=양수` |
-| **검증 기록** | 2026-09-14 22:58 통과. WNS 29.811 / WHS 0.096, LUT 900 / FF 1,013 |
+- **재현 대상**: `build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit` (PL 비트스트림) · `build/vivado/g0_loopback.xsa` (하드웨어 플랫폼, 비트 포함) · `build/vitis/g0_sweep/build/g0_sweep.elf` (PS 스윕 앱) · `build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl` (PS 초기화, 프로그래밍 때 사용)
+- **입력**: `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top.v` 계열 · `fpga/constraints/g0_*.xdc` · `fpga/boards/`(벤더링 보드파일) · `ps/src/g0_sweep.c`
+- **명령**: `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl`
+- **내부 순서**: 프로젝트 생성 → BD 조립 → 합성 → 구현 → 비트스트림 → XSA → `vitis -s ps/scripts/build_g0_sweep.py`(ELF)
+- **소요**: 약 8분
+- **검증**: 마지막 줄 `== all done: bit=… elf=…` · `== timing: WNS=양수 WHS=양수`
+- **검증 기록**: 2026-09-14 22:58 통과. WNS 29.811 / WHS 0.096, LUT 900 / FF 1,013
 
 부분 실행: `-tclargs bd`(BD 검증만) · `-tclargs bit`(ELF 생략).
 
 ### 3.2 g2 — 실칩 JEDEC 브링업 비트
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado_g2/g2_jedec.xsa` · `build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit` |
-| **입력** | `fpga/constraints/g2_jedec_pins.xdc` · 보드파일. PL 로직 없음 — PS SPI0을 EMIO로 JB 핀에 라우팅만 |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl` |
-| **소요** | 약 1분 |
-| **검증** | 마지막 줄 `== done: …/g2_jedec.xsa (bit: …)` |
-| **검증 기록** | 2026-09-14 23:00 통과 |
+- **재현 대상**: `build/vivado_g2/g2_jedec.xsa` · `build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit`
+- **입력**: `fpga/constraints/g2_jedec_pins.xdc` · 보드파일. PL 로직 없음 — PS SPI0을 EMIO로 JB 핀에 라우팅만
+- **명령**: `vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl`
+- **소요**: 약 1분
+- **검증**: 마지막 줄 `== done: …/g2_jedec.xsa (bit: …)`
+- **검증 기록**: 2026-09-14 23:00 통과
 
 ### 3.3 prep — 사전 쓰기·UID 앱 (g2 XSA 소비)
 
-| | |
-| - | - |
-| **재현 대상** | `build/vitis_prep/flash_prep/build/flash_prep.elf` |
-| **입력** | `build/vivado_g2/g2_jedec.xsa` (3.2) · `ps/src/flash_prep.c` |
-| **명령** | `vitis -s ps/scripts/build_flash_prep.py` |
-| **소요** | 약 20초 |
-| **검증** | 마지막 줄 `== done: …/flash_prep.elf` |
-| **검증 기록** | 2026-09-14 23:00 통과 |
+- **재현 대상**: `build/vitis_prep/flash_prep/build/flash_prep.elf`
+- **입력**: `build/vivado_g2/g2_jedec.xsa` (3.2) · `ps/src/flash_prep.c`
+- **명령**: `vitis -s ps/scripts/build_flash_prep.py`
+- **소요**: 약 20초
+- **검증**: 마지막 줄 `== done: …/flash_prep.elf`
+- **검증 기록**: 2026-09-14 23:00 통과
 
 같은 방식의 다른 앱: `vitis -s ps/scripts/build_flash_jedec.py` → `build/vitis_jedec/flash_jedec/build/flash_jedec.elf` (G2 JEDEC 확인용, 실칩 측정엔 불필요).
 
 ### 3.4 g3 — 실칩 스윕 계측기 (클럭별)
 
-| | |
-| - | - |
-| **재현 대상** | `build/vivado_g3_<mhz>/g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit` · `build/vivado_g3_<mhz>/g3_chip_<mhz>.xsa` · `build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf` |
-| **입력** | `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top_spi.v` 계열 · `fpga/constraints/g3_*.xdc` · 보드파일 · `ps/src/g0_sweep.c`(g3도 같은 스윕 앱, `G3_MHZ`로 분기) |
-| **명령** | `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 25` — `45`, `75`도 같은 식 |
-| **내부 순서** | g0과 동일 골격. 차이는 SPI 프런트엔드, JB 핀 XDC, 클럭별 분주 파라미터, 클럭별 프로젝트 폴더 분리 |
-| **소요** | 약 2분/클럭 |
-| **검증** | `== timing: WNS=양수` · `== all done: bit=… elf=…` |
-| **검증 기록** | 2026-09-14 세 벌 전부 통과 (25: 23:02 · 45: 23:04 · 75: 23:06). 수치는 §5 표 |
+- **재현 대상**: `build/vivado_g3_<mhz>/g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit` · `build/vivado_g3_<mhz>/g3_chip_<mhz>.xsa` · `build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf`
+- **입력**: `fpga/rtl/core/*.v` · `fpga/rtl/flash/flash_top_spi.v` 계열 · `fpga/constraints/g3_*.xdc` · 보드파일 · `ps/src/g0_sweep.c`(g3도 같은 스윕 앱, `G3_MHZ`로 분기)
+- **명령**: `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all 25` — `45`, `75`도 같은 식
+- **내부 순서**: g0과 동일 골격. 차이는 SPI 프런트엔드, JB 핀 XDC, 클럭별 분주 파라미터, 클럭별 프로젝트 폴더 분리
+- **소요**: 약 2분/클럭
+- **검증**: `== timing: WNS=양수` · `== all done: bit=… elf=…`
+- **검증 기록**: 2026-09-14 세 벌 전부 통과 (25: 23:02 · 45: 23:04 · 75: 23:06). 수치는 §5 표
 
 보험 비트(PAY_LEAD 어긋날 때): `-tclargs bit 25 <k>` → `build/vivado_g3_25_pl<k>/…`. 평소엔 만들지 않는다.
 
