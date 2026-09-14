@@ -98,6 +98,7 @@ docs/                     문서가 1급 산출물
   spec/                   사양서·합격 기준 (수신자 1인, 인수 기준으로 닫힘)
   concepts/               배경 개념 11편 (몬테카를로, MMCM 위상, CDC, PRBS, BER 스케일 …)
   workflow/               게이트 지도 · 실칩의 날 런북 (명령·기대 출력·함정 판독표)
+  build_reproduction.md   빌드 재현 절차 — 산출물·순서·명령·검증 (Vivado 2025.2)
   results/                게재 확정 산출물 — plots/ · data/(요약 CSV + 유래 md) · captures/
   log/young/              작업 일지 15편 (무엇을 왜 그렇게 결정했는지)
 
