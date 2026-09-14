@@ -14,9 +14,13 @@
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo       [file normalize $script_dir/../..]
-set bit        $repo/build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit
-set elf        $repo/build/vitis/g0_sweep/build/g0_sweep.elf
-set psinit     $repo/build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl
+# BUILD_DIR 환경변수로 산출물 폴더 선택 (기본 build). 재기준선 A/B용 — 워크플로 7 R:
+#   BUILD_DIR=build_2024.2 xsct ps/scripts/program_g0.tcl
+set build      $repo/build
+if {[info exists env(BUILD_DIR)]} { set build $repo/$env(BUILD_DIR) }
+set bit        $build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit
+set elf        $build/vitis/g0_sweep/build/g0_sweep.elf
+set psinit     $build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl
 
 foreach f [list $bit $elf $psinit] {
     if {![file exists $f]} { error "missing: $f — build_g0_loopback.tcl 먼저" }

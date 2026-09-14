@@ -9,6 +9,10 @@
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo       [file normalize $script_dir/../..]
+# BUILD_DIR 환경변수로 산출물 폴더 선택 (기본 build). 재기준선 A/B용 — 워크플로 7 R:
+#   BUILD_DIR=build_2024.2 xsct ps/scripts/program_g3.tcl 25   (래퍼 경유도 동일: 환경변수가 xsct 에 상속)
+set build      $repo/build
+if {[info exists env(BUILD_DIR)]} { set build $repo/$env(BUILD_DIR) }
 
 if {$argc < 1} { error "usage: xsct program_g3.tcl <mhz 25|45|75> \[pl<k>\] \[elf\]" }
 set mhz [lindex $argv 0]
@@ -17,7 +21,7 @@ if {$mhz ni {25 45 75}} { error "mhz는 25|45|75" }
 # pl<k> = PAY_LEAD 보험 비트스트림 선택 (build_g3_chip.tcl -tclargs bit <mhz> <k>).
 # ELF는 인터페이스 동일 — 기본 빌드 것을 그대로 쓴다
 set sfx ""
-set elf $repo/build/vitis_g3_$mhz/g3_sweep/build/g3_sweep.elf
+set elf $build/vitis_g3_$mhz/g3_sweep/build/g3_sweep.elf
 set rest [lrange $argv 1 end]
 if {[llength $rest] > 0 && [string match "pl*" [lindex $rest 0]]} {
     set sfx "_[lindex $rest 0]"
@@ -25,9 +29,9 @@ if {[llength $rest] > 0 && [string match "pl*" [lindex $rest 0]]} {
 }
 if {[llength $rest] > 0} { set elf [lindex $rest 0] }
 
-set bit     $repo/build/vivado_g3_$mhz$sfx/g3_chip_$mhz$sfx.runs/impl_1/g3_wrapper.bit
-set xsa     $repo/build/vivado_g3_$mhz$sfx/g3_chip_$mhz$sfx.xsa
-set extract $repo/build/vivado_g3_$mhz$sfx/prog
+set bit     $build/vivado_g3_$mhz$sfx/g3_chip_$mhz$sfx.runs/impl_1/g3_wrapper.bit
+set xsa     $build/vivado_g3_$mhz$sfx/g3_chip_$mhz$sfx.xsa
+set extract $build/vivado_g3_$mhz$sfx/prog
 
 foreach f [list $bit $xsa $elf] {
     if {![file exists $f]} { error "missing: $f — build_g3_chip.tcl (mhz=$mhz) 먼저" }
