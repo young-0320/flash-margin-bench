@@ -169,7 +169,7 @@ def main():
     if args.no_prep != bool(args.uid):
         ap.error("--uid 는 --no-prep 과 함께, 그때만 쓴다")
     if not shutil.which("xsct"):
-        raise Abort("xsct 가 PATH 에 없다 — Vitis 2024.2 settings64.sh 를 source 할 것")
+        raise Abort("xsct 가 PATH 에 없다 — Vitis 2025.2 settings64.sh 를 source 할 것")
     chip_registry.parse()                     # 등록부가 깨져 있으면 보드를 건드리기 전에 죽는다
     if args.reseat and args.repeat > 1:
         require_tty("--reseat 는 재장착 프롬프트가 필요")

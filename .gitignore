@@ -1,5 +1,6 @@
 # ---------- Vivado ----------
 build/
+build_*/
 *.jou
 *.log
 *.str

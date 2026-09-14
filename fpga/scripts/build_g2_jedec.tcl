@@ -7,8 +7,8 @@
 # 0x9F → 0xEF 40 17)는 장세은 담당 (docs/log/young/9 인수인계). 보드 프로그래밍은
 # ps/scripts/program_g2.tcl.
 
-if {![string match "2024.2*" [version -short]]} {
-    error "Vivado 2024.2 필요 (현재: [version -short])"
+if {![string match "2025.2*" [version -short]]} {
+    error "Vivado 2025.2 필요 (현재: [version -short])"
 }
 
 set script_dir [file dirname [file normalize [info script]]]
