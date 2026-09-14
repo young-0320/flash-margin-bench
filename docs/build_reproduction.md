@@ -32,23 +32,23 @@ G1은 시뮬레이션 게이트라 비트스트림·ELF를 만들지 않는다.
 
 ## 목차
 
-1. [Quick Setup / Dependencies](#quick-setup--dependencies) — 파이썬 환경, 시리얼 포트
-2. [Prerequisites](#prerequisites) — Vivado/Vitis 2025.2, iverilog 등 도구
-3. [Build Pipeline](#build-pipeline) — 빌드 루프 전체
-   1. [g0 Loopback Platform](#1-g0-loopback-platform) — 루프백 계측기 bit·XSA·ELF
-   2. [g2 JEDEC Platform](#2-g2-jedec-platform) — 실칩 브링업 bit·XSA
-   3. [flash_prep Application](#3-flash_prep-application) — 사전 쓰기·UID ELF
-   4. [g3 Chip-Sweep Platforms](#4-g3-chip-sweep-platforms) — 실칩 계측기 ×3 클럭
-   5. [Build Check](#5-build-check) — 존재·타이밍·기준값 대조
-4. [Board Programming](#board-programming) — 산출물을 보드에 굽는 명령
-5. [Verification Pipeline](#verification-pipeline) — 검증 루프 전체
-   1. [RTL Smoke Simulation](#1-rtl-smoke-simulation)
-   2. [Host Self-Tests](#2-host-self-tests)
-6. [Fast Rebuild](#fast-rebuild) — C 앱만 바뀐 경우의 지름길
-7. [Build Artifacts](#build-artifacts) — `build/` 트리
-8. [Debug And Historical Flows](#debug-and-historical-flows) — 스모크 앱·보험 비트·옛 명령
+1. [파이썬 환경 준비](#1-파이썬-환경-준비) — uv 환경, 시리얼 포트
+2. [전제: 도구와 버전](#2-전제-도구와-버전) — Vivado/Vitis 2025.2, iverilog 등 도구
+3. [빌드 파이프라인](#3-빌드-파이프라인) — 빌드 루프 전체
+   1. [g0 — 루프백 계측기](#31-g0--루프백-계측기) — bit·XSA·ELF
+   2. [g2 — 실칩 JEDEC 브링업 비트](#32-g2--실칩-jedec-브링업-비트) — bit·XSA
+   3. [prep — 사전 쓰기·UID 앱](#33-prep--사전-쓰기uid-앱) — ELF
+   4. [g3 — 실칩 스윕 계측기 (클럭별)](#34-g3--실칩-스윕-계측기-클럭별) — ×3 클럭
+   5. [빌드 확인](#35-빌드-확인) — 존재·타이밍·기준값 대조
+4. [산출물을 보드에 굽는 명령](#4-산출물을-보드에-굽는-명령)
+5. [검증 파이프라인](#5-검증-파이프라인) — 검증 루프 전체
+   1. [RTL 스모크 시뮬레이션](#51-rtl-스모크-시뮬레이션)
+   2. [호스트 셀프테스트](#52-호스트-셀프테스트)
+6. [빠른 재빌드](#6-빠른-재빌드) — C 앱만 바뀐 경우의 지름길
+7. [산출물 트리](#7-산출물-트리) — `build/` 트리
+8. [디버그·과거 흐름](#8-디버그과거-흐름) — 스모크 앱·보험 비트·옛 명령
 
-## Quick Setup / Dependencies
+## 1. 파이썬 환경 준비
 
 PC 측 캡처·분석은 bare `python` 대신 프로젝트 `uv` 환경을 사용한다. 의존성은
 `pyproject.toml`에 선언되어 있다 (Python ≥ 3.13). 개인 venv·pip 수동 설치 금지.
@@ -61,12 +61,12 @@ uv run python host/analysis/bathtub_analysis.py --selftest
 PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 파이썬이 필요 없다.
 시리얼 포트 이름은 머신마다 다르다:
 
-| Host OS | Typical UART port | 비고 |
+| 호스트 OS | 흔한 UART 포트 | 비고 |
 | --- | --- | --- |
 | Linux/Ubuntu | `/dev/ttyUSB1` (기본값) | 사용자를 `dialout` 그룹에 추가 후 재로그인 |
 | Windows | `COM3`, `COM4`, etc. | FT2232의 A(JTAG)·B(UART) 둘 다 COM으로 잡힌다 — 장치 관리자에서 부모가 "USB Serial Converter **B**"인 쪽. `--port COM<N>` |
 
-## Prerequisites
+## 2. 전제: 도구와 버전
 
 AMD Vivado + Vitis **2025.2**가 하드웨어/bare-metal 빌드에 필요하다. 다른 버전은 빌드 tcl의
 버전 가드가 거부한다. Lab Edition은 프로그래밍만 되고 빌드가 안 된다. 설치 요령과 함정은
@@ -87,14 +87,14 @@ vivado -version | head -1        # vivado v2025.2
 
 기타 도구:
 
-| Tool | Use |
+| 도구 | 용도 |
 | --- | --- |
 | `uv` + Python 3.13 | 캡처·분석·셀프테스트 |
 | `iverilog` 11+ / `vvp` | RTL 스모크 시뮬레이션 |
 | `xsct` (Vitis 동봉) | JTAG 프로그래밍 |
 | Digilent Zybo Z7-20 board files | `fpga/boards/`에 벤더링 — 별도 설치 불필요 |
 
-## Build Pipeline
+## 3. 빌드 파이프라인
 
 소스에서 보드 프로그래밍 직전까지의 최단 경로다. 각 tcl은 프로젝트를 처음부터 재생성한다
 (`.xpr`을 열어 이어 빌드하지 않는다). 순서와 의존:
@@ -107,9 +107,9 @@ g3-45 ├───────────────────────�
 g3-75 ┘
 ```
 
-루프백만 할 사람은 1만. 실칩을 할 사람은 1~4 전부 (g3는 우선 25만, 45·75는 클럭 사다리 때).
+루프백만 할 사람은 3.1만. 실칩을 할 사람은 3.1~3.4 전부 (g3는 우선 25만, 45·75는 클럭 사다리 때).
 
-### 1. g0 Loopback Platform
+### 3.1 g0 — 루프백 계측기
 
 레포 루트에서:
 
@@ -136,7 +136,7 @@ build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl           PS 초기화 (프로그�
 
 부분 실행: `-tclargs bd`(BD 검증까지) · `-tclargs bit`(ELF 생략).
 
-### 2. g2 JEDEC Platform
+### 3.2 g2 — 실칩 JEDEC 브링업 비트
 
 ```bash
 vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl
@@ -154,7 +154,7 @@ build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit
 
 기대 출력: `== done: …/g2_jedec.xsa (bit: …)`. `[검증 2026-09-14]` 23:00 통과.
 
-### 3. flash_prep Application
+### 3.3 prep — 사전 쓰기·UID 앱
 
 g2 XSA에서 Vitis 플랫폼과 앱을 만든다. 사전 쓰기(PRBS 2,048페이지) + UID(4Bh) 읽기 앱.
 
@@ -172,7 +172,7 @@ build/vitis_prep/flash_prep/build/flash_prep.elf
 
 기대 출력: `== done: …/flash_prep.elf`. `[검증 2026-09-14]` 23:00 통과.
 
-### 4. g3 Chip-Sweep Platforms
+### 3.4 g3 — 실칩 스윕 계측기 (클럭별)
 
 클럭별로 프로젝트 폴더가 분리된다. g0과 같은 골격이며 차이는 SPI 프런트엔드
 (`flash_top_spi.v`), JB 핀 XDC(`g3_*.xdc`), 클럭별 분주 파라미터. 스윕 앱은 g0과 같은
@@ -195,9 +195,9 @@ build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf
 ```
 
 기대 출력: 클럭마다 `== timing: WNS=양수` · `== all done: bit=… elf=…`.
-`[검증 2026-09-14]` 25: 23:02 · 45: 23:04 · 75: 23:06 전부 통과 (수치는 §5 표).
+`[검증 2026-09-14]` 25: 23:02 · 45: 23:04 · 75: 23:06 전부 통과 (수치는 §3.5 표).
 
-### 5. Build Check
+### 3.5 빌드 확인
 
 존재 + 타이밍:
 
@@ -234,7 +234,7 @@ done
 값이 다르면 실패는 아니지만 로그에 적는다. 소스가 같은데 배치가 다르다는 뜻이고, 그
 차이가 폭 측정에 나타나는지는 측정으로만 안다.
 
-## Board Programming
+## 4. 산출물을 보드에 굽는 명령
 
 빌드 산출물을 쓰는 첫 행위. 보드 USB 연결(JTAG+UART 겸용 1개), JP5 = **JTAG** 부팅 모드.
 측정 절차 자체(캡처 순서·배선·판정)는 런북 3 · 워크플로 7을 따른다.
@@ -255,15 +255,15 @@ xsct ps/scripts/program_g0.tcl                                                  
 
 기대 결과: 터미널 1에 수 초 내 `#G0 SWEEP BEGIN …`, 약 10분 뒤
 `#G0 SWEEP END valid=1 reason=complete`, `build/data/sweep_loopback_<stamp>.csv` 생성.
-`TIMEOUT`이면 점퍼 미접촉, BEGIN 자체가 안 뜨면 포트(§Quick Setup).
+`TIMEOUT`이면 점퍼 미접촉, BEGIN 자체가 안 뜨면 포트(§1).
 
 `BUILD_DIR=<폴더>` 환경변수를 앞에 붙이면 `build/` 대신 그 폴더의 산출물을 굽는다 (기본 `build`).
 
-## Verification Pipeline
+## 5. 검증 파이프라인
 
 RTL을 바꾸거나 결과를 기록하기 전에 사용한다. 보드가 필요 없다.
 
-### 1. RTL Smoke Simulation
+### 5.1 RTL 스모크 시뮬레이션
 
 cocotb 회귀(G1)가 확립되기 전까지의 최소 회귀. 순수 Verilog TB + `unisim_stub.v`(MMCM·ODDR 스텁).
 `sim/smoke/` 디렉터리에서:
@@ -282,7 +282,7 @@ cd ../..
 G1 cocotb 회귀(`sim/tb/`, 박지민)는 구축 중이다. 기준은 `docs/spec/s3.g1_test_plan.md`,
 커버리지 대조는 `python3 sim/check_coverage.py --results sim/build/results.xml`.
 
-### 2. Host Self-Tests
+### 5.2 호스트 셀프테스트
 
 ```bash
 uv run python host/analysis/bathtub_analysis.py --selftest
@@ -292,7 +292,7 @@ uv run python host/run/chip_pe.py --selftest
 
 기대 결과: 등록부·P/E 이력은 `selftest PASS`, 분석기는 셀프테스트 그림(`build/plots/bathtub_selftest_*.png`)과 체크리스트 PASS. `[검증 2026-09-14]` 3/3 통과.
 
-## Fast Rebuild
+## 6. 빠른 재빌드
 
 RTL·XDC는 그대로이고 `ps/src/*.c`만 바뀐 경우, Vivado를 다시 돌리지 않고 기존 XSA에서 ELF만
 재생성한다 (워크스페이스는 지우고 다시 만들지만 20초 안팎):
@@ -307,9 +307,9 @@ G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← bui
 (`program_*.tcl`)로 — ELF만 재로드하면 MMCM 위상이 남아 `phase_pos_mismatch`로 거부된다
 (의도된 방어).
 
-RTL이 바뀌었으면 지름길이 없다 — 해당 tcl을 처음부터 (§Build Pipeline).
+RTL이 바뀌었으면 지름길이 없다 — 해당 tcl을 처음부터 (§3).
 
-## Build Artifacts
+## 7. 산출물 트리
 
 ```text
 build/
@@ -325,10 +325,10 @@ build/
 └── plots/                  분석 그림 (빌드 산출물 아님)
 ```
 
-전부 `.gitignore`. `rm -rf build`로 지우고 §Build Pipeline으로 처음부터 다시 만들 수 있어야
+전부 `.gitignore`. `rm -rf build`로 지우고 §3으로 처음부터 다시 만들 수 있어야
 한다 — 그것이 재현이다. 측정 원본 CSV는 `build/data/`에서 `data/`로 옮겨 보관한다(CONTRIBUTING).
 
-## Debug And Historical Flows
+## 8. 디버그·과거 흐름
 
 메인 재현 경로가 아니라 브링업·근본원인 도구로 남아 있는 것들:
 
