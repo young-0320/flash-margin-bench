@@ -109,8 +109,13 @@ static void addr3(u8 *p, u32 addr)
 
 static u32 us_since(XTime t0)          /* XTime(u64) 경과를 us로 — xil_printf에는 u32 %u로만 넘긴다 */
 {
+    /* COUNTS_PER_SECOND 는 BSP(xtimer_config.h)에서 `XPAR_CPU_CORE_CLOCK_FREQ_HZ/2` 로
+       정의돼 있고 괄호가 없다. 나눗셈에 직접 쓰면 X/(A/2) 가 아니라 X/A/2 로 전개돼
+       결과가 정확히 4배 작아진다 (2026-09-15 chip02 실측: 소거 6.6ms → 실제 26.4ms).
+       대입식에서 한 번 값으로 받으면 온전히 평가된다. */
+    const u64 cps = COUNTS_PER_SECOND;
     XTime t1; XTime_GetTime(&t1);
-    return (u32)(((t1 - t0) * 1000000ULL) / COUNTS_PER_SECOND);
+    return (u32)(((t1 - t0) * 1000000ULL) / cps);
 }
 
 /* blank 판독: 페이지 page0..page0+npages-1 을 03h로 읽어 0으로 굳은 비트 수·바이트 수를 세고,
