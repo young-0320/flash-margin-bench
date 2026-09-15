@@ -1,0 +1,2 @@
+label,uid,date,n_sweeps,width_1e2_ps,width_1e2_sd_ps,erase_us_median,erase_us_min,erase_us_max,n_preps,blank_pre_bits,blank_post_bits,git_rev,note
+chip02,D1642C74E7134527,2026-09-15,2,39630.17,,27151,23945,33092,3,,0,c8b7b9f/a6e874d,blank_pre 미관측(UART 단절로 첫 prep이 호스트 모르게 완주)
