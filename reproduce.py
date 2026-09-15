@@ -183,8 +183,9 @@ def run_step(name, log_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--only", nargs="+", metavar="STEP", help="지정한 단계만 (순서대로)")
-    ap.add_argument("--vitis-only", action="store_true", help="§6 빠른 재빌드 — Vivado 생략, ELF 만")
+    g = ap.add_mutually_exclusive_group()          # 함께 주면 --only 가 조용히 이겨 의도와 반대로 돈다
+    g.add_argument("--only", nargs="+", metavar="STEP", help="지정한 단계만 (순서대로)")
+    g.add_argument("--vitis-only", action="store_true", help="§6 빠른 재빌드 — Vivado 생략, ELF 만")
     ap.add_argument("--no-sim", action="store_true")
     ap.add_argument("--no-selftest", action="store_true")
     ap.add_argument("--keep-going", action="store_true", help="실패해도 다음 단계 계속 (기본: 첫 실패에서 중단)")
@@ -205,6 +206,8 @@ def main():
         steps = [s for s in steps if s != "sim"]
     if args.no_selftest:
         steps = [s for s in steps if s != "selftest"]
+    if not steps:                                 # 빈 목록을 성공으로 끝내지 않는다 — 아무것도 안 돌고
+        sys.exit("실행할 단계가 없다 — --only 와 --no-* 가 서로를 지웠다")   # 초록이 뜨는 것이 최악이다
 
     # 도구 선검사 — 없으면 시작 전에 죽는다 (조용한 건너뛰기 없음)
     need = sorted({t for s in steps for t in STEPS[s]["tools"]})
