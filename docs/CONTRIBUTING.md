@@ -6,6 +6,8 @@
 repo/flash-margin-bench/
 ├── README.md           # 사람용 입구 — 프로젝트 정의·원리·3막 구조·폴더 지도
 ├── CLAUDE.md           # 에이전트 행동 계약 — 규칙만, 설명은 README 참조
+├── reproduce.py        # [한영웅] 빌드·검증 원샷 재현 + 채점 (build_reproduction.md §3·§5).
+│                       #   fpga·ps·sim·host 를 전부 가로지르므로 어느 하위 폴더에도 두지 않는다
 ├── .gitignore
 ├── fpga/               # 비트스트림 생산에 들어가는 입력의 집합
 │   ├── rtl/

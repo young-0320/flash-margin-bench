@@ -120,6 +120,8 @@ host/viz/                 시각화·chipdb
 
 sim/smoke/                블록 단위 스모크 TB (iverilog)
 
+reproduce.py              빌드·검증 원샷 재현 — build_reproduction.md §3·§5 를 순서대로 돌리고 §3.5 로 채점
+
 data/                     측정 원본 CSV 보관처 (커밋 금지 — 스키마·README만 추적)
 hw/                       DUT 보드 물리 설계물 (KiCad·BOM·결선도)
 ```
