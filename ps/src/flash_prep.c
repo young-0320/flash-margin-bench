@@ -27,6 +27,7 @@
 
 #include "xspips.h"
 #include "xil_printf.h"
+#include "xiltimer.h"               /* XTime_GetTime · COUNTS_PER_SECOND (2025.2 BSP는 xtime_l.h 대신 xiltimer) */
 
 #define N_PAGES     2048u           /* = R6 상한 — N_READS를 어디까지 올려도(계약 §5
                                        레지스터 가변) 미준비 페이지가 없도록 전 범위
@@ -42,6 +43,17 @@
 #define CMD_READ    0x03            /* 저클럭 검증 읽기 */
 #define CMD_UID     0x4B            /* Read Unique ID: [4Bh][더미 4][UID 8] = 13바이트, 주소 없음 */
 #define UID_LEN     8u
+
+/* 신품 조사 (로그 30) — blank 판독 범위·주소 출력 상한·소거 시간 경고 */
+#define CHIP_PAGES       32768u     /* W25Q64JV = 64Mbit / 256B */
+#define BLANK_PRE_PAGE0  0u
+#define BLANK_PRE_PAGES  CHIP_PAGES /* 전역 스캔 (S-2 §5) */
+#define BLANK_ADDR_CAP   1024u      /* 주소 "출력" 상한 — 배열 크기가 아니다 */
+#define ERASE_WARN_US    400000u    /* S-1 §10 */
+
+/* addr3()가 3바이트 주소라 페이지 32,768을 넘기면 상위 비트가 조용히 잘린다 — 빌드 타임에 차단 */
+_Static_assert(BLANK_PRE_PAGE0 + BLANK_PRE_PAGES <= CHIP_PAGES, "blank 범위가 칩을 넘는다");
+_Static_assert(N_PAGES <= CHIP_PAGES, "prep 범위가 칩을 넘는다");
 
 static XSpiPs spi;
 static u8 tx[PAGE_BYTES + 4], rx[PAGE_BYTES + 4];
@@ -95,6 +107,39 @@ static void addr3(u8 *p, u32 addr)
     p[0] = (u8)(addr >> 16); p[1] = (u8)(addr >> 8); p[2] = (u8)addr;
 }
 
+static u32 us_since(XTime t0)          /* XTime(u64) 경과를 us로 — xil_printf에는 u32 %u로만 넘긴다 */
+{
+    XTime t1; XTime_GetTime(&t1);
+    return (u32)(((t1 - t0) * 1000000ULL) / COUNTS_PER_SECOND);
+}
+
+/* blank 판독: 페이지 page0..page0+npages-1 을 03h로 읽어 0으로 굳은 비트 수·바이트 수를 세고,
+   그 바이트 주소는 스캔 중 그 자리에서 UART로 흘린다 (배열 없음 — addr_cap은 찍은 줄 수 상한).
+   판정 없음: 재prep 칩(chip01)은 PRBS가 살아 있어 수백만 비트가 나오는 게 정상 (로그 30 §4.2).
+   xfer 실패만 -1 (xfer가 #PREP ERROR를 찍는다) */
+static int blank_scan(const char *phase, u32 page0, u32 npages, u32 addr_cap)
+{
+    u32 bits = 0, bytes = 0, shown = 0;
+    XTime t0; XTime_GetTime(&t0);
+    for (u32 i = 0; i < PAGE_BYTES; i++) tx[4 + i] = 0;
+    for (u32 p = page0; p < page0 + npages; p++) {
+        tx[0] = CMD_READ; addr3(&tx[1], p * PAGE_BYTES);
+        if (xfer(tx, rx, PAGE_BYTES + 4)) return -1;
+        for (u32 i = 0; i < PAGE_BYTES; i++) {
+            u8 z = (u8)~rx[4 + i];      /* 0으로 굳은 비트 위치 */
+            if (!z) continue;
+            bytes++; bits += (u32)__builtin_popcount(z);
+            if (shown < addr_cap) {
+                xil_printf("#PREP BLANKADDR %s %u %u %02x\r\n", phase, p, i, z);
+                shown++;
+            }
+        }
+    }
+    xil_printf("#PREP BLANK %-4s range=%u-%u bits=%u bytes=%u shown=%u t_ms=%u\r\n",
+               phase, page0, page0 + npages - 1, bits, bytes, shown, us_since(t0) / 1000u);
+    return 0;
+}
+
 int main(void)
 {
     XSpiPs_Config *cfg = XSpiPs_LookupConfig(XPAR_XSPIPS_0_BASEADDR);
@@ -105,6 +150,10 @@ int main(void)
     XSpiPs_SetOptions(&spi, XSPIPS_MASTER_OPTION | XSPIPS_FORCE_SSELECT_OPTION);
     XSpiPs_SetClkPrescaler(&spi, XSPIPS_CLK_PRESCALE_64);   /* ≈2.6MHz, JEDEC 검증치 */
     XSpiPs_SetSlaveSelect(&spi, 0);
+
+    /* 글로벌 타이머 enable — 2025.2 BSP(xiltimer)는 crt0에서 타이머를 시작하지 않고 usleep()이 처음
+       불릴 때만 켠다. 안 켜면 XTime_GetTime이 상수를 돌려줘 소거 시간이 전부 0으로 조용히 틀린다 */
+    Xil_Out32(XPAR_GLOBAL_TMR_BASEADDR + 0x08u, 1u);
 
     /* 0. JEDEC 선검사 — 배선·칩 자체가 정상일 때만 지우기 시작 */
     tx[0] = CMD_JEDEC; tx[1] = tx[2] = tx[3] = 0;
@@ -146,14 +195,36 @@ int main(void)
 
     xil_printf("#PREP BEGIN n_pages=%u prbs15 seed={1,page}\r\n", N_PAGES);
 
-    /* 1. 대상 범위 섹터 지우기 */
+    /* 0c. 소거 전 전역 판독 — 출고 시점 결함 비트 (G-d 전반, 로그 30 §4.2). 판정 없음 */
+    if (blank_scan("pre", BLANK_PRE_PAGE0, BLANK_PRE_PAGES, BLANK_ADDR_CAP)) return 1;
+
+    /* 1. 대상 범위 섹터 지우기 — 섹터마다 SE 전송 완료~WIP 해제를 재서 즉시 출력 (G-b, 로그 30 §4.4).
+       배열 없이 min/max/sum 스칼라만; 중앙값은 호스트가 낸다 */
     u32 end = N_PAGES * PAGE_BYTES;
+    u32 er_min = 0xFFFFFFFFu, er_max = 0, er_sum = 0, er_over = 0;
     for (u32 a = 0; a < end; a += SECTOR) {
         if (wren()) return 1;
         tx[0] = CMD_SE; addr3(&tx[1], a);
-        if (xfer(tx, rx, 4) || wait_wip_clear()) return 1;
+        if (xfer(tx, rx, 4)) return 1;
+        XTime t0; XTime_GetTime(&t0);
+        if (wait_wip_clear()) return 1;
+        u32 us = us_since(t0);
+        xil_printf("#PREP ERASE %u %u\r\n", a / SECTOR, us);
+        if (us > ERASE_WARN_US) {
+            er_over++;
+            xil_printf("#PREP ERASE WARN sector %u %uus > %uus — 계속 진행\r\n", a / SECTOR, us, ERASE_WARN_US);
+        }
+        if (us < er_min) er_min = us;
+        if (us > er_max) er_max = us;
+        er_sum += us;
     }
     xil_printf("#PREP erase done (%u sectors)\r\n", (end + SECTOR - 1) / SECTOR);
+    xil_printf("#PREP ERASE SUMMARY n=%u min=%u max=%u mean=%u over400ms=%u\r\n",
+               end / SECTOR, er_min, er_max, er_sum / (end / SECTOR), er_over);
+
+    /* 1b. 소거 직후 판독 — 소거한 범위만 (G-d 후반, 로그 30 §4.3). 전역이면 안 지운 영역을
+       "소거 잔여"로 세게 된다. 판정 없음 */
+    if (blank_scan("post", 0u, N_PAGES, BLANK_ADDR_CAP)) return 1;
 
     /* 2. 페이지 프로그램: 페이지 p ← PRBS15(시드 {1, p}) */
     for (u32 p = 0; p < N_PAGES; p++) {
