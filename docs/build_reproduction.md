@@ -17,13 +17,17 @@
 같은 명령을 같은 순서로 돌리고 **§3.5 기준으로 단계마다 채점**한다.
 
 ```bash
-python3 reproduce.py                    # 전체 — g0 g2 prep g3-25 g3-45 g3-75 sim selftest (약 20분)
+python3 reproduce.py                    # 전체 — sim selftest g0 g2 prep g3-25 g3-45 g3-75 (약 20분)
 python3 reproduce.py --only g3-25 sim   # 골라서
 python3 reproduce.py --vitis-only       # §6 빠른 재빌드 — Vivado 생략, ELF 만 + 검증
 python3 reproduce.py --list             # 단계와 실제로 도는 명령
 ```
 
 옵션은 위 넷에 `--no-sim` · `--no-selftest` · `--keep-going`(기본은 첫 실패에서 중단).
+`--only` 와 `--vitis-only` 는 함께 쓸 수 없다.
+
+**검증(sim·selftest)이 맨 앞이다.** 합쳐 10초도 안 걸리는 반면 빌드는 20분이라,
+RTL 이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 — 「전체 흐름」의 순서 그대로다.
 
 **채점이 요점이다. 종료 코드 하나로 판정하지 않는다** — `vitis -s` 는 빌드가 깨져도 0 을 돌려준다.
 

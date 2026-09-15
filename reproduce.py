@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """reproduce.py — docs/build_reproduction.md §3(빌드)·§5(검증)를 순서대로 돌리고 채점한다.
 
-실행:  python3 reproduce.py                 # 전체: g0 g2 prep g3-25 g3-45 g3-75 sim selftest
+실행:  python3 reproduce.py                 # 전체: sim selftest g0 g2 prep g3-25 g3-45 g3-75
        python3 reproduce.py --only g3-25 sim
-       python3 reproduce.py --vitis-only     # §6 빠른 재빌드 — Vivado 생략, ELF만 (g0e prep g3e-*)
+       python3 reproduce.py --vitis-only     # §6 빠른 재빌드 — Vivado 생략, 검증 + ELF만
        python3 reproduce.py --list
 
 채점(§3.5): 단계마다 ① 명령 종료 코드 ② 로그의 완료 문구 ③ 산출물이 단계 시작 이후에 생겼는지
@@ -83,7 +83,9 @@ STEPS = {
                   artifacts=["build/vitis_smoke/core_smoke/build/core_smoke.elf"], tools=["vitis"]),
     # §6 빠른 재빌드 — ELF 만 (XSA 는 있는 것을 쓴다). --vitis-only 가 고른다
     "g0e": dict(cmd=vitis("build_g0_sweep.py"), done="== done:", default=False,
-                artifacts=["build/vitis/g0_sweep/build/g0_sweep.elf"], tools=["vitis"]),
+                artifacts=["build/vitis/g0_sweep/build/g0_sweep.elf",
+                           "build/vitis/g0_sweep/_ide/psinit/ps7_init.tcl"],   # program_g0.tcl 이 쓴다
+                tools=["vitis"]),
 }
 for m in ("25", "45", "75"):
     STEPS[f"g3-{m}"] = dict(cmd=vivado("build_g3_chip.tcl", "all", m), done="== all done:",
@@ -94,8 +96,10 @@ for m in ("25", "45", "75"):
     STEPS[f"g3e-{m}"] = dict(cmd=vitis("build_g3_sweep.py"), env={"G3_MHZ": m}, done="== done", default=False,
                              artifacts=[f"build/vitis_g3_{m}/g3_sweep/build/g3_sweep.elf"], tools=["vitis"])
 
-FULL = ["g0", "g2", "prep", "g3-25", "g3-45", "g3-75", "sim", "selftest"]
-VITIS_ONLY = ["g0e", "prep", "g3e-25", "g3e-45", "g3e-75", "sim", "selftest"]
+# 검증(sim·selftest, 합쳐 10초 미만)이 앞이다 — 빌드는 20분이고, RTL 이 깨져 있으면
+# 스모크 5초로 알 수 있는 것을 Vivado 16분 태우고 알게 된다 (문서 "RTL을 바꾸면 검증 루프부터")
+FULL = ["sim", "selftest", "g0", "g2", "prep", "g3-25", "g3-45", "g3-75"]
+VITIS_ONLY = ["sim", "selftest", "g0e", "prep", "g3e-25", "g3e-45", "g3e-75"]
 
 
 def backup(name, st):
@@ -134,9 +138,17 @@ def grade_vivado(name, rpt):
                 luts = int(line.split("|")[2])
             elif line.startswith("| Slice Registers"):
                 regs = int(line.split("|")[2])
-    note = f"WNS={wns} WHS={whs} LUT={luts} FF={regs}" if wns is not None else "(PL 로직 없음)"
     warns = []
-    if name in BASELINE and (wns, whs, luts, regs) != BASELINE[name]:
+    if wns is not None:
+        note = f"WNS={wns} WHS={whs} LUT={luts} FF={regs}"
+    elif name in BASELINE:
+        # 기준표가 있는 설계는 타이밍 경로가 반드시 있다 → 파싱 실패다. "PL 로직 없음" 과 섞지 않는다
+        note = "수치 파싱 실패"
+        warns.append(f"타이밍 리포트에서 WNS/WHS 를 못 읽었다 — 리포트 서식 변경 의심. "
+                     f"{t.relative_to(REPO)} 를 직접 볼 것 (기준표 대조 건너뜀)")
+    else:
+        note = "(PL 로직 없음)"
+    if name in BASELINE and wns is not None and (wns, whs, luts, regs) != BASELINE[name]:
         warns.append(f"기준표와 다름 (기준 WNS={BASELINE[name][0]} WHS={BASELINE[name][1]} "
                      f"LUT={BASELINE[name][2]} FF={BASELINE[name][3]}) — 실패 아님, 로그에 적을 것")
     return fails, warns, note
