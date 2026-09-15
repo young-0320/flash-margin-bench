@@ -27,6 +27,7 @@
 
 #include "xspips.h"
 #include "xil_printf.h"
+#include "xuartps.h"
 #include "xiltimer.h"               /* XTime_GetTime · COUNTS_PER_SECOND (2025.2 BSP는 xtime_l.h 대신 xiltimer) */
 
 #define N_PAGES     2048u           /* = R6 상한 — N_READS를 어디까지 올려도(계약 §5
@@ -145,8 +146,21 @@ static int blank_scan(const char *phase, u32 page0, u32 npages, u32 addr_cap)
     return 0;
 }
 
+/* UART 보 레이트 — 첫 출력보다 먼저, 전 앱 공통 (2026-09-15, 로그 30 §10.3 B). 호스트 기본값도 921600.
+   드라이버가 TRM 절차(TX/RX 정지 → CD·BDIV 기록 → FIFO 리셋 → 재개)로 바꾸고 분주비도 고른다:
+   100MHz 기준 클럭에서 CD=18·BDIV=5 → 925,925bps (+0.47%, 허용치 3% 안) */
+#define UART_BAUD   921600u
+static XUartPs uart;
+static void uart_set_baud(void)
+{
+    XUartPs_CfgInitialize(&uart, XUartPs_LookupConfig(XPAR_XUARTPS_0_BASEADDR), XPAR_XUARTPS_0_BASEADDR);
+    XUartPs_SetBaudRate(&uart, UART_BAUD);
+}
+
 int main(void)
 {
+    uart_set_baud();                        /* UART 921600 — 첫 출력 전에 (전 앱 공통) */
+
     XSpiPs_Config *cfg = XSpiPs_LookupConfig(XPAR_XSPIPS_0_BASEADDR);
     if (!cfg || XSpiPs_CfgInitialize(&spi, cfg, cfg->BaseAddress) != XST_SUCCESS) {
         xil_printf("#PREP ERROR spi init\r\n");

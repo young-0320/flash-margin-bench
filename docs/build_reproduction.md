@@ -61,6 +61,13 @@ uv run python host/analysis/bathtub_analysis.py --selftest
 PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 파이썬이 필요 없다.
 시리얼 포트 이름은 머신마다 다르다:
 
+**보 레이트는 921600이 프로젝트 표준이다** (2026-09-15부터). 호스트 스크립트의 `--baud`
+기본값이며, 보드 쪽은 전 앱이 `main` 초입에서 UART 분주기를 925,925bps로 맞춘다
+(100MHz/(9×12), 오차 +0.47% — 허용치 ±2~3% 안). 근거는 로그 30 §10.3: 스윕은 스텝당
+1,467B를 흘리는데 115200이면 UART 이용률이 98%라 여유가 0이고, 921600이면 12%로 떨어지며
+스윕 1회가 5.3분 → 약 1분이 된다. **`build/`의 ELF가 2026-09-15 이전 것이면 115200이므로
+재빌드하거나 `--baud 115200`을 줘야 한다** — 안 맞으면 `BEGIN` 자체가 안 뜬다.
+
 | 호스트 OS | 흔한 UART 포트 | 비고 |
 | --- | --- | --- |
 | Linux/Ubuntu | `/dev/ttyUSB1` (기본값) | 사용자를 `dialout` 그룹에 추가 후 재로그인 |
@@ -341,7 +348,8 @@ build/
 - **PAY_LEAD 보험 비트** — 실칩에서 전 위상 BER≈0.5(정렬 창 이탈)일 때만.
   `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs bit 25 <k>` (k=4|6) →
   `build/vivado_g3_25_pl<k>/` → `xsct ps/scripts/program_g3.tcl 25 pl<k>` 또는 래퍼 `--pl <k>`.
-- **UART 직접 보기** — `uv run python -m serial.tools.miniterm /dev/ttyUSB1 115200`.
+- **UART 직접 보기** — `uv run python -m serial.tools.miniterm /dev/ttyUSB1 921600`.
+  (2026-09-15부터 전 앱이 925,925bps. 구형 ELF 를 굽는다면 115200)
   캡처와 같은 포트라 동시에 못 연다.
 - **옛 명령** — 런북 3·로그 13의 `sweep_uart_capture.py --target …`은 로그 24에서
   `--loopback` / `--uid <16hex>`로 바뀌었다. 실칩은 래퍼(`host/run/run_sweep_chip.py`)가 정식 경로.

@@ -25,6 +25,7 @@ CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 �
 import argparse
 import shutil
 import subprocess
+import threading
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,15 +73,61 @@ class Session:
         self.path = self.path.rename(self.path.with_name(f"session_{name}_{self.batch_id}.log"))
 
 
-def run_xsct(args, ses, what):
-    """xsct 는 tcl error 에서 exit 1 을 준다 (2026-09-07 실측). 비영이면 배치 중단."""
+class Drained:
+    """xsct 구간에 미리 읽어 둔 바이트를 먼저 흘려보내는 시리얼 래퍼 (readline 만 가로챈다)."""
+
+    def __init__(self, ser, buf):
+        self._ser, self._buf = ser, bytes(buf)
+        self.port, self.baudrate = ser.port, ser.baudrate
+
+    def readline(self):
+        if not self._buf:
+            return self._ser.readline()
+        i = self._buf.find(b"\n")
+        if i < 0:                               # 개행 없는 꼬리는 포트에서 온 다음 조각과 이어 붙인다
+            tail, self._buf = self._buf, b""
+            return tail + self._ser.readline()
+        line, self._buf = self._buf[:i + 1], self._buf[i + 1:]
+        return line
+
+
+def run_xsct(args, ses, what, ser=None):
+    """xsct 는 tcl error 에서 exit 1 을 준다 (2026-09-07 실측). 비영이면 배치 중단.
+
+    ser 를 주면 xsct 가 도는 동안 UART 를 계속 읽어 반환한다. 보드는 ELF 가 뜨는 순간부터
+    뿜는데 호스트가 xsct 종료를 기다리느라 안 읽으면 커널·FTDI 버퍼(≈10KB = 6~7스텝)가
+    넘쳐 그 구간이 통째로 사라진다 — 2026-09-15 chip02 에서 19스텝 결측(무효 ⑤)으로 실현됐다.
+    UART 이용률이 98% 라 여유가 없어서, 읽지 않는 시간이 곧 유실이다."""
     cmd = ["xsct", *map(str, args)]
     ses.log(f"{what}: {' '.join(cmd)}")
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=10 * 60)
+    buf = bytearray()
+    stop = threading.Event()
+
+    def drain():                                 # 포트가 사라지면 조용히 끝낸다 — 판정은 캡처가 한다
+        try:
+            while not stop.is_set():
+                buf.extend(ser.read(4096))       # timeout 만큼만 블록
+        except Exception:
+            pass
+
+    th = threading.Thread(target=drain, daemon=True) if ser else None
+    if th:
+        th.start()
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=10 * 60)
+    finally:
+        if th:
+            stop.set()
+            th.join(timeout=5)
+            if th.is_alive():                    # 포트를 두 곳에서 읽는 상태로 캡처에 들어가지 않는다
+                raise Abort("UART 드레인 스레드가 안 멈춘다 — 포트 상태 확인 후 재시도")
+    if buf:
+        ses.log(f"  xsct 구간 UART 선수신 {len(buf)}B (버퍼 넘침 방지)")
     ses.write(r.stdout)
     if r.returncode != 0:
         tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-8:])
         raise Abort(f"{what} 실패 (xsct exit {r.returncode}) — 즉시 중단\n{tail}")
+    return bytes(buf)
 
 
 def require_tty(why):
@@ -93,12 +140,13 @@ def run_prep(ser, ses):
     if not PREP_ELF.exists():
         raise Abort(f"missing {PREP_ELF} — vitis -s ps/scripts/build_flash_prep.py 먼저")
     ser.reset_input_buffer()               # rst -system 이전의 잔여물. 이후 쓰레기는 접두로 거른다
-    run_xsct([PROGRAM_G2, PREP_ELF], ses, "세션1 프로그래밍 (g2_jedec + flash_prep)")
+    src = Drained(ser, run_xsct([PROGRAM_G2, PREP_ELF], ses,
+                                "세션1 프로그래밍 (g2_jedec + flash_prep)", ser=ser))
 
     uid = None
     deadline = datetime.now(timezone.utc).timestamp() + PREP_TIMEOUT_S
     while datetime.now(timezone.utc).timestamp() < deadline:
-        raw = ser.readline().decode(errors="replace").strip()
+        raw = src.readline().decode(errors="replace").strip()
         i = raw.find("#PREP")
         if i < 0:
             continue
@@ -151,7 +199,8 @@ def main():
     h.add_argument("--mhz", type=int, default=25, choices=(25, 45, 75))
     h.add_argument("--pl", type=int, choices=(4, 6), help="PAY_LEAD 보험 비트스트림 (pl4|pl6)")
     h.add_argument("--port", default="/dev/ttyUSB1")
-    h.add_argument("--baud", type=int, default=115200)
+    h.add_argument("--baud", type=int, default=921600,
+               help="전 앱이 925,925bps 로 맞춘다 (차이 +0.47%%). 구형 ELF 는 115200")
     p = ap.add_argument_group("절차")
     p.add_argument("--no-prep", action="store_true",
                    help="사전 쓰기 생략 (비휘발). UID 를 읽을 세션이 없으므로 --uid 필수")
@@ -215,8 +264,9 @@ def main():
                     input(f"\n[{k}/{args.repeat}] {label} 을 빼고 다시 꽂은 뒤 엔터: ")
                     ses.log(f"[{k}/{args.repeat}] 재장착 확인")
                 ser.reset_input_buffer()
-                run_xsct(g3_args, ses, f"[{k}/{args.repeat}] 세션2 프로그래밍 (g3_chip_{args.mhz})")
-                r = cap.capture_sweep(ser, label, uid, reseat=int(args.reseat),
+                pre = run_xsct(g3_args, ses,
+                               f"[{k}/{args.repeat}] 세션2 프로그래밍 (g3_chip_{args.mhz})", ser=ser)
+                r = cap.capture_sweep(Drained(ser, pre), label, uid, reseat=int(args.reseat),
                                       repeat_idx=k, batch_id=batch_id, log=sys.stderr)
                 ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} "
                         f"{r.main_path.name} ({r.n_main} rows)")

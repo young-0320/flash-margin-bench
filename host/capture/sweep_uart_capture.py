@@ -29,6 +29,7 @@ generated_at = 수신 시작 시각(UTC), git_rev = 이 리포 HEAD.
 import argparse
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
@@ -40,6 +41,7 @@ import chip_registry  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUTDIR = REPO / "build" / "data"
+PROGRESS_S = 10        # 진행률 출력 간격 (초). 스윕은 수 분간 조용해서 살아있음을 보여준다
 
 MAIN_COLS = ("phase_step,phase_ps,n_reads,b_bits,bit_errors,reads_with_error,"
              "bit_err_sq_sum,f_sclk_hz,dphi_ps")
@@ -83,6 +85,10 @@ def sweep_base(outdir, label, uid, stamp):
                            else f"sweep_{label}_{uid}_{stamp}")
 
 
+def fmt_mmss(sec):
+    return f"{int(sec) // 60}m{int(sec) % 60:02d}s"
+
+
 def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
                   reseat=0, repeat_idx=1, batch_id=None, log=sys.stderr):
     """열린 시리얼 핸들에서 스윕 1회를 받아 CSV 2개로 쓴다. 파일은 불변식 통과 후에만 생긴다.
@@ -104,6 +110,28 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
     steps = n_cfg = 0      # BEGIN 라인에서 파싱 — 행수 검증(⑤: 결측·유실) 기준
     n_main = n_reads = 0
     interrupted = None
+    t_begin = t_last = None        # BEGIN 수신 시각 — 진행률·ETA 기준 (수신 전에는 진행률 없음)
+
+    n_shown = -1                   # 마지막으로 찍은 스텝 수 — 강제 출력의 중복 방지
+
+    def show_progress(force=False):
+        """force 면 간격을 무시하고 한 번 찍는다 — END 직전에 마지막 줄(100%)을 남기기 위해.
+        안 그러면 다음 틱 전에 스윕이 끝나 86% 같은 데서 화면이 멈춘 것처럼 보인다."""
+        nonlocal t_last, n_shown
+        if t_begin is None or not steps:
+            return
+        now_s = time.monotonic()
+        if not force and now_s - t_last < PROGRESS_S:
+            return
+        if force and n_main == n_shown:            # 직전 틱이 이미 같은 값을 찍었다
+            return
+        t_last, n_shown = now_s, n_main
+        el = now_s - t_begin
+        rate = n_main / el if el > 0 else 0
+        eta = (steps - n_main) / rate if rate > 0 else 0
+        print(f"  progress {n_main}/{steps} ({100 * n_main / steps:.0f}%)  "
+              f"{rate:.1f} steps/s  elapsed {fmt_mmss(el)}  eta {fmt_mmss(eta)}", file=log)
+
     try:
         with open(main_path, "x") as fm, open(reads_path, "x") as fr:   # 덮어쓰기 금지
             fm.write(f"{MAIN_COLS},{META_COLS}\n")
@@ -111,16 +139,27 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
             print(f"listening on {ser.port} @{ser.baudrate} → {main_path}", file=log)
             while True:
                 line = ser.readline().decode(errors="replace").strip()
+                show_progress()
                 if not line:
                     continue
                 i = line.find("#G0")            # rst 쓰레기가 줄바꿈 없이 첫 줄에 붙어도 잡는다 (run_prep 과 동일)
                 if i >= 0:
                     line = line[i:]
+                    if "SWEEP END" in line:
+                        show_progress(force=True)  # END 줄보다 먼저 — 마지막 100% 를 남긴다
                     print(line, file=log)
                     if "SWEEP BEGIN" in line:
                         began = True
                         begin = dict(t.split("=", 1) for t in line.split() if "=" in t)
                         steps, n_cfg = int(begin.get("steps", 0)), int(begin.get("n", 0))
+                        if steps:
+                            t_begin = t_last = time.monotonic()
+                            print(f"sweep running: {steps} phase steps x {n_cfg} reads x "
+                                  f"{begin.get('b', '?')} bits @ "
+                                  f"{int(begin.get('f_sclk_hz', 0)) / 1e6:g} MHz "
+                                  f"(step {begin.get('dphi_ps', '?')} ps) — "
+                                  f"data rows stream to file, this window stays quiet "
+                                  f"until END", file=log)
                     elif "ERROR" in line:
                         break
                     elif "SWEEP END" in line:
@@ -169,7 +208,7 @@ def dump_raw(ser, out=sys.stdout):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--port", default="/dev/ttyUSB1")
-    ap.add_argument("--baud", type=int, default=115200)
+    ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--outdir", default=DEFAULT_OUTDIR, type=Path)
     who = ap.add_mutually_exclusive_group(required=True)
     who.add_argument("--uid", help="flash_prep 의 #PREP UID <16hex>. 라벨은 등록부 역조회")

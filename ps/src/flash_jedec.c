@@ -10,13 +10,14 @@
  *
  * 빌드:       vitis -s ps/scripts/build_flash_jedec.py   (G2 XSA 소비)
  * 프로그래밍: xsct ps/scripts/program_g2.tcl build/vitis_jedec/flash_jedec/build/flash_jedec.elf
- * 결과 확인:  .venv/bin/python -m serial.tools.miniterm /dev/ttyUSB1 115200
+ * 결과 확인:  .venv/bin/python -m serial.tools.miniterm /dev/ttyUSB1 921600
  *
  * 판독 (런북 3 표 E): FF FF FF / 00 00 00 = 무칩·오배선 — D0 배선표 + /WP·/HOLD 3V3 확인
  */
 
 #include "xspips.h"
 #include "xil_printf.h"
+#include "xuartps.h"
 #include "sleep.h"
 
 #define CMD_JEDEC   0x9F
@@ -28,8 +29,21 @@
 
 static XSpiPs spi;
 
+/* UART 보 레이트 — 첫 출력보다 먼저, 전 앱 공통 (2026-09-15, 로그 30 §10.3 B). 호스트 기본값도 921600.
+   드라이버가 TRM 절차(TX/RX 정지 → CD·BDIV 기록 → FIFO 리셋 → 재개)로 바꾸고 분주비도 고른다:
+   100MHz 기준 클럭에서 CD=18·BDIV=5 → 925,925bps (+0.47%, 허용치 3% 안) */
+#define UART_BAUD   921600u
+static XUartPs uart;
+static void uart_set_baud(void)
+{
+    XUartPs_CfgInitialize(&uart, XUartPs_LookupConfig(XPAR_XUARTPS_0_BASEADDR), XPAR_XUARTPS_0_BASEADDR);
+    XUartPs_SetBaudRate(&uart, UART_BAUD);
+}
+
 int main(void)
 {
+    uart_set_baud();                        /* UART 921600 — 첫 출력 전에 (전 앱 공통) */
+
     /* 초기화 — flash_prep.c와 동일 (2024.2 SDT: LookupConfig는 BASEADDR을 받는다) */
     XSpiPs_Config *cfg = XSpiPs_LookupConfig(XPAR_XSPIPS_0_BASEADDR);
     if (!cfg || XSpiPs_CfgInitialize(&spi, cfg, cfg->BaseAddress) != XST_SUCCESS) {

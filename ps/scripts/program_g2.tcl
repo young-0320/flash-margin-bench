@@ -5,7 +5,7 @@
 # 선행:  vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl
 #        보드 USB 연결, JP5=JTAG 부팅 모드
 # ps7_init.tcl은 XSA 안에 들어 있어 여기서 자동 추출한다 — 앱 워크스페이스 위치 무관.
-# UART 확인: .venv/bin/python -m serial.tools.miniterm /dev/ttyUSB1 115200
+# UART 확인: .venv/bin/python -m serial.tools.miniterm /dev/ttyUSB1 921600
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo       [file normalize $script_dir/../..]
@@ -51,4 +51,4 @@ ps7_post_config
 
 dow $elf
 con
-puts "== running: [file tail $elf] 시작됨 — UART(miniterm /dev/ttyUSB1 115200)에서 출력 확인"
+puts "== running: [file tail $elf] 시작됨 — UART(miniterm /dev/ttyUSB1 921600)에서 출력 확인"

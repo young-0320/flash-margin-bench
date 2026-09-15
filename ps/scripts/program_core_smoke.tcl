@@ -3,7 +3,7 @@
 # 실행:  xsct ps/scripts/program_core_smoke.tcl
 # 선행:  vitis -s ps/scripts/build_core_smoke.py  (elf)
 #        build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit
-# 결과 확인: miniterm /dev/ttyUSB1 115200 — 6개 테스트 PASS/FAIL 로그
+# 결과 확인: miniterm /dev/ttyUSB1 921600 — 6개 테스트 PASS/FAIL 로그
 # (TEST4·5는 JE1↔JE2 점퍼가 있어야 측정 경로까지 완주 — 없으면 TIMEOUT FAIL이 정상 서명)
 
 set script_dir [file dirname [file normalize [info script]]]

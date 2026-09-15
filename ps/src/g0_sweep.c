@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include "xil_io.h"
 #include "xil_printf.h"
+#include "xparameters.h"
+#include "xuartps.h"
 
 /* build_g0_loopback.tcl이 배정한 베이스 (Address Editor: 0x43C0_0000, 4K) */
 #define CORE_BASE       0x43C00000UL
@@ -51,6 +53,17 @@
 #define ST_CMD_ERR      (1u << 6)
 
 /* 계약 §5 수치 */
+/* UART 보 레이트 — 첫 출력보다 먼저, 전 앱 공통 (2026-09-15, 로그 30 §10.3 B). 호스트 기본값도 921600.
+   드라이버가 TRM 절차(TX/RX 정지 → CD·BDIV 기록 → FIFO 리셋 → 재개)로 바꾸고 분주비도 고른다:
+   100MHz 기준 클럭에서 CD=18·BDIV=5 → 925,925bps (+0.47%, 허용치 3% 안) */
+#define UART_BAUD   921600u
+static XUartPs uart;
+static void uart_set_baud(void)
+{
+    XUartPs_CfgInitialize(&uart, XUartPs_LookupConfig(XPAR_XUARTPS_0_BASEADDR), XPAR_XUARTPS_0_BASEADDR);
+    XUartPs_SetBaudRate(&uart, UART_BAUD);
+}
+
 #define N_READS_CFG     100u
 #define BURST_BITS_CFG  2048u
 #define SWEEP_STEPS     2520u          /* 56 × 45 = 1 UI */
@@ -110,6 +123,10 @@ static void end_sweep(int valid, const char *reason)
 
 int main(void)
 {
+    /* UART 보 레이트 — 첫 출력보다 먼저. xsct 는 JTAG 로 말하므로 여기까지 UART 는 조용하고,
+       호스트는 이미 같은 보로 열려 있다 → 전환 핸드셰이크가 필요 없다 (로그 30 §10.3 B) */
+    uart_set_baud();
+
     /* 브링업 게이트: 주소 디코드(ID) → MMCM lock */
     uint32_t id = Xil_In32(REG_ID);
     if (id != ID_MAGIC) {

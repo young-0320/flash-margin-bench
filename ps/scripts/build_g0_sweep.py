@@ -7,7 +7,7 @@
 # 산출:  build/vitis/g0_sweep/build/g0_sweep.elf
 #
 # 보드 프로그래밍은 ps/scripts/program_g0.tcl (xsct JTAG, GUI 불필요).
-# UART 수신은 host/capture/sweep_uart_capture.py (115200 8N1, PS UART1=USB).
+# UART 수신은 host/capture/sweep_uart_capture.py (921600 8N1, PS UART1=USB).
 
 import shutil
 from pathlib import Path
