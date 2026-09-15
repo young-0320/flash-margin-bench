@@ -6,7 +6,9 @@
 # 산출:  build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf
 #
 # 스윕 C는 g0_sweep.c 원본 무수정 원칙(R7·로그 8) — 대신 여기서 클럭별 상수
-# (SWEEP_STEPS=56×O, F_SCLK_HZ)만 텍스트 치환한 사본을 생성해 빌드한다.
+# (SWEEP_STEPS=56×O, F_SCLK_HZ)와 N_READS_CFG만 텍스트 치환한 사본을 생성해 빌드한다.
+# N은 실칩만 112다 (수정안 #2, 2026-09-15 승인) — 원본을 고치면 같은 파일을 그대로
+# 쓰는 build_g0_sweep.py(루프백)까지 끌려간다. 루프백은 자기 이력과만 비교하므로 100 유지.
 # Δφ=15.873016ps는 VCO 고정이라 전 사다리 공통(계약 결정 16). 치환 대상 줄이
 # 원본에서 사라지면 시끄럽게 죽는다 (조용한 25MHz 상수 잔류 방지).
 
@@ -22,6 +24,7 @@ if MHZ not in (25, 45, 75):
     raise SystemExit(f"G3_MHZ={MHZ}: 25|45|75만 허용")
 O = 1125 // MHZ
 STEPS = 56 * O
+N_READS = 112          # 수정안 #2 — 7섹터 × 16페이지 = 마모 그룹 크기와 일치
 
 REPO = Path(__file__).resolve().parents[2]
 WS = REPO / "build" / f"vitis_g3_{MHZ}"
@@ -36,6 +39,8 @@ for pat, repl in [
      f"#define SWEEP_STEPS     {STEPS}u          /* 56 x {O} = 1 UI ({MHZ}MHz) */"),
     (r"#define F_SCLK_HZ\s+\d+u[^\n]*",
      f"#define F_SCLK_HZ       {MHZ * 1_000_000}u"),
+    (r"#define N_READS_CFG\s+\d+u[^\n]*",
+     f"#define N_READS_CFG     {N_READS}u          /* 수정안 #2 (실칩 전용) */"),
 ]:
     src, n = re.subn(pat, repl, src)
     if n != 1:
@@ -63,4 +68,4 @@ app.import_files(from_loc=str(gen), files=["g3_sweep.c"], dest_dir_in_cmp="src")
 app.build()
 
 elf = next((WS / "g3_sweep").rglob("g3_sweep.elf"))
-print(f"== done ({MHZ}MHz, steps={STEPS}): {elf}")
+print(f"== done ({MHZ}MHz, steps={STEPS}, n_reads={N_READS}): {elf}")
