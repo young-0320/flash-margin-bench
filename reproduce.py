@@ -8,6 +8,7 @@
 
 채점(§3.5): 단계마다 ① 명령 종료 코드 ② 로그의 완료 문구 ③ 산출물이 단계 시작 이후에 생겼는지
 ④ (Vivado) 타이밍 리포트 "constraints are met" ⑤ (Vivado) WNS/WHS·LUT/FF 기준표 대조 — ⑤ 불일치는 WARN.
+여기에 ⑥ 빌드 파라미터(g3 의 steps·n_reads)가 로그에 찍힌 값과 맞는지 — ③ mtime 은 "다시 구웠다"만 말한다.
 ① 만으로는 판정하지 않는다 — vitis -s 는 실패해도 0 을 돌려줄 수 있다.
 
 백업: 단계 시작 전에 그 단계의 산출물(ELF·XSA·bit)만 build/_prev/<단계>/ 로 복사한다 (직전 1세대).
@@ -88,12 +89,16 @@ STEPS = {
                 tools=["vitis"]),
 }
 for m in ("25", "45", "75"):
-    STEPS[f"g3-{m}"] = dict(cmd=vivado("build_g3_chip.tcl", "all", m), done="== all done:",
+    # build_g3_sweep.py 가 찍는 파라미터 줄. tcl 이 vitis 를 체인 호출하므로 g3-* 로그에도 남는다.
+    # 2026-09-15 에 45·75 ELF 가 N=100 인 채 남아 세대가 섞였던 것을 mtime 은 못 잡는다 (로그 30 §9-3)
+    _par = f"== done ({m}MHz, steps={56 * (1125 // int(m))}, n_reads=112)"
+    STEPS[f"g3-{m}"] = dict(cmd=vivado("build_g3_chip.tcl", "all", m), done="== all done:", expect=[_par],
                             artifacts=[f"build/vivado_g3_{m}/g3_chip_{m}.runs/impl_1/g3_wrapper.bit",
                                        f"build/vivado_g3_{m}/g3_chip_{m}.xsa",
                                        f"build/vitis_g3_{m}/g3_sweep/build/g3_sweep.elf"],
                             rpt=f"build/vivado_g3_{m}/g3_chip_{m}.runs/impl_1/g3_wrapper", tools=["vivado", "vitis"])
-    STEPS[f"g3e-{m}"] = dict(cmd=vitis("build_g3_sweep.py"), env={"G3_MHZ": m}, done="== done", default=False,
+    STEPS[f"g3e-{m}"] = dict(cmd=vitis("build_g3_sweep.py"), env={"G3_MHZ": m}, done="== done",
+                             expect=[_par], default=False,
                              artifacts=[f"build/vitis_g3_{m}/g3_sweep/build/g3_sweep.elf"], tools=["vitis"])
 
 # 검증(sim·selftest, 합쳐 10초 미만)이 앞이다 — 빌드는 20분이고, RTL 이 깨져 있으면
@@ -177,6 +182,9 @@ def run_step(name, log_dir):
     n_done = out.count(st["done"])
     if n_done < st.get("done_count", 1):
         fails.append(f"완료 문구 '{st['done']}' {n_done}/{st.get('done_count', 1)}")
+    for e in st.get("expect", []):          # 내용 검증 — 산출물이 "무엇으로" 구워졌는지
+        if e not in out:                    # (③ mtime 은 "다시 구웠다"만 말한다)
+            fails.append(f"기대 문구 없음: {e!r} — 빌드 파라미터가 의도와 다르다")
     if name in ("sim", "selftest") and re.search(r"^\s*(FAIL\b|.*: FAIL\b)", out, re.M):
         fails.append("출력에 FAIL 행")
     for a in st.get("artifacts", []):
