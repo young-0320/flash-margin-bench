@@ -1,3 +1,5 @@
-label,uid,date,n_sweeps,width_1e2_ps,width_1e2_sd_ps,erase_us_median,erase_us_min,erase_us_max,n_preps,blank_pre_bits,blank_post_bits,git_rev,note
-chip02,D1642C74E7134527,2026-09-15,2,39630.17,,27151,23945,33092,3,,0,c8b7b9f/a6e874d,blank_pre 미관측(UART 단절로 첫 prep이 호스트 모르게 완주)
-chip03,D1628C10C3433F33,2026-09-15,1,39652.76,,51129,46888,55443,1,0,0,61b0d1e,출고 blank 최초 관측 (bits=0)
+label,uid,date,width_1e2_ps,erase_us_median,erase_us_min,erase_us_max,blank_pre_bits,blank_post_bits,git_rev,note
+chip01,,,,,,,,,,"회수 대기 (W10-A) — 7월 원본은 sweep_chip01_20260708T164931Z.csv, 현행 조건 재측정 후 기입"
+chip02,D1642C74E7134527,2026-09-15,39630.17,27151,23945,33092,,0,c8b7b9f/a6e874d,blank_pre 미관측(UART 단절로 첫 prep이 호스트 모르게 완주) · width 는 스윕 2회 평균
+chip03,D1628C10C3433F33,2026-09-15,39652.76,51129,46888,55443,0,0,61b0d1e,출고 blank 최초 관측 (bits=0)
+chip04,D16484578B525622,2026-09-16,39687.93,33743,29889,43273,0,0,f3a6958,
