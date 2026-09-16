@@ -221,10 +221,18 @@ def verify_uid(ser, ses, uid, label, what):
 
     배치 시작뿐 아니라 **재장착 직후에도** 건다. 로그 23 부록 A 가 지목한 위험이
     "재장착 사이에 다른 칩이 들어갔다" 였고, 그때는 책상에 칩이 하나뿐이라 성립하지
-    않았다. W10-M 은 10개가 널려 있고 앵커를 사이사이 끼우므로 성립한다."""
+    않았다. W10-M 은 10개가 널려 있고 앵커를 사이사이 끼우므로 성립한다.
+
+    세션 로그를 idfail 로 개명하는 것은 **UID 불일치일 때뿐이다.** 그 이름은 "꽂힌 칩이
+    다르다" 를 뜻해야 한다 — ELF 누락·flash_id FAIL·타임아웃까지 같은 이름으로 남기면
+    나중에 그 파일을 칩을 잘못 집은 기록으로 읽는다 (2026-09-16 15:17 실제로 ELF 누락이
+    idfail 로 남았다). 그쪽 실패는 기본 이름 session_<batch_id>.log 로 둔다.
+    개명이 여기 있으므로 **재장착 후 대조도 같은 규칙을 따른다** — 호출부에 두면
+    배치 시작에만 붙고 재장착 쪽은 빠진다."""
     read = run_id(ser, ses)
     if read != uid:
         other = chip_registry.label_for(read)
+        ses.rename("idfail")
         raise Abort(f"{what} 칩 대조 실패 — 소켓의 칩이 {label} 이 아니다. 스윕을 시작하지 않는다\n"
                     f"    읽은 UID : {read} ({other or '등록부에 없는 칩'})\n"
                     f"    기대 UID : {uid} ({label})")
@@ -281,12 +289,10 @@ def resolve_label(uid, ses, today):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    # 모드가 '무엇을 하는가'(prep 유무 = P/E 소모 여부)를, 옵션이 '어떻게'를 정한다.
-    # 모드가 정한 것은 옵션으로 못 뒤집는다 — resweep 에 --prep 이 없는 것이 안전장치다
-    # (앵커 재측정에서 --no-prep 을 빠뜨려 P/E 를 태우던 사고를 표현 불가능하게 만든다)
     # --mode 가 '무엇을 하는가'(= P/E 를 쓰는가)를, 나머지 옵션이 '어떻게'를 정한다.
-    # 모드가 정한 것은 옵션으로 뒤집지 못한다 — 아래 검증이 그 역할이다. 앵커 재측정에서
-    # prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고(2026-09-15 chip02: 하루 4회)를 막는다
+    # 모드가 정한 것은 옵션으로 뒤집지 못한다 — parse_args 아래 검증이 그 역할이다.
+    # 앵커 재측정에서 prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고
+    # (2026-09-15 chip02: 하루 4회)를 표현 불가능하게 만드는 것이 목적이다
     ap.add_argument("--mode", required=True, choices=("newchip", "sweep"),
                     help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)")
     w = ap.add_argument_group("칩 지정 (sweep 전용)")
@@ -354,11 +360,7 @@ def main():
                 label = chip_registry.label_for(uid)
                 if label is None:
                     raise Abort(f"--uid {uid} 는 등록부에 없다. 신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
-                try:
-                    verify_uid(ser, ses, uid, label, "세션1")   # 읽기만 한다 (P/E 불변)
-                except Abort:
-                    ses.rename("idfail")
-                    raise
+                verify_uid(ser, ses, uid, label, "세션1")       # 읽기만 한다 (P/E 불변)
                 ses.rename(f"{label}_{uid}")
             else:
                 try:
