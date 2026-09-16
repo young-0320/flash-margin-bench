@@ -41,6 +41,7 @@ theta 확정 체크리스트 (monte_carlo_sweep_params.py docstring 의 사전 �
 """
 
 import argparse
+import json
 import csv
 import math
 import subprocess
@@ -395,6 +396,8 @@ def main():
     ap.add_argument("csv_path", nargs="?", help="스윕 CSV 경로 (contract §6 스키마)")
     ap.add_argument("--selftest", action="store_true",
                     help="합성 데이터로 자기 검증 — 일반 + wrap 두 케이스 (csv_path 불필요)")
+    ap.add_argument("--json", action="store_true",
+                    help="수치를 <입력>.analysis.json 으로도 남긴다 (화면 출력은 그대로)")
     args = ap.parse_args()
 
     if args.selftest:
@@ -407,7 +410,16 @@ def main():
                   f" -> {path.relative_to(REPO)}")
             run(path)
     elif args.csv_path:
-        run(Path(args.csv_path))
+        path = Path(args.csv_path)
+        out = run(path)
+        if args.json:
+            # 수치가 화면에만 있으면 창을 닫는 순간 사라진다. '_' 로 시작하는 내부 값은 뺀다.
+            # default=float — numpy 스칼라가 섞여 있다
+            j = path.with_name(path.stem + ".analysis.json")
+            j.write_text(json.dumps({k: v for k, v in out.items() if not k.startswith("_")},
+                                    ensure_ascii=False, indent=2, default=float) + "\n",
+                         encoding="utf-8")
+            print(f"json: {j}")
     else:
         ap.error("csv_path 또는 --selftest 필요")
 
