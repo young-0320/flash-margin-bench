@@ -184,7 +184,10 @@ def run_step(name, log_dir):
     cmds = st["cmd"]
     cmds = [[a.replace("{log_dir}", log_dir.as_posix()) for a in c]
             for c in (cmds if isinstance(cmds[0], list) else [cmds])]
-    env = {**os.environ, **st.get("env", {})}
+    # PYTHONUTF8 은 부모 셸에 맡기지 않고 여기서 강제한다 — Windows 기본 로케일(cp949)이면
+    # selftest 는 한글 출력을 인코딩하다, Vitis 내장 파이썬은 ps/src/*.c 의 한글 주석을 읽다 죽는다
+    # (vivado.bat → vitis.bat 까지 그대로 상속된다). 리눅스는 이미 UTF-8 이라 무영향
+    env = {**os.environ, "PYTHONUTF8": "1", **st.get("env", {})}
     # 로그는 utf-8 로 고정한다 — Windows 기본(cp949)에 맡기면 요약의 한글이 깨진다.
     # 자식 출력은 바이트 그대로 들어오므로 채점 문구(전부 ASCII)는 어느 쪽이든 안전하다.
     with log.open("w", encoding="utf-8") as f:
