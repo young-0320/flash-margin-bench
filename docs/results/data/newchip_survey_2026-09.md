@@ -145,7 +145,7 @@ SPI 경로가 같은 값을 낸다**는 확인이다.
 ## 5. 재현
 
 ```bash
-uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25 --n-reads 112   # prep + 스윕 + 분석 (칩당 ~3분)
+uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25   # prep + 스윕 + 분석 (칩당 ~3분)
 uv run python host/analysis/bathtub_analysis.py data/sweep_<label>_<uid16>_<stamp>.csv
 ```
 
