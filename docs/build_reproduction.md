@@ -215,7 +215,7 @@ g2 XSA에서 Vitis 플랫폼과 앱을 만든다. 사전 쓰기(PRBS 2,048페이
 vitis -s ps/scripts/build_flash_prep.py
 ```
 
-입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_prep.c`. 약 20초.
+입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_prep.c` · `ps/src/flash_io.c`(배관 부품). 약 20초.
 
 기대 산출물:
 
