@@ -176,7 +176,32 @@ def grade_vivado(name, rpt):
     return fails, warns, note
 
 
-def run_step(name, log_dir):
+# 진행 표시에 쓸 이정표 줄: 우리 마커(== ) · Vivado 임플 단계(Phase n) · Vitis 컴파일([2/3])
+MILESTONE = re.compile(r"^(== |Phase \d|\[\d+/\d+\]|Starting )")
+
+
+def watch(proc, log, prefix):
+    """자식이 도는 동안 같은 줄을 5초마다 다시 그린다 — 터미널 하나로 "도는 중인지"를 본다.
+    자식 출력은 로그 파일로 가 있으므로 그 꼬리에서 이정표 줄을 주워 온다 (tail -f 를 대신한다).
+    파이프로 빨아들이지 않는 이유: 그러면 인코딩·버퍼를 우리가 떠안는다. 반환값은 종료 코드."""
+    t0 = time.time()
+    while True:
+        try:
+            return proc.wait(timeout=5)     # 끝나면 즉시 빠져나온다 (sleep 과 달리 지연 없음)
+        except subprocess.TimeoutExpired:
+            pass
+        if not sys.stdout.isatty():         # 리다이렉트·CI 면 \r 도배를 하지 않는다
+            continue
+        line = ""
+        for ln in reversed(log.read_text(encoding="utf-8", errors="replace").splitlines()[-40:]):
+            if MILESTONE.match(ln):
+                line = ln[:58]
+                break
+        d = int(time.time() - t0)
+        print(f"\r{prefix} {d // 60}:{d % 60:02d}  {line}".ljust(100)[:100], end="", flush=True)
+
+
+def run_step(name, log_dir, prefix=""):
     st = STEPS[name]
     log = log_dir / f"{name}.log"
     prev = backup(name, st)
@@ -195,8 +220,9 @@ def run_step(name, log_dir):
         f.flush()
         rc = 0
         for c in cmds:
-            rc = subprocess.run(c, cwd=st.get("cwd", REPO), env=env,
-                                stdout=f, stderr=subprocess.STDOUT).returncode
+            proc = subprocess.Popen(c, cwd=st.get("cwd", REPO), env=env,
+                                    stdout=f, stderr=subprocess.STDOUT)
+            rc = watch(proc, log, prefix)
             if rc:                      # 셸의 && 와 같다 — 첫 실패에서 멈춘다
                 break
     dt = time.time() - t0
@@ -272,10 +298,14 @@ def main():
 
     results = []
     for i, s in enumerate(steps):
-        print(f"[{i + 1}/{len(steps)}] {s} ...", end=" ", flush=True)
-        r = run_step(s, log_dir)
+        prefix = f"[{i + 1}/{len(steps)}] {s}"
+        tty = sys.stdout.isatty()
+        if tty:
+            print(f"{prefix} ...", end="", flush=True)
+        r = run_step(s, log_dir, prefix)
         results.append(r)
-        print(f"{r['status']} ({r['secs']:.0f}s) {r['note']}")
+        line = f"{prefix} {r['status']} ({r['secs']:.0f}s) {r['note']}"
+        print(f"\r{line}".ljust(100) if tty else line)   # 진행 줄을 같은 자리에서 덮어쓴다
         for m in r["msgs"]:
             print(f"      - {m}")
         if r["status"] == "FAIL":
