@@ -90,7 +90,7 @@ def fmt_mmss(sec):
 
 
 def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
-                  reseat=0, repeat_idx=1, batch_id=None, log=sys.stderr):
+                  reseat=0, repeat_idx=1, batch_id=None, log=sys.stderr, expect_n=None):
     """열린 시리얼 핸들에서 스윕 1회를 받아 CSV 2개로 쓴다. 파일은 불변식 통과 후에만 생긴다.
     Ctrl-C 는 파일을 _invalid 로 정리한 뒤 다시 던진다 (호출자가 배치 중단을 결정)."""
     uid = check_target(label, uid)
@@ -152,6 +152,12 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
                         began = True
                         begin = dict(t.split("=", 1) for t in line.split() if "=" in t)
                         steps, n_cfg = int(begin.get("steps", 0)), int(begin.get("n", 0))
+                        if expect_n and n_cfg != expect_n:
+                            # BEGIN 은 첫 줄이다 — 여기서 끊으면 1분짜리 스윕을 다 받고
+                            # 버리지 않는다 (2026-09-16 실측: 59초를 그렇게 버렸다)
+                            print(f"기대 N={expect_n} 인데 ELF 는 n={n_cfg} — 받지 않고 중단",
+                                  file=log)
+                            break
                         if steps:
                             t_begin = t_last = time.monotonic()
                             print(f"sweep running: {steps} phase steps x {n_cfg} reads x "

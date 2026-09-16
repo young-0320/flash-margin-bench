@@ -216,6 +216,21 @@ def run_prep(ser, ses):
     raise Abort(f"flash_prep {PREP_TIMEOUT_S}s 내 미완료 — 보드/UART 확인")
 
 
+def verify_uid(ser, ses, uid, label, what):
+    """flash_id 로 소켓의 칩을 확인한다 — 읽기만 하므로 P/E 불변.
+
+    배치 시작뿐 아니라 **재장착 직후에도** 건다. 로그 23 부록 A 가 지목한 위험이
+    "재장착 사이에 다른 칩이 들어갔다" 였고, 그때는 책상에 칩이 하나뿐이라 성립하지
+    않았다. W10-M 은 10개가 널려 있고 앵커를 사이사이 끼우므로 성립한다."""
+    read = run_id(ser, ses)
+    if read != uid:
+        other = chip_registry.label_for(read)
+        raise Abort(f"{what} 칩 대조 실패 — 소켓의 칩이 {label} 이 아니다. 스윕을 시작하지 않는다\n"
+                    f"    읽은 UID : {read} ({other or '등록부에 없는 칩'})\n"
+                    f"    기대 UID : {uid} ({label})")
+    ses.log(f"{what} 칩 대조 OK: {label} ({uid})")
+
+
 def run_id(ser, ses):
     """세션 1 (sweep 모드). flash_id 가 읽은 UID 를 돌려준다. 그 외 전부 중단.
 
@@ -282,8 +297,9 @@ def main():
     g.add_argument("--repeat", type=int, default=1, metavar="N", help="스윕 반복 횟수 (1/3/5 …)")
     g.add_argument("--reseat", action="store_true",
                    help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
-    g.add_argument("--n-reads", type=int, default=100, choices=(100, 112, 448),
-                   help="기대 N. ELF 의 BEGIN n= 과 다르면 중단 (N 은 빌드 시 고정)")
+    g.add_argument("--n-reads", type=int, default=112, choices=(100, 112, 448),
+                   help="기대 N. BEGIN 의 n= 과 다르면 그 자리에서 중단 (N 은 빌드 시 고정). "
+                        "실칩 g3 는 112 다 — build_g3_sweep.py 가 그렇게 치환한다")
     g.add_argument("--base-sector", type=int, default=0,
                    help="수정안 #1 승인 시. 미승인이므로 0 만 허용")
     h = ap.add_argument_group("하드웨어")
@@ -339,18 +355,11 @@ def main():
                 if label is None:
                     raise Abort(f"--uid {uid} 는 등록부에 없다. 신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
                 try:
-                    read = run_id(ser, ses)            # 세션 1 — 읽기만 한다 (P/E 불변)
-                    if read != uid:
-                        other = chip_registry.label_for(read)
-                        raise Abort(
-                            f"칩 대조 실패 — 소켓의 칩이 {label} 이 아니다. 스윕을 시작하지 않는다\n"
-                            f"    읽은 UID : {read} ({other or '등록부에 없는 칩'})\n"
-                            f"    기대 UID : {uid} ({label})")
+                    verify_uid(ser, ses, uid, label, "세션1")   # 읽기만 한다 (P/E 불변)
                 except Abort:
                     ses.rename("idfail")
                     raise
                 ses.rename(f"{label}_{uid}")
-                ses.log(f"칩 대조 OK: 소켓의 칩 = {label} ({uid})")
             else:
                 try:
                     uid = run_prep(ser, ses)
@@ -368,23 +377,25 @@ def main():
                 if k > 1 and args.reseat:
                     input(f"\n[{k}/{args.repeat}] {label} 을 빼고 다시 꽂은 뒤 엔터: ")
                     ses.log(f"[{k}/{args.repeat}] 재장착 확인")
+                    verify_uid(ser, ses, uid, label, f"[{k}/{args.repeat}] 재장착 후")
                 ser.reset_input_buffer()
                 pre = run_xsct(g3_args, ses,
                                f"[{k}/{args.repeat}] 세션2 프로그래밍 (g3_chip_{args.mhz})", ser=ser)
                 r = cap.capture_sweep(Drained(ser, pre), label, uid, reseat=int(args.reseat),
-                                      repeat_idx=k, batch_id=batch_id, log=sys.stderr)
+                                      repeat_idx=k, batch_id=batch_id, log=sys.stderr,
+                                      expect_n=args.n_reads)
                 ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} "
                         f"{r.main_path.name} ({r.n_main} rows)")
                 done += 1
+                n = int(r.begin.get("n", 0))
+                if n and n != args.n_reads:      # valid 판정보다 먼저 — 조기 중단이 여기로 온다
+                    raise Abort(f"요청 N={args.n_reads} 인데 ELF 는 n={n} — 파일은 남겼다 "
+                                f"(n_reads 열이 진실). N 은 빌드 시 고정이라 ELF 를 바꿔야 한다")
                 if r.valid and args.analyze:
                     analyze(r.main_path, ses)
                 if not r.valid:
                     invalid += 1
                     continue
-                n = int(r.begin.get("n", 0))
-                if n != args.n_reads:
-                    raise Abort(f"요청 N={args.n_reads} 인데 ELF 는 n={n} — 파일은 남겼다 "
-                                f"(n_reads 열이 진실). N 은 g0_sweep.c 상수라 빌드를 바꿔야 한다")
     except KeyboardInterrupt:
         ses.log("Ctrl-C — 배치 중단")
     except Abort as e:
