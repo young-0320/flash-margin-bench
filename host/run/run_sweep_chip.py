@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """실칩 측정 래퍼 — 한 프로세스가 UART 를 쥔 채 세션 1(flash_prep) → 세션 2(스윕 ×N) → 분석을 잇는다.
 
-    run_sweep_chip.py --mode newchip --mhz 25 --n-reads 112              신품 첫 투입 (prep = P/E +1)
-    run_sweep_chip.py --mode sweep --chip chip02 --repeat 3 --reseat     재측정 (P/E 불변)
+    run_sweep_chip.py --mode newchip --mhz 25                     신품 첫 투입 (prep = P/E +1)
+    run_sweep_chip.py --mode sweep --mhz 25                       재측정 — 어느 칩인지는 기계가 안다
+    run_sweep_chip.py --mode sweep --mhz 25 --chip 2 --repeat 3 --reseat   앵커 재장착 σ
 
 --mode 가 '무엇을 하는가'(= P/E 를 쓰는가)를, 나머지 옵션이 '어떻게'를 정한다. 모드가 정한 것은
 옵션으로 뒤집지 못한다 — newchip 에 --chip 을 줄 수 없고(기계가 UID 를 읽는다), sweep 은 prep 을
@@ -60,6 +61,8 @@ PROGRAM_G2 = REPO / "ps" / "scripts" / "program_g2.tcl"
 PROGRAM_G3 = REPO / "ps" / "scripts" / "program_g3.tcl"
 PREP_SECTORS = "0~127"        # flash_prep N_PAGES=2048 × 256B = 128 섹터 전 범위 고정
 PREP_TIMEOUT_S = 15 * 60      # 지우기+쓰기+검증 ~1분. 넉넉히
+EXPECT_N = 112                # 실칩 스윕의 N — build_g3_sweep.py 가 ELF 에 박는 값(수정안 #2).
+                              # 옵션이 아니라 상수다. ELF 가 다른 값이면 스윕을 시작하지 않는다
 ID_TIMEOUT_S = 60             # flash_id 는 JEDEC+UID 만 읽는다 — 즉시
 
 
@@ -216,6 +219,14 @@ def run_prep(ser, ses):
     raise Abort(f"flash_prep {PREP_TIMEOUT_S}s 내 미완료 — 보드/UART 확인")
 
 
+def norm_chip(v):
+    """--chip 표기를 등록부의 정본 라벨로. 4 · 04 · chip04 를 모두 chip04 로 받는다.
+    숫자가 아니면 그대로 둔다 — 나중에 chip 계열이 아닌 라벨이 생겨도 여기를 안 고친다.
+    정규화는 여기 한 번뿐이고, 이후 로그·메시지는 전부 정본 라벨을 쓴다."""
+    v = v.strip().lower().removeprefix("chip")
+    return f"chip{int(v):02d}" if v.isdigit() else v
+
+
 def verify_uid(ser, ses, uid, label, what):
     """flash_id 로 소켓의 칩을 확인한다 — 읽기만 하므로 P/E 불변.
 
@@ -295,59 +306,65 @@ def main():
     # (2026-09-15 chip02: 하루 4회)를 표현 불가능하게 만드는 것이 목적이다
     ap.add_argument("--mode", required=True, choices=("newchip", "sweep"),
                     help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)")
-    w = ap.add_argument_group("칩 지정 (sweep 전용)")
-    who = w.add_mutually_exclusive_group()
-    who.add_argument("--chip", help="등록부의 라벨 (chip02) — UID 는 역조회 후 flash_id 로 대조한다")
-    who.add_argument("--uid", help="UID 직접 지정 (16hex)")
+    ap.add_argument("--chip", metavar="NN",
+                    help="sweep: 잴 작정인 칩 (2 · 02 · chip02 다 받는다). 주면 flash_id 가 읽은 "
+                         "라벨과 대조해 어긋나면 중단한다. 생략하면 읽은 대로 간다 — "
+                         "어느 칩인지는 기계가 UID 로 안다")
     g = ap.add_argument_group("측정 설계")
     g.add_argument("--repeat", type=int, default=1, metavar="N", help="스윕 반복 횟수 (1/3/5 …)")
     g.add_argument("--reseat", action="store_true",
                    help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
-    g.add_argument("--n-reads", type=int, default=112, choices=(100, 112, 448),
-                   help="기대 N. BEGIN 의 n= 과 다르면 그 자리에서 중단 (N 은 빌드 시 고정). "
-                        "실칩 g3 는 112 다 — build_g3_sweep.py 가 그렇게 치환한다")
     g.add_argument("--base-sector", type=int, default=0,
                    help="수정안 #1 승인 시. 미승인이므로 0 만 허용")
     h = ap.add_argument_group("하드웨어")
-    h.add_argument("--mhz", type=int, default=25, choices=(25, 45, 75))
+    h.add_argument("--mhz", type=int, required=True, choices=(25, 45, 75),
+                   help="필수 — 기계가 알 수 없는 값이다. 빠뜨리면 의도와 다른 조건으로 재고 나중에 안다")
     h.add_argument("--pl", type=int, choices=(4, 6), help="PAY_LEAD 보험 비트스트림 (pl4|pl6)")
     h.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
     h.add_argument("--baud", type=int, default=921600,
                    help="전 앱이 925,925bps 로 맞춘다 (차이 +0.47%%). 구형 ELF 는 115200")
-    ap.add_argument("--no-analyze", action="store_true",
-                    help="스윕 뒤 배스텁 분석을 돌리지 않는다 (기본은 돌린다)")
     ap.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (봉인)")
 
     args = ap.parse_args()
     args.no_prep = args.mode == "sweep"             # 이하 본문은 이 값만 본다
-    args.analyze = not args.no_analyze
-    if args.mode == "newchip" and (args.chip or args.uid):
-        ap.error("--mode newchip 은 UID 를 기계가 읽는다 — --chip/--uid 를 주지 않는다")
-    if args.mode == "sweep" and not (args.chip or args.uid):
-        ap.error("--mode sweep 은 어느 칩인지 알 길이 없다 — --chip 또는 --uid 가 필요하다")
-    if args.chip:                                   # 라벨 → UID 역조회 (16hex 를 손으로 칠 일이 없다)
-        args.uid = chip_registry.parse().get(args.chip)
-        if not args.uid:
-            ap.error(f"--chip {args.chip}: 등록부에 없거나 UID 가 비어 있다 "
-                     f"(docs/chip_registry.md) — 신품이면 --mode newchip 이다")
-
+    if args.mode == "newchip" and args.chip:
+        ap.error("--mode newchip 은 UID 를 기계가 읽고 라벨은 프롬프트로 정한다 — --chip 을 주지 않는다")
+    if args.chip:
+        args.chip = norm_chip(args.chip)        # 이후로는 정본 라벨만 돈다
+        if args.chip not in chip_registry.parse():
+            ap.error(f"--chip {args.chip}: 등록부에 없는 라벨이다 (docs/chip_registry.md)")
+    if args.blind and args.mode != "newchip":
+        ap.error("--blind 는 P/E 를 쓰는 --mode newchip 에서만 뜻이 있다 (sweep 은 chip_pe 에 안 쓴다)")
+    if args.reseat and args.repeat < 2:
+        ap.error("--reseat 는 --repeat 2 이상에서만 뜻이 있다 — 회차 '사이'에 묻는다. "
+                 "1회에 주면 재장착을 안 하고도 CSV 에 reseat=1 이 박힌다")
     if args.base_sector != 0:
         ap.error("--base-sector: 수정안 #1 미승인 — 0 만 허용")
     if args.repeat < 1:
         ap.error("--repeat 는 1 이상")
     if not shutil.which("xsct"):
         raise Abort("xsct 가 PATH 에 없다 — Vitis 2025.2 settings64.sh 를 source 할 것")
+    # 보드를 건드리기 전에 있어야 할 것들을 다 본다 — P/E 를 쓴 뒤에 "빌드가 없다" 를 알면 늦다
+    sfx = f"_pl{args.pl}" if args.pl else ""
+    bit = REPO / f"build/vivado_g3_{args.mhz}{sfx}/g3_chip_{args.mhz}{sfx}.runs/impl_1/g3_wrapper.bit"
+    if not bit.exists():
+        raise Abort(f"missing {bit.relative_to(REPO)} — "
+                    + (f"보험 비트스트림을 먼저 구울 것: vivado -mode batch -source "
+                       f"fpga/scripts/build_g3_chip.tcl -tclargs bit {args.mhz} {args.pl}"
+                       if args.pl else "reproduce.py --only g3-{} 먼저".format(args.mhz)))
+    if (args.no_prep or args.reseat) and not ID_ELF.exists():   # 재장착 대조도 이 ELF 를 쓴다
+        raise Abort(f"missing {ID_ELF.relative_to(REPO)} — vitis -s ps/scripts/build_flash_id.py 먼저")
     chip_registry.parse()                     # 등록부가 깨져 있으면 보드를 건드리기 전에 죽는다
-    if args.reseat and args.repeat > 1:
+    if args.reseat:
         require_tty("--reseat 는 재장착 프롬프트가 필요")
 
     now = datetime.now(timezone.utc)
     batch_id = cap.utc_stamp(now)
     today = now.strftime("%Y-%m-%d")
     ses = Session(batch_id)
-    ses.log(f"batch {batch_id}: mode={args.mode} chip={args.chip or '?'} "
+    ses.log(f"batch {batch_id}: mode={args.mode} chip={args.chip or '(미지정)'} "
             f"mhz={args.mhz} pl={args.pl} repeat={args.repeat} "
-            f"reseat={int(args.reseat)} n_reads={args.n_reads} blind={int(args.blind)}")
+            f"reseat={int(args.reseat)} n={EXPECT_N} blind={int(args.blind)}")
 
     done = invalid = 0
     label = uid = None
@@ -356,12 +373,22 @@ def main():
         # 놓치지 않기 위해. rst 쓰레기는 접두 필터가 거른다 (런북 3 의 캡처-먼저 순서와 같다)
         with serial.Serial(args.port, args.baud, timeout=2) as ser:
             if args.no_prep:
-                uid = chip_registry.normalize_uid(args.uid)
+                uid = run_id(ser, ses)                 # 어느 칩인지는 기계가 읽는다 (P/E 불변)
                 label = chip_registry.label_for(uid)
+                # idfail 은 "꽂힌 칩이 다르다" 만 뜻한다 — ELF 누락·타임아웃까지 이 이름으로 남기면
+                # 나중에 그 로그를 칩을 잘못 집은 기록으로 읽는다 (로그 36 §2-6)
                 if label is None:
-                    raise Abort(f"--uid {uid} 는 등록부에 없다. 신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
-                verify_uid(ser, ses, uid, label, "세션1")       # 읽기만 한다 (P/E 불변)
+                    ses.rename("idfail")
+                    raise Abort(f"{uid} 는 등록부에 없다 — 신품이면 --mode newchip 이다. "
+                                f"신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
+                if args.chip and args.chip != label:   # --chip 은 '무엇을 잴 작정이었나' 의 선언이다
+                    ses.rename("idfail")
+                    raise Abort(f"칩 대조 실패 — 소켓의 칩은 {label} 인데 --chip 은 {args.chip} 이다. "
+                                f"스윕을 시작하지 않는다\n    읽은 UID : {uid} ({label})")
                 ses.rename(f"{label}_{uid}")
+                ses.log(f"등록부: {uid} → {label}"
+                        + (f" (--chip {args.chip} 대조 OK)" if args.chip
+                           else " (--chip 미지정 — 읽은 대로 간다)"))
             else:
                 try:
                     uid = run_prep(ser, ses)
@@ -385,15 +412,15 @@ def main():
                                f"[{k}/{args.repeat}] 세션2 프로그래밍 (g3_chip_{args.mhz})", ser=ser)
                 r = cap.capture_sweep(Drained(ser, pre), label, uid, reseat=int(args.reseat),
                                       repeat_idx=k, batch_id=batch_id, log=sys.stderr,
-                                      expect_n=args.n_reads)
+                                      expect_n=EXPECT_N)
                 ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} "
                         f"{r.main_path.name} ({r.n_main} rows)")
                 done += 1
                 n = int(r.begin.get("n", 0))
-                if n and n != args.n_reads:      # valid 판정보다 먼저 — 조기 중단이 여기로 온다
-                    raise Abort(f"요청 N={args.n_reads} 인데 ELF 는 n={n} — 파일은 남겼다 "
+                if n and n != EXPECT_N:      # valid 판정보다 먼저 — 조기 중단이 여기로 온다
+                    raise Abort(f"기대 N={EXPECT_N} 인데 ELF 는 n={n} — 파일은 남겼다 "
                                 f"(n_reads 열이 진실). N 은 빌드 시 고정이라 ELF 를 바꿔야 한다")
-                if r.valid and args.analyze:
+                if r.valid:
                     analyze(r.main_path, ses)
                 if not r.valid:
                     invalid += 1
