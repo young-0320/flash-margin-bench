@@ -1,0 +1,95 @@
+# 작업 로그 
+
+## 이 폴더의 기준
+
+> **로그는 "왜 이렇게 만들었나"에 대한 답이지 일지가 아니다.**
+> 수치·현황은 `results/`·`spec/`·등록부에, **결정 근거와 의도, 그리고 경위는 로그에.**
+> — 커밋 `1535ad8` (2026-09-17). `docs/CONTRIBUTING.md` §1 「폴더별 역할 상세」와 같은 규정.
+
+그래서 아래 한 줄 요약은 "무엇을 했나"가 아니라 **그 로그에만 있는 판단**을 가리킨다.
+수치를 찾는다면 로그가 아니라 `docs/results/` · `docs/spec/` · `docs/chip_registry.md` 다.
+
+---
+
+# 한영웅
+
+## 1기 — 계약과 시뮬레이션 (7/06 ~ 7/07)
+
+| # | 로그                                                                 | 여기에만 있는 것                                   |
+| - | -------------------------------------------------------------------- | -------------------------------------------------- |
+| 1 | [몬테카를로·산출물 정책](young/1.monte_carlo_and_artifact_policy.md) | 산출물 정책의 출발점                               |
+| 2 | [중간보고서 스프린트](young/2.midterm_sprint_mode.md)                 | 게재 목록 확정                                     |
+| 3 | [인터페이스 계약 v1](young/3.interface_contract_v1.md)                | 결정 18건,`core`=계측제어 / `flash`=경로 분리  |
+| 4 | [계약 결정 기록](young/4.interface_decision_records.md)               | 위 18건의**후보·장단점·탈락 이유** (319줄) |
+| 5 | [욕조 곡선 스크립트 v1](young/5.bathtub_script_contract_upgrade.md)   | 게재 1번 소프트웨어 완성                           |
+
+## 2기 — RTL 구현과 G0 루프백 (7/07 ~ 7/09)
+
+| #  | 로그                                                                                | 여기에만 있는 것                                                                |
+| -- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 6  | [core RTL](young/6.core_rtl_implementation.md)                                       | MMCM 위상 제어 + AXI-Lite 레지스터 파일                                         |
+| 7  | [flash RTL](young/7.flash_loopback_rtl.md)                                           | G0 루프백 프런트엔드, 프레이밍 재정렬                                           |
+| 8  | [Vivado 통합 + 스윕 SW](young/8.vivado_integration_and_sweep_sw.md)                  | 비트스트림·XSA·베어메탈·수신기 첫 관통                                       |
+| 9  | [G2 JEDEC 브링업 준비](young/9.g2_jedec_bringup_prep.md)                             | **앱 소유권 배분** (`flash_jedec`=장세은, 별다른 이유 없으면 수정 지양) |
+| 10 | [실칩 앞 의사결정 라운드](young/10.realchip_sweep_decisions.md)                      | 5건 확정·1건 대기 — 실칩 정책의 원점                                          |
+| 11 | [SPI 마스터 RTL](young/11.spi_master_rtl.md)                                         | `0x0B` 40클럭 프레임 고정 — 뒤에 UID 를 막는 제약                            |
+| 12 | [실칩 준비 일괄](young/12.realchip_prep_batch.md)                                    | 테스트 계획 ·`flash_prep` · 클럭 사다리 3벌                                 |
+| 13 | [첫 욕조 곡선 + line_dead 수정](young/13.first_loopback_bathtub_and_linedead_fix.md) | 자가진단 오발의 원인                                                            |
+| 14 | [세은 브링업 코드 리뷰](young/14.seeun_bringup_code_review.md)                       | 2벌 리뷰 + 실기 검증                                                            |
+| 15 | [G3 25·45MHz 완주](young/15.g3_25mhz_wall_too_narrow.md)                            | **벽 천이가 Δφ보다 가팔라 체크1 구조적 SKIP**                           |
+
+## 3기 — 마모 벤치 사양 확정 (8/20 ~ 8/23)
+
+| #  | 로그                                                        | 여기에만 있는 것                                   |
+| -- | ----------------------------------------------------------- | -------------------------------------------------- |
+| 16 | [마모 벤치 사양 결정](young/16.wear_bench_spec_decisions.md) | 역할 재정의, 워크플로 5 신설                       |
+| 17 | [S-1 사양 확정](young/17.wear_bench_spec_finalization.md)    | **모든 수치의 채택 근거** (최장 로그, 597줄) |
+| 18 | [docs 구조 감사](young/18.docs_structure_audit.md)           | `spec/` 신설, 문서-리포 정합 복구                |
+| 19 | [S-3 G1 합격 기준 동결](young/19.g1_acceptance_freeze.md)    | 오라클 출처와 판정 3단                             |
+| 20 | [G1 기준 정밀화](young/20.g1_spec_hardening.md)              | 미비점 8건 해소, 커버리지 대조                     |
+| 21 | [S-2 전수 측정 프로토콜](young/21.newchip_protocol.md)       | **되돌릴 수 없는 측정의 사전 등록**          |
+
+## 4기 — 실칩 스윕 파이프라인 (9/07 ~ 9/08)
+
+| #  | 로그                                                                 | 여기에만 있는 것                                                                   |
+| -- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 22 | [D 트랙 1차 실측](young/22.d_track_drift_sweep.md)                    | 스윕 2건 사후 기록, 판정 보류                                                      |
+| 23 | [래퍼·UID 파이프라인 설계](young/23.sweep_wrapper_and_uid_design.md) | **라벨을 사람이 입력하지 않는다** · 부록 A(오배치 위험) — 가장 많이 참조됨 |
+| 24 | [같은 것의 구현](young/24.sweep_wrapper_uid_pipeline_impl.md)         | 로그 23 설계의 코드화                                                              |
+| 25 | [구현 검토](young/25.review_sweep_wrapper.md)                         | 중요 1 —`#PREP ERROR` 를 종료 신호로 읽는 규약                                  |
+
+## 5기 — 재개와 신품 전수 측정 (9/14 ~ 9/16)
+
+| #  | 로그                                                                          | 여기에만 있는 것                                                                                          |
+| -- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 26 | [재개 + 9/15 절차](young/26.resume_after_papers_and_day_plan.md)               | 팀원 논문 조사 반영                                                                                       |
+| 27 | [Vivado 2025.2 통일 계획](young/27.vivado_2025_2_migration_plan.md)            | 워크플로 8, A/B 재기준선 생략 결정                                                                        |
+| 28 | [9/15 실칩 검증일](young/28.realchip_day_chip02_chip03.md)                     | chip02·chip03 신품 측정과 그날의 결정                                                                    |
+| 29 | [P/E 엔진 구현 층위](young/29.pe_engine_layer_decisions.md)                    | `N_READS` 112 치환 근거                                                                                 |
+| 30 | [`flash_prep` 신품 조사 확장](young/30.flash_prep_newchip_survey.md)         | G-b·G-d 구현 명세 · §10.3 보 레이트                                                                    |
+| 32 | [`reproduce.py`](young/32.reproduce_script.md)                               | 빌드·검증 원샷 재현 + 채점                                                                               |
+| 33 | [Windows 대응](young/33.reproduce_windows_support.md)                          | 셸 의존 제거,`.bat` 런처                                                                                |
+| 34 | [cp949·진행 표시](young/34.reproduce_encoding_progress_and_build_identity.md) | `PYTHONUTF8=1` 강제 · 빌드 신원 관리(보류)                                                             |
+| 36 | [`flash_id` + sweep UID 대조](young/36.flash_id_and_sweep_uid_check.md)      | **P/E 없는 신원 확인** · §2-7 리팩터 동등성 증거 · §2-10 **재장착 70ps** · §5 설계 결정 |
+
+## 결번 — 31 · 35 
+
+---
+
+# 장세은 
+
+| # | 로그                                                               | 여기에만 있는 것                         |
+| - | ------------------------------------------------------------------ | ---------------------------------------- |
+| 1 | [Windows 빌드 트러블슈팅](seeun/1.windows_build_troubleshooting.md) | FPGA/Vitis Windows 환경 수동 빌드 가이드 |
+
+---
+
+# 박지민 
+
+| # | 로그                                                                 | 여기에만 있는 것                   |
+| - | -------------------------------------------------------------------- | ---------------------------------- |
+| 1 | [P/E 노화 실험 아이디어](jimin/1.pe_wear_bench_idea.md)               | 마모 벤치의 최초 착상 (9/14)       |
+| 2 | [P/E 스트레스 벤치 AI 프롬프트](jimin/2.pe_stress_bench_ai_prompt.md) | 구현 의뢰용 프롬프트 (9/15)        |
+| 3 | [cocotb 검증 환경 계획](jimin/3.cocotb_verification_plan.md)          | G1 회귀 계획 (9/15)                |
+| 4 | [Vivado/Vitis 빌드 명령어](jimin/4.vivado_vitis_build_commands.md)    | 전체 빌드 명령 정리                |
+| 5 | [WSL USB 포트 연결](jimin/5.wsl_usbipd_jtag_uart_connection.md)       | usbipd 로 JTAG·UART 붙이기 (9/16) |
