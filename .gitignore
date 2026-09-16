@@ -67,3 +67,4 @@ TODO.md
 
 # Vitis 실행 잔재 (프로파일 리포트)
 dfx_runtime.txt
+.claude/worktrees/
