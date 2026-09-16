@@ -136,7 +136,7 @@ xsct ps/scripts/program_g0.tcl                                                  
 ### 2.1 칩 하나 = 한 명령
 
 ```bash
-uv run python host/run/run_sweep_chip.py --mhz 25 --n-reads 112
+uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25 --n-reads 112
 ```
 
 이 한 줄이 아래를 순서대로 한다 (`host/run/run_sweep_chip.py`, 로그 23·24).

@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""실칩 스윕 래퍼 — 한 프로세스가 UART 를 쥔 채 세션 1(flash_prep) → 세션 2(스윕 ×N) 를 잇는다.
+"""실칩 측정 래퍼 — 한 프로세스가 UART 를 쥔 채 세션 1(flash_prep) → 세션 2(스윕 ×N) → 분석을 잇는다.
+
+    run_sweep_chip.py --mode newchip --mhz 25 --n-reads 112              신품 첫 투입 (prep = P/E +1)
+    run_sweep_chip.py --mode sweep --chip chip02 --repeat 3 --reseat     재측정 (P/E 불변)
+
+--mode 가 '무엇을 하는가'(= P/E 를 쓰는가)를, 나머지 옵션이 '어떻게'를 정한다. 모드가 정한 것은
+옵션으로 뒤집지 못한다 — newchip 에 --chip 을 줄 수 없고(기계가 UID 를 읽는다), sweep 은 prep 을
+켤 수 없다. 앵커 재측정에서 prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고를 막는다.
+
+sweep 모드의 한계: 소켓의 칩이 정말 --chip 인지 기계가 확인하지 못한다 (UID 는 g2 세션에서만
+읽히는데 그 세션의 앱 flash_prep 은 반드시 소거·쓰기를 한다). flash_uid.c(워크플로 9)가 생기면
+여기서 UID 를 읽어 대조한다 — 그때 --chip 이 선언에서 검증으로 바뀐다.
 
 왜 래퍼인가 (로그 23 §0): UID(4Bh) 를 읽는 것은 세션 1(g2_jedec 비트스트림, PS SPI) 이고
 CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 끼면 UID 가 파일에 닿지
@@ -23,6 +34,8 @@ CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 �
 """
 
 import argparse
+import os
+import re
 import shutil
 import subprocess
 import threading
@@ -91,6 +104,39 @@ class Drained:
         return line
 
 
+def xsct_cmd():
+    """Windows 의 xsct 는 .bat 다. CreateProcess 는 .exe 만 자동으로 붙이므로 cmd /c 로 감싼다
+    (reproduce.py tool() 과 같은 자리 — shutil.which 는 PATHEXT 를 보므로 선검사만 통과한다)."""
+    p = shutil.which("xsct")
+    if p and os.name == "nt" and p.lower().endswith((".bat", ".cmd")):
+        return ["cmd", "/c", p]
+    return [p or "xsct"]
+
+
+WIDTH_LINE = re.compile(r"width @ BER=0\.01\s*:\s*([\d.]+)")
+
+
+def analyze(csv_path, ses):
+    """스윕 CSV 를 그 자리에서 분석한다. 측정과 분석의 실패를 가른다 —
+    분석이 깨져도 CSV 는 이미 디스크에 있고, 나중에 다시 돌리면 그만이다."""
+    cmd = [sys.executable, str(REPO / "host" / "analysis" / "bathtub_analysis.py"),
+           str(csv_path), "--json"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    ses.write(r.stdout + r.stderr)
+    if r.returncode != 0:
+        tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-5:])
+        ses.log(f"  분석 실패 (exit {r.returncode}) — 측정 원본은 남아 있다: {csv_path.name}")
+        print(f"  분석 실패 — 측정은 유효하다. 나중에 직접: "
+              f"bathtub_analysis.py {csv_path}\n{tail}", file=sys.stderr)
+        return
+    m = WIDTH_LINE.search(r.stdout)
+    checks = [l.strip() for l in r.stdout.splitlines() if "FAIL" in l]
+    ses.log(f"  분석 OK width@1e-2={m.group(1) if m else '?'} ps"
+            + (f" — 체크 FAIL {len(checks)}건" if checks else ""))
+    print(f"  분석 OK  width@1e-2 = {m.group(1) if m else '?'} ps"
+          + (f"   ** 체크리스트 FAIL {len(checks)}건 — 로그 확인 **" if checks else ""))
+
+
 def run_xsct(args, ses, what, ser=None):
     """xsct 는 tcl error 에서 exit 1 을 준다 (2026-09-07 실측). 비영이면 배치 중단.
 
@@ -98,7 +144,7 @@ def run_xsct(args, ses, what, ser=None):
     뿜는데 호스트가 xsct 종료를 기다리느라 안 읽으면 커널·FTDI 버퍼(≈10KB = 6~7스텝)가
     넘쳐 그 구간이 통째로 사라진다 — 2026-09-15 chip02 에서 19스텝 결측(무효 ⑤)으로 실현됐다.
     UART 이용률이 98% 라 여유가 없어서, 읽지 않는 시간이 곧 유실이다."""
-    cmd = ["xsct", *map(str, args)]
+    cmd = xsct_cmd() + [str(a) for a in args]
     ses.log(f"{what}: {' '.join(cmd)}")
     buf = bytearray()
     stop = threading.Event()
@@ -188,35 +234,53 @@ def resolve_label(uid, ses, today):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    # 모드가 '무엇을 하는가'(prep 유무 = P/E 소모 여부)를, 옵션이 '어떻게'를 정한다.
+    # 모드가 정한 것은 옵션으로 못 뒤집는다 — resweep 에 --prep 이 없는 것이 안전장치다
+    # (앵커 재측정에서 --no-prep 을 빠뜨려 P/E 를 태우던 사고를 표현 불가능하게 만든다)
+    # --mode 가 '무엇을 하는가'(= P/E 를 쓰는가)를, 나머지 옵션이 '어떻게'를 정한다.
+    # 모드가 정한 것은 옵션으로 뒤집지 못한다 — 아래 검증이 그 역할이다. 앵커 재측정에서
+    # prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고(2026-09-15 chip02: 하루 4회)를 막는다
+    ap.add_argument("--mode", required=True, choices=("newchip", "sweep"),
+                    help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)")
+    w = ap.add_argument_group("칩 지정 (sweep 전용)")
+    who = w.add_mutually_exclusive_group()
+    who.add_argument("--chip", help="등록부의 라벨 (chip02) — UID 는 역조회한다")
+    who.add_argument("--uid", help="UID 직접 지정 (16hex)")
     g = ap.add_argument_group("측정 설계")
     g.add_argument("--repeat", type=int, default=1, metavar="N", help="스윕 반복 횟수 (1/3/5 …)")
-    g.add_argument("--reseat", action="store_true", help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
+    g.add_argument("--reseat", action="store_true",
+                   help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
     g.add_argument("--n-reads", type=int, default=100, choices=(100, 112, 448),
-                   help="기대 N. ELF 의 BEGIN n= 과 다르면 중단 (N 은 빌드 시 고정 — 여기서 못 바꾼다)")
+                   help="기대 N. ELF 의 BEGIN n= 과 다르면 중단 (N 은 빌드 시 고정)")
     g.add_argument("--base-sector", type=int, default=0,
                    help="수정안 #1 승인 시. 미승인이므로 0 만 허용")
     h = ap.add_argument_group("하드웨어")
     h.add_argument("--mhz", type=int, default=25, choices=(25, 45, 75))
     h.add_argument("--pl", type=int, choices=(4, 6), help="PAY_LEAD 보험 비트스트림 (pl4|pl6)")
-    h.add_argument("--port", default="/dev/ttyUSB1")
+    h.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
     h.add_argument("--baud", type=int, default=921600,
-               help="전 앱이 925,925bps 로 맞춘다 (차이 +0.47%%). 구형 ELF 는 115200")
-    p = ap.add_argument_group("절차")
-    p.add_argument("--no-prep", action="store_true",
-                   help="사전 쓰기 생략 (비휘발). UID 를 읽을 세션이 없으므로 --uid 필수")
-    p.add_argument("--uid", help="--no-prep 전용: 이 배치의 칩 UID (등록부에 있어야 함)")
-    p.add_argument("--prep-only", action="store_true", help="flash_prep 만 돌리고 종료")
-    p.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (봉인)")
+                   help="전 앱이 925,925bps 로 맞춘다 (차이 +0.47%%). 구형 ELF 는 115200")
+    ap.add_argument("--no-analyze", action="store_true",
+                    help="스윕 뒤 배스텁 분석을 돌리지 않는다 (기본은 돌린다)")
+    ap.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (봉인)")
+
     args = ap.parse_args()
+    args.no_prep = args.mode == "sweep"             # 이하 본문은 이 값만 본다
+    args.analyze = not args.no_analyze
+    if args.mode == "newchip" and (args.chip or args.uid):
+        ap.error("--mode newchip 은 UID 를 기계가 읽는다 — --chip/--uid 를 주지 않는다")
+    if args.mode == "sweep" and not (args.chip or args.uid):
+        ap.error("--mode sweep 은 어느 칩인지 알 길이 없다 — --chip 또는 --uid 가 필요하다")
+    if args.chip:                                   # 라벨 → UID 역조회 (16hex 를 손으로 칠 일이 없다)
+        args.uid = chip_registry.parse().get(args.chip)
+        if not args.uid:
+            ap.error(f"--chip {args.chip}: 등록부에 없거나 UID 가 비어 있다 "
+                     f"(docs/chip_registry.md) — 신품이면 --mode newchip 이다")
 
     if args.base_sector != 0:
         ap.error("--base-sector: 수정안 #1 미승인 — 0 만 허용")
     if args.repeat < 1:
         ap.error("--repeat 는 1 이상")
-    if args.no_prep and args.prep_only:
-        ap.error("--no-prep 과 --prep-only 는 함께 쓸 수 없다")
-    if args.no_prep != bool(args.uid):
-        ap.error("--uid 는 --no-prep 과 함께, 그때만 쓴다")
     if not shutil.which("xsct"):
         raise Abort("xsct 가 PATH 에 없다 — Vitis 2025.2 settings64.sh 를 source 할 것")
     chip_registry.parse()                     # 등록부가 깨져 있으면 보드를 건드리기 전에 죽는다
@@ -227,7 +291,8 @@ def main():
     batch_id = cap.utc_stamp(now)
     today = now.strftime("%Y-%m-%d")
     ses = Session(batch_id)
-    ses.log(f"batch {batch_id}: mhz={args.mhz} pl={args.pl} repeat={args.repeat} "
+    ses.log(f"batch {batch_id}: mode={args.mode} chip={args.chip or '?'} "
+            f"mhz={args.mhz} pl={args.pl} repeat={args.repeat} "
             f"reseat={int(args.reseat)} n_reads={args.n_reads} blind={int(args.blind)}")
 
     done = invalid = 0
@@ -254,9 +319,6 @@ def main():
                 chip_pe.append_pe(today, label, uid, PREP_SECTORS, "+1",
                                   f"flash_prep (batch {batch_id})", blind=args.blind)
                 ses.log(f"chip_pe.md: {label} {PREP_SECTORS} {'(봉인)' if args.blind else '+1'}")
-                if args.prep_only:
-                    ses.log("--prep-only: 종료")
-                    return
 
             g3_args = [PROGRAM_G3, args.mhz] + ([f"pl{args.pl}"] if args.pl else [])
             for k in range(1, args.repeat + 1):
@@ -271,6 +333,8 @@ def main():
                 ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} "
                         f"{r.main_path.name} ({r.n_main} rows)")
                 done += 1
+                if r.valid and args.analyze:
+                    analyze(r.main_path, ses)
                 if not r.valid:
                     invalid += 1
                     continue
