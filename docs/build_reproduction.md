@@ -153,6 +153,7 @@ vivado -version | head -1        # vivado v2025.2
 ```
 g0  ─────────────────────────────►  루프백 계측기 (독립)
 g2  ──► flash_prep (g2 XSA 소비) ─►  실칩 사전 쓰기·UID
+    └─► flash_id   (같은 XSA)    ─►  신원 확인만 (P/E 불변 — sweep 모드 세션1)
 g3-25 ┐
 g3-45 ├──────────────────────────►  실칩 스윕 계측기 (클럭별, 서로 독립)
 g3-75 ┘
@@ -214,7 +215,7 @@ g2 XSA에서 Vitis 플랫폼과 앱을 만든다. 사전 쓰기(PRBS 2,048페이
 vitis -s ps/scripts/build_flash_prep.py
 ```
 
-입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_prep.c`. 약 20초.
+입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_prep.c` · `ps/src/flash_io.c`(배관 부품). 약 20초.
 
 기대 산출물:
 
@@ -223,6 +224,18 @@ build/vitis_prep/flash_prep/build/flash_prep.elf
 ```
 
 기대 출력: `== done: …/flash_prep.elf`. `[검증 2026-09-14]` 23:00 통과.
+
+같은 XSA로 형제 앱 **`flash_id`** 도 만든다 — JEDEC과 UID만 읽고 **쓰기 명령을 내보내지
+않는다**(P/E 불변). `--mode sweep` 재측정의 세션 1이 이 ELF를 요구하므로 실칩 재측정을
+하는 사람은 같이 빌드해 둔다 (로그 36).
+
+```bash
+vitis -s ps/scripts/build_flash_id.py        # 또는 uv run python reproduce.py --only id
+```
+
+```text
+build/vitis_id/flash_id/build/flash_id.elf
+```
 
 ### 3.4 g3 — 실칩 스윕 계측기 (클럭별)
 
@@ -298,6 +311,7 @@ done
 | --------------------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
 | 루프백 계측기         | `xsct ps/scripts/program_g0.tcl`                                                  | g0 bit + elf + ps7_init.tcl          |
 | 사전 쓰기·UID (실칩) | `xsct ps/scripts/program_g2.tcl build/vitis_prep/flash_prep/build/flash_prep.elf` | g2 bit(XSA에서 자동 추출) + prep elf |
+| 신원 확인만 (P/E 불변) | `xsct ps/scripts/program_g2.tcl build/vitis_id/flash_id/build/flash_id.elf`     | 같은 g2 bit + id elf                 |
 | 실칩 스윕             | `xsct ps/scripts/program_g3.tcl 25` (`45`/`75`, 보험 `25 pl4`)              | g3-<mhz></mhz> bit + elf             |
 | 실칩 전 과정 한 줄    | `uv run python host/run/run_sweep_chip.py --mhz 25`                               | 위 둘을 래퍼가 순서대로 호출         |
 
@@ -374,6 +388,7 @@ build/
 ├── vitis/                  g0: g0_plat/(플랫폼), g0_sweep/build/g0_sweep.elf, g0_sweep/_ide/psinit/ps7_init.tcl
 ├── vivado_g2/              g2: g2_jedec.xsa, g2_jedec.runs/impl_1/g2_wrapper.bit
 ├── vitis_prep/             flash_prep/build/flash_prep.elf
+├── vitis_id/               flash_id/build/flash_id.elf   (sweep 모드 세션1이 요구)
 ├── vitis_jedec/            (선택) flash_jedec/build/flash_jedec.elf
 ├── vitis_smoke/            (선택) core_smoke/build/core_smoke.elf
 ├── vivado_g3_25/ 45/ 75/   g3: g3_chip_<mhz>.xsa, g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit

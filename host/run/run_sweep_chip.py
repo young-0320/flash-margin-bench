@@ -8,9 +8,10 @@
 옵션으로 뒤집지 못한다 — newchip 에 --chip 을 줄 수 없고(기계가 UID 를 읽는다), sweep 은 prep 을
 켤 수 없다. 앵커 재측정에서 prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고를 막는다.
 
-sweep 모드의 한계: 소켓의 칩이 정말 --chip 인지 기계가 확인하지 못한다 (UID 는 g2 세션에서만
-읽히는데 그 세션의 앱 flash_prep 은 반드시 소거·쓰기를 한다). flash_uid.c(워크플로 9)가 생기면
-여기서 UID 를 읽어 대조한다 — 그때 --chip 이 선언에서 검증으로 바뀐다.
+sweep 모드도 세션 1 을 돈다 — 쓰기를 하지 않는 flash_id 로 UID 만 읽어 --chip 과 대조하고,
+어긋나면 스윕 전에 중단한다 (2026-09-16). --chip 은 선언이 아니라 검증이다. 남는 한계:
+대조는 "다른 칩을 꽂았다" 만 잡고 "재장착을 안 했다" 는 못 잡는다 — 재장착 σ 의 신뢰는
+여전히 사람 손에 있다 (로그 23 부록 A).
 
 왜 래퍼인가 (로그 23 §0): UID(4Bh) 를 읽는 것은 세션 1(g2_jedec 비트스트림, PS SPI) 이고
 CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 끼면 UID 가 파일에 닿지
@@ -18,14 +19,15 @@ CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 �
 역조회해 캡처에 넘긴다. 라벨은 사람이 입력하지 않는다.
 
     [시작]  사람이 chip 을 꽂아둔 상태
-      세션1  program_g2 + flash_prep  →  #PREP UID → 라벨 역조회 → chip_pe.md +1
+      세션1  newchip: program_g2 + flash_prep  →  #PREP UID → 라벨 역조회 → chip_pe.md +1
+             sweep  : program_g2 + flash_id    →  #G2 UID   → --chip 과 대조 (P/E 불변)
       세션2  program_g3 + 스윕        →  CSV 2개   (×N, --reseat 면 회차 사이 재장착 프롬프트)
     [종료]  "k/N 완료" 요약 + build/data/session_<label>_<uid>_<batch_id>.log
             (로그는 시작부터 session_<batch_id>.log 로 쓰이다가 라벨을 알면 개명된다)
 
 제약 — **배치 중 칩이 바뀌지 않는다고 가정한다.** UID 를 배치 시작 시 한 번만 읽고 그 값을
 배치 전체 CSV 에 박는다 (로그 23 부록 A). 여러 칩을 다루는 배치는 run_newchip.py 가 맡으며,
-거기서는 재장착마다 UID 재확인이 필요하다 (UID 전용 소형 앱 flash_uid.c — W5-M 에서).
+거기서는 재장착마다 UID 재확인이 필요하다 (여기 세션 1 이 쓰는 flash_id 를 그대로 쓰면 된다).
 
 두지 않는 옵션 (로그 23 §7): --skip-prep-check 류(안전장치 해제) · --dphi(VCO 고정) ·
 --steps(--mhz 가 정함) · --target(라벨은 등록부가 답한다).
@@ -53,10 +55,12 @@ import chip_registry                                 # noqa: E402
 import sweep_uart_capture as cap                     # noqa: E402
 
 PREP_ELF = REPO / "build" / "vitis_prep" / "flash_prep" / "build" / "flash_prep.elf"
+ID_ELF = REPO / "build" / "vitis_id" / "flash_id" / "build" / "flash_id.elf"
 PROGRAM_G2 = REPO / "ps" / "scripts" / "program_g2.tcl"
 PROGRAM_G3 = REPO / "ps" / "scripts" / "program_g3.tcl"
 PREP_SECTORS = "0~127"        # flash_prep N_PAGES=2048 × 256B = 128 섹터 전 범위 고정
 PREP_TIMEOUT_S = 15 * 60      # 지우기+쓰기+검증 ~1분. 넉넉히
+ID_TIMEOUT_S = 60             # flash_id 는 JEDEC+UID 만 읽는다 — 즉시
 
 
 class Abort(SystemExit):
@@ -212,6 +216,34 @@ def run_prep(ser, ses):
     raise Abort(f"flash_prep {PREP_TIMEOUT_S}s 내 미완료 — 보드/UART 확인")
 
 
+def run_id(ser, ses):
+    """세션 1 (sweep 모드). flash_id 가 읽은 UID 를 돌려준다. 그 외 전부 중단.
+
+    flash_prep 과 달리 이 앱은 플래시에 쓰기 명령을 내보내지 않는다 — P/E 불변이다."""
+    if not ID_ELF.exists():
+        raise Abort(f"missing {ID_ELF} — vitis -s ps/scripts/build_flash_id.py 먼저")
+    ser.reset_input_buffer()               # rst -system 이전의 잔여물. 이후 쓰레기는 접두로 거른다
+    src = Drained(ser, run_xsct([PROGRAM_G2, ID_ELF], ses,
+                                "세션1 프로그래밍 (g2_jedec + flash_id)", ser=ser))
+
+    deadline = datetime.now(timezone.utc).timestamp() + ID_TIMEOUT_S
+    while datetime.now(timezone.utc).timestamp() < deadline:
+        raw = src.readline().decode(errors="replace").strip()
+        i = raw.find("#G2")
+        if i < 0:
+            continue
+        line = raw[i:]
+        ses.log(line)
+        tok = line.split()
+        if len(tok) < 2:
+            continue
+        if tok[1] == "ERROR" or "[FAIL]" in line:
+            raise Abort(f"flash_id 실패: {line} — 스윕으로 넘어가지 않는다")
+        if len(tok) >= 3 and tok[1] == "UID":
+            return chip_registry.normalize_uid(tok[2])
+    raise Abort(f"flash_id {ID_TIMEOUT_S}s 내 #G2 UID 없음 — 보드/UART 확인")
+
+
 def resolve_label(uid, ses, today):
     """등록부 역조회. 없으면 신규 칩 — 사람에게 라벨을 물어 공란 행을 채운다."""
     label = chip_registry.label_for(uid)
@@ -244,7 +276,7 @@ def main():
                     help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)")
     w = ap.add_argument_group("칩 지정 (sweep 전용)")
     who = w.add_mutually_exclusive_group()
-    who.add_argument("--chip", help="등록부의 라벨 (chip02) — UID 는 역조회한다")
+    who.add_argument("--chip", help="등록부의 라벨 (chip02) — UID 는 역조회 후 flash_id 로 대조한다")
     who.add_argument("--uid", help="UID 직접 지정 (16hex)")
     g = ap.add_argument_group("측정 설계")
     g.add_argument("--repeat", type=int, default=1, metavar="N", help="스윕 반복 횟수 (1/3/5 …)")
@@ -306,8 +338,19 @@ def main():
                 label = chip_registry.label_for(uid)
                 if label is None:
                     raise Abort(f"--uid {uid} 는 등록부에 없다. 신규 칩은 prep 을 돌려 기계가 읽은 UID 로만 등록한다")
+                try:
+                    read = run_id(ser, ses)            # 세션 1 — 읽기만 한다 (P/E 불변)
+                    if read != uid:
+                        other = chip_registry.label_for(read)
+                        raise Abort(
+                            f"칩 대조 실패 — 소켓의 칩이 {label} 이 아니다. 스윕을 시작하지 않는다\n"
+                            f"    읽은 UID : {read} ({other or '등록부에 없는 칩'})\n"
+                            f"    기대 UID : {uid} ({label})")
+                except Abort:
+                    ses.rename("idfail")
+                    raise
                 ses.rename(f"{label}_{uid}")
-                ses.log(f"--no-prep: 사람이 준 UID {uid} → {label} (기계 확인 없음 — 세션 규칙에 의존)")
+                ses.log(f"칩 대조 OK: 소켓의 칩 = {label} ({uid})")
             else:
                 try:
                     uid = run_prep(ser, ses)

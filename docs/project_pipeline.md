@@ -344,7 +344,8 @@ UID + git rev**로 확보한다.
 | `sim/smoke/*.v` + `iverilog`                                                          | 블록 스모크 4종                                                           | PASS/FAIL                                      |
 | `sim/check_coverage.py`                                                                 | G1 회귀 커버리지 대조 (항목 누락만)                                       | 비영 종료 = FAIL                               |
 | `ps/src/flash_wear` · `host/run/run_wear.py`                                         | **미구현** — 마모 벤치                                             | S-1 §9 로그 A/B/C                             |
-| `host/run/run_newchip.py` · `ps/src/flash_uid.c`                                     | **미구현** — 다칩 배치(재장착마다 UID 재확인)                      | —                                             |
+| `ps/src/flash_io.*` · `ps/src/flash_id.c`                                            | 신원 확인 (JEDEC+UID, 쓰기 없음) — `--mode sweep` 세션1              | `#G2 UID <16hex>` → 등록부 대조               |
+| `host/run/run_newchip.py`                                                              | **미구현** — 다칩 배치(재장착마다 UID 재확인, `flash_id` 재사용)   | —                                             |
 
 ---
 

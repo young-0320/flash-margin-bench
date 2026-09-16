@@ -99,6 +99,8 @@ STEPS = {
                   artifacts=["build/vitis_jedec/flash_jedec/build/flash_jedec.elf"], tools=["vitis"]),
     "smoke": dict(cmd=vitis("build_core_smoke.py"), done="== done:", default=False,
                   artifacts=["build/vitis_smoke/core_smoke/build/core_smoke.elf"], tools=["vitis"]),
+    "id": dict(cmd=vitis("build_flash_id.py"), done="== done:", default=False,
+               artifacts=["build/vitis_id/flash_id/build/flash_id.elf"], tools=["vitis"]),
     # §6 빠른 재빌드 — ELF 만 (XSA 는 있는 것을 쓴다). --vitis-only 가 고른다
     "g0e": dict(cmd=vitis("build_g0_sweep.py"), done="== done:", default=False,
                 artifacts=["build/vitis/g0_sweep/build/g0_sweep.elf",
