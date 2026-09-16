@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """reproduce.py — docs/build_reproduction.md §3(빌드)·§5(검증)를 순서대로 돌리고 채점한다.
 
-실행:  python3 reproduce.py                 # 전체: sim selftest g0 g2 prep g3-25 g3-45 g3-75
+실행:  python3 reproduce.py                 # 전체: sim selftest g0 g2 prep id g3-25 g3-45 g3-75
        python3 reproduce.py --only g3-25 sim
        python3 reproduce.py --vitis-only     # §6 빠른 재빌드 — Vivado 생략, 검증 + ELF만
        python3 reproduce.py --list
@@ -99,7 +99,7 @@ STEPS = {
                   artifacts=["build/vitis_jedec/flash_jedec/build/flash_jedec.elf"], tools=["vitis"]),
     "smoke": dict(cmd=vitis("build_core_smoke.py"), done="== done:", default=False,
                   artifacts=["build/vitis_smoke/core_smoke/build/core_smoke.elf"], tools=["vitis"]),
-    "id": dict(cmd=vitis("build_flash_id.py"), done="== done:", default=False,
+    "id": dict(cmd=vitis("build_flash_id.py"), done="== done:",
                artifacts=["build/vitis_id/flash_id/build/flash_id.elf"], tools=["vitis"]),
     # §6 빠른 재빌드 — ELF 만 (XSA 는 있는 것을 쓴다). --vitis-only 가 고른다
     "g0e": dict(cmd=vitis("build_g0_sweep.py"), done="== done:", default=False,
@@ -122,8 +122,10 @@ for m in ("25", "45", "75"):
 
 # 검증(sim·selftest, 합쳐 10초 미만)이 앞이다 — 빌드는 20분이고, RTL 이 깨져 있으면
 # 스모크 5초로 알 수 있는 것을 Vivado 16분 태우고 알게 된다 (문서 "RTL을 바꾸면 검증 루프부터")
-FULL = ["sim", "selftest", "g0", "g2", "prep", "g3-25", "g3-45", "g3-75"]
-VITIS_ONLY = ["sim", "selftest", "g0e", "prep", "g3e-25", "g3e-45", "g3e-75"]
+# id 는 g2 XSA 를 쓰므로 g2 뒤, prep 옆이다. --mode sweep 이 이 ELF 를 요구하므로 선택이 아니다 —
+# 빠뜨리면 "빌드는 8/8 PASS 인데 보드 앞에서 측정을 못 하는" 상태가 된다 (17초)
+FULL = ["sim", "selftest", "g0", "g2", "prep", "id", "g3-25", "g3-45", "g3-75"]
+VITIS_ONLY = ["sim", "selftest", "g0e", "prep", "id", "g3e-25", "g3e-45", "g3e-75"]
 
 
 def backup(name, st):

@@ -17,7 +17,7 @@
 같은 명령을 같은 순서로 돌리고 **§3.5 기준으로 단계마다 채점**한다.
 
 ```bash
-python3 reproduce.py                    # 전체 — sim selftest g0 g2 prep g3-25 g3-45 g3-75 (약 9분 — 2026-09-16 실측)
+python3 reproduce.py                    # 전체 — sim selftest g0 g2 prep id g3-25 g3-45 g3-75 (약 9분 — 2026-09-16 실측)
 python3 reproduce.py --only g3-25 sim   # 골라서
 python3 reproduce.py --vitis-only       # §6 빠른 재빌드 — Vivado 생략, ELF 만 + 검증
 python3 reproduce.py --list             # 단계와 실제로 도는 명령
