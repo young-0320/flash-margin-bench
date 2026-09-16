@@ -116,6 +116,7 @@ uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25
 uv run python host/run/run_sweep_chip.py --mode sweep --mhz 25
 
 # 앵커를 집어야 할 때 — 다른 칩을 꽂았으면 스윕 전에 걸린다
+# (앵커는 prep 없이 잰다 — 재장착 성분만 보려는 것이고 P/E 도 안 쓴다. S-2 §8)
 uv run python host/run/run_sweep_chip.py --mode sweep --mhz 25 --chip 2
 
 # 재장착 σ — 3회, 회차 사이마다 빼고 다시 꽂는다 (매번 UID 재확인)
