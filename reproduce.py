@@ -5,6 +5,8 @@
        python3 reproduce.py --only g3-25 sim
        python3 reproduce.py --vitis-only     # §6 빠른 재빌드 — Vivado 생략, 검증 + ELF만
        python3 reproduce.py --list
+       (Windows 는 `python reproduce.py` — 셸에 기대지 않으므로 cmd/PowerShell 어디서든 같다.
+        Vivado/Vitis 는 settings64.bat 를 먼저 돌려 PATH·XILINX_VIVADO 를 잡아둘 것)
 
 채점(§3.5): 단계마다 ① 명령 종료 코드 ② 로그의 완료 문구 ③ 산출물이 단계 시작 이후에 생겼는지
 ④ (Vivado) 타이밍 리포트 "constraints are met" ⑤ (Vivado) WNS/WHS·LUT/FF 기준표 대조 — ⑤ 불일치는 WARN.
@@ -41,23 +43,37 @@ BASELINE = {                       # step: (WNS, WHS, LUTs, Registers)
 }
 
 
+def tool(name):
+    """실행 파일의 argv 앞부분. Windows 의 vivado/vitis 는 .bat 인데 CreateProcess 는 .bat 를
+    직접 못 띄운다 → cmd /c 로 감싼다. shutil.which 는 PATHEXT 를 보고 .bat 를 찾아내므로
+    선검사(§도구 선검사)만 통과하고 정작 실행에서 WinError 2 로 죽던 자리다."""
+    p = shutil.which(name)
+    if p and os.name == "nt" and p.lower().endswith((".bat", ".cmd")):
+        return ["cmd", "/c", p]
+    return [p or name]
+
+
 def vivado(tcl, *args):
-    return ["vivado", "-mode", "batch", "-source", str(REPO / "fpga/scripts" / tcl)] + \
+    # Tcl 은 Windows 에서도 '/' 를 받는다. 백슬래시는 Tcl 이스케이프와 섞이므로 as_posix 로 넘긴다
+    return tool("vivado") + ["-mode", "batch", "-source", (REPO / "fpga/scripts" / tcl).as_posix()] + \
            (["-tclargs", *args] if args else [])
 
 
 def vitis(py):
-    return ["vitis", "-s", str(REPO / "ps/scripts" / py)]
+    return tool("vitis") + ["-s", (REPO / "ps/scripts" / py).as_posix()]
 
 
 def sim(tb, *rtl):
+    """iverilog → vvp 두 argv. 셸을 안 쓰므로 glob 을 여기서 편다 — cmd.exe 는 *.v 를 안 펴준다."""
     out = "{log_dir}/" + tb + ".vvp"
-    srcs = [tb + ".v", "unisim_stub.v"] + [f"../../fpga/rtl/{d}/*.v" for d in rtl]
-    return f"iverilog -g2005 -o {out} {' '.join(srcs)} && vvp {out}"
+    srcs = [tb + ".v", "unisim_stub.v"] + \
+           [p.as_posix() for d in rtl for p in sorted((REPO / "fpga/rtl" / d).glob("*.v"))]
+    return [["iverilog", "-g2005", "-o", out, *srcs], ["vvp", out]]
 
 
 # name → dict(cmd, cwd, env, artifacts, done(로그 완료 문구), rpt(Vivado 리포트 접두), default, tools)
-# cmd 가 str 이면 셸로 돈다 (sim 의 glob·&&). artifacts 는 REPO 기준 상대경로.
+# cmd 는 argv 리스트, 또는 순서대로 도는 argv 리스트의 리스트 (앞이 실패하면 멈춘다 = 셸의 &&).
+# 셸은 쓰지 않는다 — cmd.exe/bash 의 glob·따옴표 차이가 그대로 버그가 된다. artifacts 는 REPO 기준 상대경로.
 STEPS = {
     "g0": dict(cmd=vivado("build_g0_loopback.tcl"), done="== all done:",
                artifacts=["build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit", "build/vivado/g0_loopback.xsa",
@@ -68,12 +84,13 @@ STEPS = {
                rpt="build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper", tools=["vivado"]),
     "prep": dict(cmd=vitis("build_flash_prep.py"), done="== done:",
                  artifacts=["build/vitis_prep/flash_prep/build/flash_prep.elf"], tools=["vitis"]),
-    "sim": dict(cmd=" && ".join([sim("tb_core_smoke", "core"), sim("tb_flash_smoke", "flash"),
-                                 sim("tb_flash_spi_smoke", "flash"), sim("tb_g0_smoke", "core", "flash")]),
+    "sim": dict(cmd=[c for tb in (("tb_core_smoke", "core"), ("tb_flash_smoke", "flash"),
+                                  ("tb_flash_spi_smoke", "flash"), ("tb_g0_smoke", "core", "flash"))
+                     for c in sim(*tb)],
                 cwd=REPO / "sim/smoke", done="PASS: all checks passed", done_count=4, tools=["iverilog", "vvp"]),
-    "selftest": dict(cmd=" && ".join(["uv run python host/analysis/bathtub_analysis.py --selftest",
-                                      "uv run python host/capture/chip_registry.py --selftest",
-                                      "uv run python host/run/chip_pe.py --selftest"]),
+    "selftest": dict(cmd=[["uv", "run", "python", p, "--selftest"]
+                          for p in ("host/analysis/bathtub_analysis.py", "host/capture/chip_registry.py",
+                                    "host/run/chip_pe.py")],
                      done="selftest PASS", done_count=2,
                      artifacts=["build/plots/bathtub_selftest_sweep.png", "build/plots/bathtub_selftest_sweep_wrap.png"],
                      tools=["uv"]),
@@ -164,17 +181,23 @@ def run_step(name, log_dir):
     log = log_dir / f"{name}.log"
     prev = backup(name, st)
     t0 = time.time()
-    cmd = st["cmd"]
-    if isinstance(cmd, str):
-        cmd = cmd.replace("{log_dir}", str(log_dir))
+    cmds = st["cmd"]
+    cmds = [[a.replace("{log_dir}", log_dir.as_posix()) for a in c]
+            for c in (cmds if isinstance(cmds[0], list) else [cmds])]
     env = {**os.environ, **st.get("env", {})}
-    with log.open("w") as f:
-        f.write(f"# {cmd if isinstance(cmd, str) else ' '.join(cmd)}\n# cwd={st.get('cwd', REPO)}\n\n")
+    # 로그는 utf-8 로 고정한다 — Windows 기본(cp949)에 맡기면 요약의 한글이 깨진다.
+    # 자식 출력은 바이트 그대로 들어오므로 채점 문구(전부 ASCII)는 어느 쪽이든 안전하다.
+    with log.open("w", encoding="utf-8") as f:
+        f.write("".join(f"# {' '.join(c)}\n" for c in cmds) + f"# cwd={st.get('cwd', REPO)}\n\n")
         f.flush()
-        rc = subprocess.run(cmd, cwd=st.get("cwd", REPO), env=env, shell=isinstance(cmd, str),
-                            stdout=f, stderr=subprocess.STDOUT).returncode
+        rc = 0
+        for c in cmds:
+            rc = subprocess.run(c, cwd=st.get("cwd", REPO), env=env,
+                                stdout=f, stderr=subprocess.STDOUT).returncode
+            if rc:                      # 셸의 && 와 같다 — 첫 실패에서 멈춘다
+                break
     dt = time.time() - t0
-    out = log.read_text(errors="replace")
+    out = log.read_text(encoding="utf-8", errors="replace")
 
     fails, warns, note = [], [], ""
     if rc != 0:
@@ -214,7 +237,8 @@ def main():
 
     if args.list:
         for k, v in STEPS.items():
-            c = v["cmd"] if isinstance(v["cmd"], str) else " ".join(v["cmd"])
+            cs = v["cmd"] if isinstance(v["cmd"][0], list) else [v["cmd"]]
+            c = " && ".join(" ".join(x) for x in cs)
             print(f"{k:9s} {'' if v.get('default', True) else '(선택) '}{c}")
         return 0
 
@@ -233,9 +257,9 @@ def main():
     need = sorted({t for s in steps for t in STEPS[s]["tools"]})
     missing = [t for t in need if shutil.which(t) is None]
     if missing:
-        sys.exit(f"PATH 에 없음: {missing}  (Vivado/Vitis 는 settings64.sh, iverilog 는 apt, uv 는 §1)")
-    if any(STEPS[s]["cmd"][0] == "vivado" for s in steps if not isinstance(STEPS[s]["cmd"], str)) \
-            and not os.environ.get("XILINX_VIVADO"):
+        sys.exit(f"PATH 에 없음: {missing}  (Vivado/Vitis 는 settings64.sh — Windows 는 settings64.bat, "
+                 f"iverilog 는 apt, uv 는 §1)")
+    if any("vivado" in STEPS[s]["tools"] for s in steps) and not os.environ.get("XILINX_VIVADO"):
         print("경고: XILINX_VIVADO 미설정 — tcl 이 PATH 의 vitis 로 대체한다", file=sys.stderr)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -253,7 +277,7 @@ def main():
             print(f"      - {m}")
         if r["status"] == "FAIL":
             print(f"      로그: {r['log'].relative_to(REPO)}  (마지막 15줄)")
-            for line in r["log"].read_text(errors="replace").splitlines()[-15:]:
+            for line in r["log"].read_text(encoding="utf-8", errors="replace").splitlines()[-15:]:
                 print(f"      | {line}")
             if r["prev"]:
                 print(f"      이전 산출물: {r['prev'].relative_to(REPO)}/  (복원은 cp 로 직접)")
@@ -267,7 +291,7 @@ def main():
                      "".join(f"\n       - {m}" for m in r["msgs"]))
     n_fail = sum(r["status"] == "FAIL" for r in results)
     lines += ["", f"{len(results)}/{len(steps)} 단계 실행, FAIL {n_fail}, WARN {sum(r['status'] == 'WARN' for r in results)}"]
-    (log_dir / "summary.txt").write_text("\n".join(lines) + "\n")
+    (log_dir / "summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n" + "\n".join(lines))
     return 1 if n_fail or len(results) < len(steps) else 0
 

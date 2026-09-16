@@ -139,6 +139,7 @@ if {$stage eq "bit"} {
 # ---------------- ELF (unified Vitis CLI 체인) ----------------
 # 실패 시 exec가 에러를 던져 빌드 전체가 시끄럽게 죽는다
 set vitis_exe [string map {Vivado Vitis} $::env(XILINX_VIVADO)]/bin/vitis
+if {![file executable $vitis_exe]} { set vitis_exe $vitis_exe.bat }   ;# Windows 는 vitis.bat
 if {![file executable $vitis_exe]} { set vitis_exe vitis }
 puts "== vitis -s ps/scripts/build_g0_sweep.py"
 exec $vitis_exe -s $repo/ps/scripts/build_g0_sweep.py >@stdout 2>@stderr

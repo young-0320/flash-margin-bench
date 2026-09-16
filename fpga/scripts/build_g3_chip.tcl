@@ -156,7 +156,10 @@ if {$stage eq "bit"} {
 
 # ---------------- ELF (unified Vitis CLI 체인, 클럭은 env로 전달) ----------------
 set vitis_exe [string map {Vivado Vitis} $::env(XILINX_VIVADO)]/bin/vitis
+if {![file executable $vitis_exe]} { set vitis_exe $vitis_exe.bat }   ;# Windows 는 vitis.bat
 if {![file executable $vitis_exe]} { set vitis_exe vitis }
 puts "== vitis -s ps/scripts/build_g3_sweep.py (G3_MHZ=$mhz)"
-exec env G3_MHZ=$mhz $vitis_exe -s $repo/ps/scripts/build_g3_sweep.py >@stdout 2>@stderr
+# env(1) 은 POSIX 전용이라 Windows 에 없다 — ::env 로 넣으면 Tcl 이 자식에게 그대로 넘긴다
+set ::env(G3_MHZ) $mhz
+exec $vitis_exe -s $repo/ps/scripts/build_g3_sweep.py >@stdout 2>@stderr
 puts "== all done: bit=$build_dir/g3_chip_$mhz.runs/impl_1/g3_wrapper.bit elf=$repo/build/vitis_g3_$mhz/g3_sweep/build/g3_sweep.elf"
