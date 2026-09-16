@@ -1,8 +1,10 @@
 /*
- * flash_io.c — flash_io.h 구현. 코드는 flash_prep.c 에서 그대로 옮겼다.
+ * flash_io.c — flash_io.h 구현. 코드는 flash_prep.c 에서 그대로 옮겼고,
+ * flash_prep 도 이제 이 파일을 쓴다. 사본이 아니라 이전이다.
  *
- * 원본 위치: uart_set_baud() :154 · xfer() :79 · SPI 초기화 main() 초입 ·
- *            JEDEC :178 · UID :191~213
+ * 값은 하나도 바뀌지 않았다 — 프리스케일러 PRESCALE_64(≈2.6MHz) · UART 921600 ·
+ * UID_LEN 8 · 4Bh 3회 읽기. 리팩터 전후 flash_prep.elf 의 UART 출력 문구
+ * 19개가 전부 동일한 것으로 확인했다 (로그 36 §2-7).
  */
 
 #include "flash_io.h"

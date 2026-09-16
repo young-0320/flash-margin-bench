@@ -5,8 +5,10 @@
  * 구현은 flash_prep.c 의 검증된 코드를 그대로 옮긴 것이며 값(프리스케일러,
  * 보 레이트, UID_LEN, 3회 읽기)을 바꾸지 않았다.
  *
- * 지금 쓰는 앱: flash_id.  마모 엔진(flash_wear) 때 flash_prep·flash_jedec 을
- * 여기로 옮긴다 — 그 전까지 기존 4개 앱은 건드리지 않는다 (로그 36).
+ * 쓰는 앱: flash_prep · flash_id.  원본은 flash_prep 이었고 flash_id 가 그것을
+ * 빌려 쓰다가, 두 앱이 같은 코드를 들고 있을 이유가 없어져 여기를 단일 원본으로
+ * 삼았다 (로그 36). flash_jedec·core_smoke·g0_sweep 의 uart_set_baud 중복은
+ * 남아 있다 — flash_jedec 은 장세은 소유(게재 2번)라 소유자 합의가 먼저다.
  *
  * 이 부품은 아무것도 출력하지 않는다. 실패 문구의 접두(#PREP / #G2)가 앱마다
  * 다르고 호스트 파서가 그 접두로 종료를 판정하므로, 판정과 출력은 앱이 한다.

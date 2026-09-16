@@ -30,7 +30,8 @@ app = client.create_app_component(
     name="flash_prep",
     platform=str(WS / "prep_plat" / "export" / "prep_plat" / "prep_plat.xpfm"),
     template="empty_application")
-app.import_files(from_loc=str(REPO / "ps" / "src"), files=["flash_prep.c"],
+app.import_files(from_loc=str(REPO / "ps" / "src"),
+                 files=["flash_prep.c", "flash_io.c", "flash_io.h"],
                  dest_dir_in_cmp="src")
 app.build()
 
