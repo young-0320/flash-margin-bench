@@ -172,6 +172,7 @@ grep -rn '^\s*> \*\*20' docs/log/young/*.md
 | 34 | [cp949·진행 표시](young/34.reproduce_encoding_progress_and_build_identity.md) | `PYTHONUTF8=1` 강제 · 빌드 신원 관리(보류)                                                             |
 | 36 | [`flash_id` + sweep UID 대조](young/36.flash_id_and_sweep_uid_check.md)      | **P/E 없는 신원 확인** · §2-7 리팩터 동등성 증거 · §2-10 **재장착 70ps** · §5 설계 결정 |
 | 38 | [로그 서식 규약](young/38.log_format_convention.md)                          | **로그가 담을 것과 담지 않을 것의 판별선** · 골격 다섯 · 전 34편 계측 |
+| 39 | [규약 집행 — 스킬과 검사기](young/39.log_convention_enforcement.md)         | 규범은 README, 집행은 스킬 · **산문 주의사항은 체크리스트가 아니다** |
 
 ## 결번 — 31 · 35 · 37 
 
