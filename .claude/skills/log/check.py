@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """서식 규약 기계 검사 — 사람이 읽고도 빠뜨리는 것만 본다.
 
-규약 본문: docs/log/README.md 「서식 규약」 (이 스크립트는 규약이 아니다)
+규약 본문: docs/log/FORMAT.md (이 스크립트는 규약이 아니다)
 사용: python3 .claude/skills/log/check.py docs/log/young/39.xxx.md
 """
 import re
