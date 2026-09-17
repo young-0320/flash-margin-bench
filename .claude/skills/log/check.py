@@ -14,25 +14,34 @@ INDEX = REPO / "docs" / "log" / "README.md"
 SECTIONS = ["## 결정", "## 근거", "## 미결"]   # 산출물은 조건부라 뺀다
 
 
+def gaps(index: str) -> set[str]:
+    """README 「결번」 줄의 번호. 가리킬 파일이 없으니 링크를 요구하지 않는다"""
+    line = re.search(r"^#+\s*결번.*$", index, re.M)
+    return set(re.findall(r"\d+", line.group())) if line else set()
+
+
 def check(target: Path) -> list[str]:
     bad = []
     text = target.read_text(encoding="utf-8")
+    index = INDEX.read_text(encoding="utf-8")
+    num = target.name.split(".")[0]
 
     for s in SECTIONS:
         if not re.search(rf"^{re.escape(s)}", text, re.M):
             bad.append(f"골격 누락 — {s}")
 
-    # 로그 번호는 첫 등장에 링크. 한 번도 안 걸린 번호만 잡는다
-    linked = {n for n in re.findall(r"\[로그 (\d+)\]\([^)]+\.md\)", text)}
-    for n in sorted(set(re.findall(r"로그 (\d+)(?!\d)", text)) - linked, key=int):
+    # 로그 번호는 첫 등장에 링크. 대괄호 안에 절·부록이 붙어도 링크로 친다
+    # (`[로그 23 부록 A](...)`). 자기 번호와 결번은 가리킬 파일이 없어 뺀다
+    linked = {n for n in re.findall(r"\[로그 (\d+)[^\]]*\]\([^)]+\.md\)", text)}
+    seen = set(re.findall(r"로그 (\d+)(?!\d)", text))
+    for n in sorted(seen - linked - gaps(index) - {num}, key=int):
         bad.append(f"로그 {n} — 링크가 한 번도 안 걸렸다")
 
     for _, tgt in re.findall(r"\[([^\]]+)\]\(([^)]+\.md)\)", text):
         if not (target.parent / tgt).exists():
             bad.append(f"깨진 링크 — {tgt}")
 
-    num = target.name.split(".")[0]
-    if f"](young/{num}." not in INDEX.read_text(encoding="utf-8"):
+    if f"](young/{num}." not in index:
         bad.append(f"목록 미등재 — docs/log/README.md 에 로그 {num} 행이 없다")
 
     return bad
