@@ -12,12 +12,51 @@ REPO = Path(__file__).resolve().parents[3]
 YOUNG = REPO / "docs" / "log" / "young"
 INDEX = REPO / "docs" / "log" / "README.md"
 SECTIONS = ["## 결정", "## 근거", "## 미결"]   # 산출물은 조건부라 뺀다
+FIRST_ID = 40                                  # 결정 ID 를 요구하는 첫 로그
 
 
 def gaps(index: str) -> set[str]:
     """README 「결번」 줄의 번호. 가리킬 파일이 없으니 링크를 요구하지 않는다"""
     line = re.search(r"^#+\s*결번.*$", index, re.M)
     return set(re.findall(r"\d+", line.group())) if line else set()
+
+
+def decisions(text: str) -> dict[str, bool]:
+    """이 로그가 정의한 결정 ID → 그 자리에 추기가 붙었나.
+
+    불릿이 시작되면 그 ID 의 구간이 열리고, 다음 불릿이나 제목에서 닫힌다.
+    구간 안의 `> **20…` 이 추기다 (들여쓴 것도 같다)
+    """
+    out, cur = {}, None
+    for l in text.splitlines():
+        if m := re.match(r"^- .*?\[D(\d+-\d+)\]", l):
+            cur = m.group(1)
+            out[cur] = False
+        elif re.match(r"^(- |#)", l):
+            cur = None
+        elif cur and re.match(r"\s*> \*\*20", l):
+            out[cur] = True
+    return out
+
+
+def crossref() -> list[str]:
+    """뒤집혔다고 인용된 결정에 추기가 붙었나 — 전 로그를 걸쳐야 알 수 있다"""
+    defined, annotated, cited = {}, set(), {}
+    for f in sorted(YOUNG.glob("*.md")):
+        text = f.read_text(encoding="utf-8")
+        for did, noted in decisions(text).items():
+            defined[did] = f.name
+            if noted:
+                annotated.add(did)
+        for did in re.findall(r"\[D(\d+-\d+)\][^\n]{0,8}?(?:뒤집|닫)", text):
+            cited.setdefault(did, f.name)
+
+    bad = []
+    for did in sorted(cited.keys() - annotated):
+        where = defined.get(did)
+        bad.append(f"[D{did}] — {cited[did]} 가 뒤집었다는데 "
+                   + (f"{where} 에 추기가 없다" if where else "정의한 로그가 없다"))
+    return bad
 
 
 def check(target: Path) -> list[str]:
@@ -44,6 +83,10 @@ def check(target: Path) -> list[str]:
     if f"](young/{num}." not in index:
         bad.append(f"목록 미등재 — docs/log/README.md 에 로그 {num} 행이 없다")
 
+    # 결정 ID 는 뒤집힘 대조의 손잡이다. 도입 전 로그에는 없다
+    if int(num) >= FIRST_ID and not decisions(text):
+        bad.append(f"결정 ID 없음 — `## 결정` 불릿에 `[D{num}-1]` 형태로 단다")
+
     return bad
 
 
@@ -57,11 +100,16 @@ def main() -> int:
         print(f"  FAIL  {b}")
     print(f"{target.name}: {'통과' if not bad else str(len(bad)) + '건'}")
 
-    notes = [f"  {f.name}:{i}" for f in sorted(YOUNG.glob("*.md"))
-             for i, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
-             if re.match(r"\s*> \*\*20", l)]
-    print(f"추기 {len(notes)}곳 — 뒤집힌 결정에 다 붙었는지는 사람이 본다")
-    return 1 if bad else 0
+    missing = crossref()
+    for m in missing:
+        print(f"  MISS  {m}")
+
+    notes = sum(1 for f in YOUNG.glob("*.md")
+                for l in f.read_text(encoding="utf-8").splitlines()
+                if re.match(r"\s*> \*\*20", l))
+    print(f"추기 {notes}곳 · 인용 대조 {'통과' if not missing else str(len(missing)) + '건'}"
+          " — ID 없는 옛 결정은 여전히 사람이 본다")
+    return 1 if bad or missing else 0
 
 
 if __name__ == "__main__":
