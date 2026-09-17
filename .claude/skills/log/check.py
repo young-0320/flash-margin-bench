@@ -12,7 +12,7 @@ REPO = Path(__file__).resolve().parents[3]
 YOUNG = REPO / "docs" / "log" / "young"
 INDEX = REPO / "docs" / "log" / "README.md"
 SECTIONS = ["## 결정", "## 근거", "## 미결"]   # 산출물은 조건부라 뺀다
-FIRST_ID = 40                                  # 결정 ID 를 요구하는 첫 로그
+KINDS = [("D", "## 결정"), ("U", "## 미결")]   # ID 종류 → 그 ID 가 사는 절
 
 
 def gaps(index: str) -> set[str]:
@@ -21,40 +21,65 @@ def gaps(index: str) -> set[str]:
     return set(re.findall(r"\d+", line.group())) if line else set()
 
 
-def decisions(text: str) -> dict[str, bool]:
-    """이 로그가 정의한 결정 ID → 그 자리에 추기가 붙었나.
+def section(text: str, head: str) -> list[str]:
+    """`## <head>` 절의 줄들. 다음 `## ` 에서 닫는다"""
+    out, on = [], False
+    for l in text.splitlines():
+        if l.startswith("## "):
+            on = l.strip() == head
+        elif on:
+            out.append(l)
+    return out
+
+
+def ids(lines: list[str], num: str, kind: str) -> tuple[dict[str, bool], list[str]]:
+    """이 로그가 정의한 ID → 그 자리에 추기가 붙었나. 중복 ID 도 같이 돌려준다.
 
     불릿이 시작되면 그 ID 의 구간이 열리고, 다음 불릿이나 제목에서 닫힌다.
-    구간 안의 `> **20…` 이 추기다 (들여쓴 것도 같다)
+    구간 안의 `> **20…` 이 추기다 (들여쓴 것도 같다).
+    자기 번호만 정의로 친다 — 남의 번호가 붙은 불릿은 인용이다
     """
-    out, cur = {}, None
-    for l in text.splitlines():
-        if m := re.match(r"^- .*?\[D(\d+-\d+)\]", l):
-            cur = m.group(1)
-            out[cur] = False
+    out, dup, cur = {}, [], None
+    for l in lines:
+        if m := re.match(rf"^- .*?\[{kind}(\d+)-(\d+)\]", l):
+            cur = f"{m.group(1)}-{m.group(2)}" if m.group(1) == num else None
+            if cur:
+                if cur in out:
+                    dup.append(cur)
+                out.setdefault(cur, False)
         elif re.match(r"^(- |#)", l):
             cur = None
         elif cur and re.match(r"\s*> \*\*20", l):
             out[cur] = True
-    return out
+    return out, dup
+
+
+def unlabeled(lines: list[str], kind: str) -> list[str]:
+    """ID 가 안 붙은 불릿. 뒤집힘 대조의 손잡이가 없는 줄이다"""
+    return [l.strip()[:44] for l in lines
+            if l.startswith("- ") and not re.search(rf"\[{kind}\d+-\d+\]", l)]
 
 
 def crossref() -> list[str]:
-    """뒤집혔다고 인용된 결정에 추기가 붙었나 — 전 로그를 걸쳐야 알 수 있다"""
-    defined, annotated, cited = {}, set(), {}
+    """뒤집혔다고 인용된 결정·미결에 추기가 붙었나 — 전 로그를 걸쳐야 안다"""
+    defined, annotated, cites = {}, set(), {}
     for f in sorted(YOUNG.glob("*.md")):
-        text = f.read_text(encoding="utf-8")
-        for did, noted in decisions(text).items():
-            defined[did] = f.name
-            if noted:
-                annotated.add(did)
-        for did in re.findall(r"\[D(\d+-\d+)\][^\n]{0,8}?(?:뒤집|닫)", text):
-            cited.setdefault(did, f.name)
+        num, text = f.name.split(".")[0], f.read_text(encoding="utf-8")
+        for kind, head in KINDS:
+            got, _ = ids(section(text, head), num, kind)
+            for i, noted in got.items():
+                defined[kind + i] = f.name
+                if noted:
+                    annotated.add(kind + i)
+        for k, i in re.findall(r"\[([DU])(\d+-\d+)\][^\n]{0,8}?(?:뒤집|닫)", text):
+            cites.setdefault(k + i, f.name)
 
     bad = []
-    for did in sorted(cited.keys() - annotated):
-        where = defined.get(did)
-        bad.append(f"[D{did}] — {cited[did]} 가 뒤집었다는데 "
+    for i in sorted(cites.keys() - annotated):
+        if defined.get(i) == cites[i]:
+            continue                      # 자기 로그 안의 표현은 인용이 아니다
+        where = defined.get(i)
+        bad.append(f"[{i}] — {cites[i]} 가 뒤집었다는데 "
                    + (f"{where} 에 추기가 없다" if where else "정의한 로그가 없다"))
     return bad
 
@@ -83,9 +108,14 @@ def check(target: Path) -> list[str]:
     if f"](young/{num}." not in index:
         bad.append(f"목록 미등재 — docs/log/README.md 에 로그 {num} 행이 없다")
 
-    # 결정 ID 는 뒤집힘 대조의 손잡이다. 도입 전 로그에는 없다
-    if int(num) >= FIRST_ID and not decisions(text):
-        bad.append(f"결정 ID 없음 — `## 결정` 불릿에 `[D{num}-1]` 형태로 단다")
+    # ID 는 뒤집힘·닫힘 대조의 손잡이다. 결정과 미결 둘 다 요구한다
+    for kind, head in KINDS:
+        lines = section(text, head)
+        got, dup = ids(lines, num, kind)
+        for b in unlabeled(lines, kind):
+            bad.append(f"{head} ID 없음 — `[{kind}{num}-n]` 을 단다: {b}")
+        for d in sorted(set(dup)):
+            bad.append(f"[{kind}{d}] 가 두 번 정의됐다")
 
     return bad
 
@@ -107,8 +137,8 @@ def main() -> int:
     notes = sum(1 for f in YOUNG.glob("*.md")
                 for l in f.read_text(encoding="utf-8").splitlines()
                 if re.match(r"\s*> \*\*20", l))
-    print(f"추기 {notes}곳 · 인용 대조 {'통과' if not missing else str(len(missing)) + '건'}"
-          " — ID 없는 옛 결정은 여전히 사람이 본다")
+    print(f"추기 {notes}곳 · 인용 대조 "
+          f"{'통과' if not missing else str(len(missing)) + '건'}")
     return 1 if bad or missing else 0
 
 
