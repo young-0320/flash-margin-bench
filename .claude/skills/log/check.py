@@ -13,6 +13,8 @@ YOUNG = REPO / "docs" / "log" / "young"
 INDEX = REPO / "docs" / "log" / "README.md"
 SECTIONS = ["## 결정", "## 근거", "## 미결"]   # 산출물은 조건부라 뺀다
 KINDS = [("D", "## 결정"), ("U", "## 미결")]   # ID 종류 → 그 ID 가 사는 절
+DEAD_SECTIONS = ["작업 내용", "미결 의사결정"]  # 규약이 폐기한 절
+DEAD_FIELDS = ["성격", "작성"]                  # 규약이 폐기한 머리말 필드
 
 
 def gaps(index: str) -> set[str]:
@@ -107,6 +109,15 @@ def check(target: Path) -> list[str]:
 
     if f"](young/{num}." not in index:
         bad.append(f"목록 미등재 — docs/log/README.md 에 로그 {num} 행이 없다")
+
+    # 규약이 폐기한 절·필드. 판별선 위반 중 고정 문자열로 잡히는 것만 본다
+    # — 절차 절과 산출물 표의 수치는 기준이 매번 달라 사람이 본다
+    for name in DEAD_SECTIONS:
+        if re.search(rf"^#+ .*{name}", text, re.M):
+            bad.append(f"폐지된 절 — `## {name}`")
+    for name in DEAD_FIELDS:
+        if re.search(rf"^- \*?\*?{name}\*?\*?\s*:", text, re.M):
+            bad.append(f"폐지된 머리말 필드 — `{name}`")
 
     # ID 는 뒤집힘·닫힘 대조의 손잡이다. 결정과 미결 둘 다 요구한다
     for kind, head in KINDS:
