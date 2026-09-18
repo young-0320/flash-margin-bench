@@ -47,6 +47,23 @@ MAIN_COLS = ("phase_step,phase_ps,n_reads,b_bits,bit_errors,reads_with_error,"
              "bit_err_sq_sum,f_sclk_hz,dphi_ps")
 READS_COLS = "phase_step,read_idx,err_count"
 META_COLS = "target,generated_at,git_rev,uid,reseat,repeat_idx,batch_id"
+REASON_COL = "reason"  # END 줄에서야 아는 값 — 스트리밍이 끝난 뒤 fill_reason 이 채운다
+
+
+def fill_reason(path, reason):
+    """계약 §6 `reason` 열을 채운다.
+
+    값이 END 줄에서야 오므로 행을 쓰는 동안에는 알 수 없다. 그렇다고 행을 메모리에
+    모아 두면 Ctrl-C·강제 종료에 전부 날아간다 (로그 25 중요 2). 그래서 스트리밍은
+    그대로 두고, 다 받은 뒤 마지막 열만 채워 **원자적으로 갈아끼운다** — 이 함수가
+    도중에 죽어도 원본은 그 순간까지의 내용 그대로 남는다.
+    """
+    tmp = path.with_name(path.name + ".tmp")
+    with open(path) as src, open(tmp, "w") as dst:
+        dst.write(f"{src.readline().rstrip()},{REASON_COL}\n")
+        for line in src:
+            dst.write(f"{line.rstrip()},{reason}\n")
+    tmp.replace(path)
 
 
 class Result(NamedTuple):
@@ -56,6 +73,7 @@ class Result(NamedTuple):
     main_path: Path
     reads_path: Path
     begin: dict        # "#G0 SWEEP BEGIN" 의 key=value (steps, n, b, f_sclk_hz, dphi_ps)
+    reason: str        # 계약 §6 `reason` 열의 값 — 유효 런은 "complete"
 
 
 def utc_stamp(t=None):
@@ -106,7 +124,8 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
 
     valid = False          # END valid=1 + 행수 완전 일치여야만 True — 그 외 전부 무효 ⑤
     began = False
-    begin = {}
+    begin = end = {}
+    complete = False       # PC 가 본 행수 정합 — PS 의 valid=1 을 덮어쓸 수 있다 (⑤)
     steps = n_cfg = 0      # BEGIN 라인에서 파싱 — 행수 검증(⑤: 결측·유실) 기준
     n_main = n_reads = 0
     interrupted = None
@@ -171,6 +190,7 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
                     elif "SWEEP END" in line:
                         # PS가 valid=1이어도 PC까지 전 행이 도착했어야 유효 —
                         # BEGIN을 놓쳤거나(늦은 접속) UART 행 유실이면 무효 ⑤
+                        end = dict(t.split("=", 1) for t in line.split() if "=" in t)
                         complete = (began and steps > 0
                                     and n_main == steps and n_reads == steps * n_cfg)
                         if "valid=1" in line and not complete:
@@ -188,15 +208,23 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
         print("interrupted — 무효 ⑤(미완주)", file=log)
         interrupted = e
 
+    if not end:                       # END 를 못 받았다 — ERROR·중단·N 불일치
+        reason = "interrupted" if interrupted else "no_end"
+    elif end.get("valid") == "1" and not complete:
+        reason = "row_mismatch"       # ⑤ 결측: PS 는 무결이라지만 PC 까지 안 왔다 (로그 8)
+    else:
+        reason = end.get("reason") or ("complete" if valid else "unknown")
+
     if not valid:
         # 짝 규칙(<stem>.csv ↔ <stem>_reads.csv) 유지: 접미는 공통 stem에 붙인다
         main_path = main_path.rename(Path(f"{base}_invalid.csv"))
         reads_path = reads_path.rename(Path(f"{base}_invalid_reads.csv"))
-    print(f"{'VALID' if valid else 'INVALID'}: {n_main} rows, {n_reads} read rows\n"
-          f"  {main_path}\n  {reads_path}", file=log)
+    fill_reason(main_path, reason)    # `_reads` 는 짝이라 메인만 채운다 (27만 행 반복 방지)
+    print(f"{'VALID' if valid else 'INVALID'}: {n_main} rows, {n_reads} read rows, "
+          f"reason={reason}\n  {main_path}\n  {reads_path}", file=log)
     if interrupted:
         raise interrupted
-    return Result(valid, n_main, n_reads, main_path, reads_path, begin)
+    return Result(valid, n_main, n_reads, main_path, reads_path, begin, reason)
 
 
 def dump_raw(ser, out=sys.stdout):

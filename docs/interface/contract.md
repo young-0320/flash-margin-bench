@@ -2,9 +2,10 @@
 
 - **확정: 2026-07-07, 결정 15건 전항 (한영웅 안). 2026-07-08 동결 — 예선 일정 임박으로 3인 추인 절차 없이 단독 판단으로 확정.** 이후 변경은 3인 합의로만.
 - ※ **정정 (2026-08-13)**: 본 항목은 "2026-07-08 3인 추인 완료"로 기재돼 있었으나 사실과 다르다. 계획돼 있던 추인 절차(런북 3 트랙 A, 로그 3 미결 항목)는 실제로 수행되지 않았고, 예선 일정에 밀려 단독으로 동결했다. **표기 정정이며 계약 내용 변경은 없다.**
-- **상정 중인 수정안** (2026-08-23 발의, 둘 다 미승인. 승인 전까지 본문은 v1 그대로다):
-  - `amendments/1.base_sector.md` — BASE_SECTOR 읽기 창 위치 + UID 헤더 (인터페이스)
-  - `amendments/2.n_reads_112.md` — N 100 → 112 (측정 조건). #1과 독립
+- **상정 중인 수정안** (승인 전까지 본문은 v1 그대로다):
+  - `amendments/1.base_sector.md` — BASE_SECTOR 읽기 창 위치 + UID 헤더 (인터페이스). 2026-08-23 발의, 미승인
+  - `amendments/2.n_reads_112.md` — N 100 → 112 (측정 조건). 2026-08-23 발의, 미승인. #1과 독립
+  - `amendments/3.uid_pipeline.md` — 파일명 + 메타 열 4개 + UID 없이 생성 거부 (§6 스키마). 2026-09-07 발의, **한영웅 확정 — 본문 반영 대기.** #1 §5를 대체한다
 - 이 문서가 계약의 유일한 원본이다. 결정 과정(후보·장단점·상세 근거)은 `docs/log/young/3.interface_contract_v1.md` 「근거」.
 - 7/7 심야 core RTL 착수 중 추가 제안 4건(§2 `meas_timeout`·`cfg_err` 신호 / §3 CTRL 단일 명령 규칙 + STATUS bit6 `CMD_ERR` / R11 "유효 START" 조작적 정의 / §6 무효 ⑥)은 **7/8 본문 확정**(위 정정 참조 — 추인 절차 없음). 경위: `docs/log/young/6.core_rtl_implementation.md`
 - 경계: **core 블록**(`fpga/rtl/core/` — MMCM 위상 제어·AXI-Lite 레지스터) ↔ **flash 블록**(`fpga/rtl/flash/` — 패턴 생성·캡처·비교기·에러 로거·e_i 버퍼 + SPI 마스터/루프백 프런트엔드). 담당은 사람이 아니라 블록 기준 — 중간보고서까지 총력전이라 작업 배정은 유동(`docs/workflow/1.midterm_report_workflow.md`), 결과물이 기준.
@@ -99,9 +100,20 @@ e_i 버퍼: flash 소유 BRAM 1개 (2,048 × 16b). 읽기 하나가 끝날 때�
 | `bit_err_sq_sum`                        | int        | **호스트가 e_i 버퍼에서 파생 계산** (Σe_i²) |
 | `f_sclk_hz`, `dphi_ps`                | int, float | 클럭 플랜 (E 확정 전 dphi_ps는 자리표시자)          |
 | `target`, `generated_at`, `git_rev` | str        | 런 메타데이터 (전 행 반복)                          |
+| `uid`                                   | str        | `4Bh` UID, 대문자 16 hex. **loopback은 빈 문자열** (전 행 반복) |
+| `reseat`                                | int        | 0 = 배치 내 재장착 없음 / 1 = 매 회차 재장착 (전 행 반복) |
+| `repeat_idx`                            | int        | 배치 내 회차, 1부터 (전 행 반복)                    |
+| `batch_id`                              | str        | 배치 **시작** 시각 `YYYYmmddTHHMMSSZ`. 개별 CSV의 stamp와 다르다 (전 행 반복) |
+| `reason`                                | str        | PS 의 `END` 줄 `reason` 값 — 유효 런은 `complete`, 무효 런은 §6 무효 사유의 식별자 (전 행 반복) |
+
+- `target` 은 라벨(`chip01`)이고 **값의 출처는 UID 로 등록부(`docs/chip_registry.md`)를 역조회한 결과** 다 — 사람이 입력하지 않는다.
+- 열 방식이고 주석 행(`#UID …`)을 쓰지 않는다: `csv.DictReader` 가 첫 줄을 헤더로 읽으므로 주석 행은 분석기를 깨뜨린다. **열은 읽기 쪽이 관대해서 기존 소비자가 그대로 돈다** — 다만 소비자는 이 열들을 **선택적으로** 읽어야 한다 (2026-07 게재분은 12열이다).
+- ※ **추가 (2026-09-18, 한영웅)**: `uid`~`batch_id` 4열은 2026-09 구현에 들어갔으나 본문에 없었다 (`amendments/3.uid_pipeline.md`). `reason` 은 신설이다 — 무효 런의 사유가 파일명·CSV·세션 로그 어디에도 남지 않아 `data/` 의 `_invalid` 5쌍이 이유 불명이 됐다. **그 5쌍은 소급하지 않는다** (한영웅) — 2026-09-18 이후 수집분에만 `reason` 이 붙는다. 옛 무효 런의 사유는 `docs/log/young/13.first_loopback_bathtub_and_linedead_fix.md` §1 과 `docs/log/young/15.g3_25mhz_wall_too_narrow.md` §1 에 있다.
 
 - **원본 e_i 저장 필수**: 스윕마다 동반 파일 `sweep_<target>_<stamp>_reads.csv` (열: `phase_step, read_idx, err_count`)에 읽기별 에러 수 원본 전량 기록 (~27만 행, 수 MB). 메인 CSV와 같은 basename으로 짝을 맺는다. 메인 CSV는 단독으로 분석 파이프라인을 충족하며, 동반 파일 소실 시 읽기 단위 세부만 상실된다. — e_i를 버리면 3-4에서 버퍼안을 채택한 이유(원시값 보존)가 무효가 되므로 선택이 아니라 필수.
-- 파생량(BER 등)은 저장하지 않는다. **무효 런의 정의** — 다음 중 하나라도 발생한 스윕은 파일명에 `_invalid` 접미, 분석 입력에서 제외: ① `TIMEOUT` 발생(R10) ② `CFG_ERR` 발생(R11) ③ 스윕 중 `MMCM_LOCKED`=0 관측 ④ R8 무결성 불일치 ⑤ 스윕 미완주·스텝 결측 ⑥ 스윕 종료 시 `CMD_ERR`=1.
+- 파생량(BER 등)은 저장하지 않는다. **무효 런의 정의** — 다음 중 하나라도 발생한 스윕은 파일명에 `_invalid` 접미, 분석 입력에서 제외: ① `TIMEOUT` 발생(R10) ② `CFG_ERR` 발생(R11) ③ 스윕 중 `MMCM_LOCKED`=0 관측 ④ R8 무결성 불일치 ⑤ 스윕 미완주·스텝 결측 ⑥ 스윕 종료 시 `CMD_ERR`=1 ⑦ 위상 무반응(`line_dead_*`) ⑧ 저에러 스텝 부재(`no_window`).
+- **①~⑧은 현상을 정하고, 검출 방법은 구현이 정한다.** ⑦⑧의 판정 로직(`e_i` 벡터 동일성·`low_seen` 게이트·BER 문턱)은 `ps/src/g0_sweep.c` 소관이며 계약 조항이 아니다 — 로직을 고치는 데 계약 변경이 필요하지 않다. **⑦이 필요한 이유**: 루프백은 단선이 ①(TIMEOUT)으로 나타나지만, 합성 프리앰블을 쓰는 실칩 SPI 경로는 단선에도 완주한다 (`docs/log/young/11.spi_master_rtl.md` §5). ⑦은 ①이 실칩에서 못 잡는 구멍을 메운다.
+- ※ **추가 (2026-09-18, 한영웅)**: ⑦⑧은 2026-07-08 구현에 들어갔으나(`docs/log/young/12.realchip_prep_batch.md` §3) 본문에는 없었다. 무효 파일이 §6 밖 사유로 생기면 계약만 읽는 쪽이 이유를 알 수 없다 — 실제로 `data/` 의 `_invalid` 5쌍이 그 상태다.
 - 소비자: `host/analysis/bathtub_analysis.py` (이 스키마가 입력 계약).
 
 ## 7. 결정 15건 요약 — 각 결정의 핵심 이유

@@ -414,7 +414,7 @@ def main():
                                       repeat_idx=k, batch_id=batch_id, log=sys.stderr,
                                       expect_n=EXPECT_N)
                 ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} "
-                        f"{r.main_path.name} ({r.n_main} rows)")
+                        f"{r.main_path.name} ({r.n_main} rows, reason={r.reason})")
                 done += 1
                 n = int(r.begin.get("n", 0))
                 if n and n != EXPECT_N:      # valid 판정보다 먼저 — 조기 중단이 여기로 온다

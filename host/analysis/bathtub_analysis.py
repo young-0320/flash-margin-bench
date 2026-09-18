@@ -334,18 +334,18 @@ def selftest_csv(path, seed=7, wrap=False):
     reads_path = path.with_name(path.stem + "_reads.csv")
     with open(path, "w", newline="") as f, open(reads_path, "w", newline="") as fr:
         w, wr = csv.writer(f), csv.writer(fr)
-        # 열 목록은 host/capture/sweep_uart_capture.py 의 MAIN_COLS+META_COLS 와 같아야
-        # 한다 (수정안 #3: 메타 4열 추가로 16열). 어긋나면 읽기가 관대해서 조용히 넘어간다
+        # 열 목록은 host/capture/sweep_uart_capture.py 의 MAIN_COLS+META_COLS+REASON_COL 과
+        # 같아야 한다 (계약 §6, 17열). 어긋나면 읽기가 관대해서 조용히 넘어간다
         w.writerow(["phase_step", "phase_ps", "n_reads", "b_bits", "bit_errors",
                     "reads_with_error", "bit_err_sq_sum",
                     "f_sclk_hz", "dphi_ps", "target", "generated_at", "git_rev",
-                    "uid", "reseat", "repeat_idx", "batch_id"])
+                    "uid", "reseat", "repeat_idx", "batch_id", "reason"])
         wr.writerow(["phase_step", "read_idx", "err_count"])
         for i, (phi, pp) in enumerate(zip(phis, p)):
             per_read = rng.binomial(b, pp, size=n)
             w.writerow([i, round(phi, 2), n, b, int(per_read.sum()),
                         int((per_read > 0).sum()), int((per_read**2).sum()),
-                        f_sclk, dphi, target, stamp, rev, "", 0, 1, stamp])
+                        f_sclk, dphi, target, stamp, rev, "", 0, 1, stamp, "complete"])
             for j, e in enumerate(per_read):
                 if e:  # 0 은 생략해도 행렬 복원에 무해 (기본값 0) — 파일 크기 절약
                     wr.writerow([i, j, int(e)])
