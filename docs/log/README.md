@@ -60,8 +60,7 @@
 | -- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | 22 | [D 트랙 1차 실측](young/22.d_track_drift_sweep.md)                    | 스윕 2건 사후 기록, 판정 보류                                                      |
 | 23 | [래퍼·UID 파이프라인 설계](young/23.sweep_wrapper_and_uid_design.md) | **라벨을 사람이 입력하지 않는다** · 부록 A(오배치 위험) — 가장 많이 참조됨 |
-| 24 | [같은 것의 구현](young/24.sweep_wrapper_uid_pipeline_impl.md)         | 로그 23 설계의 코드화                                                              |
-| 25 | [구현 검토](young/25.review_sweep_wrapper.md)                         | 중요 1 —`#PREP ERROR` 를 종료 신호로 읽는 규약                                  |
+| 24 | [같은 것의 구현과 검토](young/24.sweep_wrapper_uid_pipeline_impl.md)  | 로그 23 설계의 코드화 · §8 「중요 1」 —`#PREP ERROR` 를 종료 신호로 읽는 규약    |
 
 ## 5기 — 재개와 신품 전수 측정 (9/14 ~ 9/17)
 
@@ -73,13 +72,13 @@
 | 29 | [P/E 엔진 구현 층위](young/29.pe_engine_layer_decisions.md)                    | `N_READS` 112 치환 근거                                                                                 |
 | 30 | [`flash_prep` 신품 조사 확장](young/30.flash_prep_newchip_survey.md)         | G-b·G-d 구현 명세 · §10.3 보 레이트                                                                    |
 | 32 | [`reproduce.py`](young/32.reproduce_script.md)                               | 빌드·검증 원샷 재현 + 채점                                                                               |
-| 33 | [Windows 대응](young/33.reproduce_windows_support.md)                          | 셸 의존 제거,`.bat` 런처                                                                                |
-| 34 | [cp949·진행 표시](young/34.reproduce_encoding_progress_and_build_identity.md) | `PYTHONUTF8=1` 강제 · 빌드 신원 관리(보류)                                                             |
+| 33 | [Windows 대응 — 다섯 벽](young/33.reproduce_windows_support.md)                | 셸 의존 제거 ·`.bat` 런처 · `PYTHONUTF8=1` 강제 · §4 빌드 신원 관리(보류)                               |
 | 36 | [`flash_id` + sweep UID 대조](young/36.flash_id_and_sweep_uid_check.md)      | **P/E 없는 신원 확인** · §2-7 리팩터 동등성 증거 · §2-10 **재장착 70ps** · §5 설계 결정 |
 | 38 | [로그 서식 규약](young/38.log_format_convention.md)                          | **로그가 담을 것과 담지 않을 것의 판별선** · 골격 다섯 · 전 34편 계측 |
 | 39 | [규약 집행 — 스킬과 검사기](young/39.log_convention_enforcement.md)         | 규범은 README, 집행은 스킬 · **산문 주의사항은 체크리스트가 아니다** |
+| 40 | [로그 전수조사](young/40.log_audit_and_its_byproducts.md)                     | **자를 못 맞췄다** — 줄이는 힘은 병합·결번에서만 나온다 · 「3인 추인」은 합의된 적 없는 표기였다 |
 
-## 결번 — 4 · 20 · 31 · 35 · 37 
+## 결번 — 4 · 20 · 25 · 31 · 34 · 35 · 37 
 
 ---
 

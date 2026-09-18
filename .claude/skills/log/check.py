@@ -99,7 +99,9 @@ def check(target: Path) -> list[str]:
     # 로그 번호는 첫 등장에 링크. 대괄호 안에 절·부록이 붙어도 링크로 친다
     # (`[로그 23 부록 A](...)`). 자기 번호와 결번은 가리킬 파일이 없어 뺀다
     linked = {n for n in re.findall(r"\[로그 (\d+)[^\]]*\]\([^)]+\.md\)", text)}
-    seen = set(re.findall(r"로그 (\d+)(?!\d)", text))
+    # 뒤에 범위 기호(~)나 수량 조사가 붙으면 참조가 아니다 — "로그 9개" · "로그 1~15".
+    # 앞 낱말까지 봐야 아는 "지민 로그 2"(jimin/2)는 정규식으로 못 가른다 — 링크로 넘긴다
+    seen = set(re.findall(r"로그 (\d+)(?![\d~])(?!\s*[개편건줄])", text))
     for n in sorted(seen - linked - gaps(index) - {num}, key=int):
         bad.append(f"로그 {n} — 링크가 한 번도 안 걸렸다")
 
@@ -122,6 +124,11 @@ def check(target: Path) -> list[str]:
     # ID 는 뒤집힘·닫힘 대조의 손잡이다. 결정과 미결 둘 다 요구한다
     for kind, head in KINDS:
         lines = section(text, head)
+        # 표로 쓰면 아래 셋이 한꺼번에 무너진다 — ID 를 안 달아도 통과하고(unlabeled),
+        # 정의가 crossref 분모에서 빠지고(ids), 추기 구간이 안 열린다. 규약이 불릿을
+        # 전제하므로 받아주지 않고 막는다 (로그 29 가 이 구멍으로 거짓 통과했다)
+        if any(l.lstrip().startswith("|") for l in lines):
+            bad.append(f"{head} 가 표다 — 불릿으로 쓴다 (ID·추기 검사가 비켜간다)")
         got, dup = ids(lines, num, kind)
         for b in unlabeled(lines, kind):
             bad.append(f"{head} ID 없음 — `[{kind}{num}-n]` 을 단다: {b}")
