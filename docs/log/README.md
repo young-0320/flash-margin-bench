@@ -77,6 +77,7 @@
 | 38 | [로그 서식 규약](young/38.log_format_convention.md)                          | **로그가 담을 것과 담지 않을 것의 판별선** · 골격 다섯 · 전 34편 계측 |
 | 39 | [규약 집행 — 스킬과 검사기](young/39.log_convention_enforcement.md)         | 규범은 README, 집행은 스킬 · **산문 주의사항은 체크리스트가 아니다** |
 | 40 | [로그 전수조사](young/40.log_audit_and_its_byproducts.md)                     | **자를 못 맞췄다** — 줄이는 힘은 병합·결번에서만 나온다 · 「3인 추인」은 합의된 적 없는 표기였다 |
+| 41 | [블랙박스 TB · 엔진 인터페이스](young/41.blackbox_tb_and_engine_interface.md)  | **구현자가 짜는 채점표를 어떻게 믿나** · 경계 7개는 S-1 §13 이 요구하는 것에서 나온다 |
 
 ## 결번 — 4 · 20 · 25 · 31 · 34 · 35 · 37 
 
