@@ -162,6 +162,7 @@ class MockEngine:
             if "drop_b_row" not in self.bugs:
                 self._emit(f"B cycle={self.cycle} erase_residual_bits=0 "
                            f"program_fail_bits=0 defect_addr_count=0 defect_addrs= "
+                           f"worst_page_idx=0 worst_page_bits=0 "
                            f"die_temp_c=41.2 uid_ok=1 ts={target * CYCLE_US}")
         self._maybe_cut(target, "between")
 
@@ -198,8 +199,9 @@ class MockEngine:
 
     def blank_check(self, base_sector, n_sectors):
         if not self.chip.writable:                        # SPI 무응답 — 전량 0xFF 로 보인다
-            return n_sectors * SECTOR_PAGES * 256 * 8, 0, []
-        return 0, 0, []
+            bits = n_sectors * SECTOR_PAGES * 256 * 8
+            return bits, 0, [], 0, SECTOR_PAGES * 256 * 8
+        return 0, 0, [], 0, 0
 
     def tally_read(self):
         a, b = self.chip.tally_count(0), self.chip.tally_count(1)

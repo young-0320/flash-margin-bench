@@ -46,6 +46,16 @@ def test_spi_dead_halts_and_calls_human():
     assert r.chip.worn_cycles == 0
 
 
+def test_tally_copies_far_apart_calls_human():
+    """§8.2 — 2벌 차이가 1바이트를 넘으면 정상 차단으로 설명되지 않는다."""
+    info = me.ResumeInfo(tally_a=300, tally_b=100, mismatch=True,
+                         next_byte=0xFF, write_ok=True)
+    assert hs.decide_resume(info, 350)[0] == hs.HALT_CALL_HUMAN
+    near = me.ResumeInfo(tally_a=200, tally_b=100, mismatch=True,
+                         next_byte=0xFF, write_ok=True)
+    assert hs.decide_resume(near, 250) == (hs.NORMAL, 250)   # 1바이트 차이는 병합
+
+
 def test_board_hang_raises():
     with pytest.raises(TimeoutError):
         H.run(faults={"board_hang"})
@@ -89,7 +99,7 @@ def test_every_fault_has_a_case():
     목록과 케이스가 어긋나면 **주입한다고 적어 두고 안 하는 항목**이 생긴다.
     """
     src = "".join(
-        (Path(__file__).parent / f).read_text()
+        (Path(__file__).parent / f).read_text(encoding="utf-8")
         for f in ("test_acceptance.py", "test_faults.py", "test_tb_catches_bugs.py"))
     missing = {f for f in me.FAULTS if f'"{f}"' not in src and f"'{f}'" not in src}
     assert not missing, f"케이스 없는 fault: {sorted(missing)}"
