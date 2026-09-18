@@ -5,7 +5,7 @@
 - **상정 중인 수정안** (2026-08-23 발의, 둘 다 미승인. 승인 전까지 본문은 v1 그대로다):
   - `amendments/1.base_sector.md` — BASE_SECTOR 읽기 창 위치 + UID 헤더 (인터페이스)
   - `amendments/2.n_reads_112.md` — N 100 → 112 (측정 조건). #1과 독립
-- 이 문서가 계약의 유일한 원본이다. 결정 과정(후보·장단점·상세 근거)은 `docs/log/young/4.interface_decision_records.md`.
+- 이 문서가 계약의 유일한 원본이다. 결정 과정(후보·장단점·상세 근거)은 `docs/log/young/3.interface_contract_v1.md` 「근거」.
 - 7/7 심야 core RTL 착수 중 추가 제안 4건(§2 `meas_timeout`·`cfg_err` 신호 / §3 CTRL 단일 명령 규칙 + STATUS bit6 `CMD_ERR` / R11 "유효 START" 조작적 정의 / §6 무효 ⑥)은 **7/8 본문 확정**(위 정정 참조 — 추인 절차 없음). 경위: `docs/log/young/6.core_rtl_implementation.md`
 - 경계: **core 블록**(`fpga/rtl/core/` — MMCM 위상 제어·AXI-Lite 레지스터) ↔ **flash 블록**(`fpga/rtl/flash/` — 패턴 생성·캡처·비교기·에러 로거·e_i 버퍼 + SPI 마스터/루프백 프런트엔드). 담당은 사람이 아니라 블록 기준 — 중간보고서까지 총력전이라 작업 배정은 유동(`docs/workflow/1.midterm_report_workflow.md`), 결과물이 기준.
 
@@ -123,7 +123,7 @@ e_i 버퍼: flash 소유 BRAM 1개 (2,048 × 16b). 읽기 하나가 끝날 때�
 | 4-2 | CSV 메타데이터    | 전 행 반복                                     | 행 하나만 잘려 나가도 출처 식별 + 기존 파서 무수정                       |
 | 4-3 | 미구현 열         | 열 생략                                        | 분석기 SKIP 경로가 이미 구현돼 있음 (3-4 채택으로 사실상 상시 존재)      |
 | 4-4 | 무효 런           | 파일명`_invalid` 접미                        | 필터 코드를 안 짜도 기본 동작이 안전                                     |
-| 16  | 클럭 플랜 (E)     | VCO 1,125MHz (M=9·D=1), f=25MHz, Δφ=15.87ps | 지터 최선 구성 — 계측기 자체 노이즈가 분해능 1ps 차이보다 지배적. f=25MHz는 O=45(1,125의 약수) 중 브링업 단계용 보수적 선택 — 안정화 후 O=25(45MHz)·O=15(75MHz) 상향 검토 (상세: `4.interface_decision_records.md` §5) |
+| 16  | 클럭 플랜 (E)     | VCO 1,125MHz (M=9·D=1), f=25MHz, Δφ=15.87ps | 지터 최선 구성 — 계측기 자체 노이즈가 분해능 1ps 차이보다 지배적. f=25MHz는 O=45(1,125의 약수) 중 브링업 단계용 보수적 선택 — 안정화 후 O=25(45MHz)·O=15(75MHz) 상향 검토 (상세: `docs/log/young/3.interface_contract_v1.md` §7) |
 | 17  | 행 정지 대응      | 워치독 + TIMEOUT (R10)                         | "done은 유한 시간 내 보장"을 하드웨어 성질로 — 무한 대기 자체를 소거    |
 | 18  | 설정 0·위반 거동 | 시끄러운 거부 CFG_ERR (R11)                    | 조용한 값 오염 차단 + R6가 산문에서 하드웨어 집행 규칙으로 승격          |
 | 19  | 측정 패턴 | PRBS-15 + 인덱스 시드 | 저전이 패턴은 욕조 벽이 안 생김 — "밖 BER 0.5 포화"라는 전 통계의 암묵 전제를 명시 사양화 |

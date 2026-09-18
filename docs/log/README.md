@@ -26,8 +26,7 @@
 | - | -------------------------------------------------------------------- | -------------------------------------------------- |
 | 1 | [몬테카를로·산출물 정책](young/1.monte_carlo_and_artifact_policy.md) | 산출물 정책의 출발점                               |
 | 2 | [중간보고서 스프린트](young/2.midterm_sprint_mode.md)                 | 게재 목록 확정                                     |
-| 3 | [인터페이스 계약 v1](young/3.interface_contract_v1.md)                | 결정 18건,`core`=계측제어 / `flash`=경로 분리  |
-| 4 | [계약 결정 기록](young/4.interface_decision_records.md)               | 위 18건의**후보·장단점·탈락 이유** (319줄) |
+| 3 | [인터페이스 계약 v1](young/3.interface_contract_v1.md)                | 결정 21건의**후보·장단점·탈락 이유**,`core`=계측제어 / `flash`=경로 분리 |
 | 5 | [욕조 곡선 스크립트 v1](young/5.bathtub_script_contract_upgrade.md)   | 게재 1번 소프트웨어 완성                           |
 
 ## 2기 — RTL 구현과 G0 루프백 (7/07 ~ 7/09)
@@ -52,8 +51,7 @@
 | 16 | [마모 벤치 사양 결정](young/16.wear_bench_spec_decisions.md) | 역할 재정의, 워크플로 5 신설                       |
 | 17 | [S-1 사양 확정](young/17.wear_bench_spec_finalization.md)    | **모든 수치의 채택 근거** (최장 로그, 597줄) |
 | 18 | [docs 구조 감사](young/18.docs_structure_audit.md)           | `spec/` 신설, 문서-리포 정합 복구                |
-| 19 | [S-3 G1 합격 기준 동결](young/19.g1_acceptance_freeze.md)    | 오라클 출처와 판정 3단                             |
-| 20 | [G1 기준 정밀화](young/20.g1_spec_hardening.md)              | 미비점 8건 해소, 커버리지 대조                     |
+| 19 | [S-3 G1 기준 동결과 개정 2](young/19.g1_acceptance_freeze.md) | 오라클 출처·판정 3단 · 미비점 8건 해소           |
 | 21 | [S-2 전수 측정 프로토콜](young/21.newchip_protocol.md)       | **되돌릴 수 없는 측정의 사전 등록**          |
 
 ## 4기 — 실칩 스윕 파이프라인 (9/07 ~ 9/08)
@@ -81,7 +79,7 @@
 | 38 | [로그 서식 규약](young/38.log_format_convention.md)                          | **로그가 담을 것과 담지 않을 것의 판별선** · 골격 다섯 · 전 34편 계측 |
 | 39 | [규약 집행 — 스킬과 검사기](young/39.log_convention_enforcement.md)         | 규범은 README, 집행은 스킬 · **산문 주의사항은 체크리스트가 아니다** |
 
-## 결번 — 31 · 35 · 37 
+## 결번 — 4 · 20 · 31 · 35 · 37 
 
 ---
 

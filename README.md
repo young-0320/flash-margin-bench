@@ -89,7 +89,7 @@ PASS/FAIL이라는 1비트짜리 답 대신, 단위가 있는 연속적인 물�
 | **박지민** — SPI/트랜잭션 서브시스템 오너 / DV           | flash RTL(SPI 마스터·패턴/타이머·에러 로거), 빌드 플로우(xdc·tcl), cocotb 검증 환경 + Winbond 공식 행동 모델 회귀(G1)                                     |
 | **장세은** — 실험 인프라·신뢰성 실험 오너                | DUT 보드, PS 펌웨어(UART 서버·PID·브링업 C), 실칩 브링업(G2 JEDEC ID 통신 성립·사전 쓰기), 실험 수행, 시각화·chipdb, 측정 데이터 스키마                  |
 
-설계 결정은 3인 합의로만 변경한다(인터페이스 계약 v1은 2026-07-08 동결 — 동결 자체는 예선 일정상 단독 판단이었다. 경위·정정: `docs/interface/contract.md`). 결정 이력은 `docs/log/young/4.interface_decision_records.md`에 근거·대안·기각 사유까지 남긴다.
+설계 결정은 3인 합의로만 변경한다(인터페이스 계약 v1은 2026-07-08 동결 — 동결 자체는 예선 일정상 단독 판단이었다. 경위·정정: `docs/interface/contract.md`). 결정 이력은 `docs/log/young/3.interface_contract_v1.md`에 근거·대안·기각 사유까지 남긴다.
 
 ## 디렉토리 안내
 
