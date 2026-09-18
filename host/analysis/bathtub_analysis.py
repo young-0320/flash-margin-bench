@@ -7,7 +7,8 @@
   phase_ps, n_reads, b_bits, bit_errors (+선택: reads_with_error, bit_err_sq_sum).
   나머지 계약 컬럼(phase_step, f_sclk_hz, dphi_ps, target, generated_at, git_rev)은
   있으면 검증에 활용(phase_step 연속성 = 결측 금지 규약, phase_ps=step×dphi_ps
-  재계산 대조 = UART 행 오염 검출), 없어도 동작한다.
+  재계산 대조 = UART 행 오염 검출), 없어도 동작한다. target/generated_at/f_sclk_hz 는
+  그림 제목에도 쓴다 — 없으면 파일명에서 뽑는다.
 동반 파일 <stem>_reads.csv (phase_step, read_idx, err_count — 읽기별 에러 수 원본,
 contract 결정 3-4 (A)) 가 옆에 있으면 자동 인식한다:
   - R8 무결성 검사: sum(e_i)==bit_errors, count(e_i>0)==reads_with_error,
@@ -44,6 +45,7 @@ import argparse
 import json
 import csv
 import math
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -99,7 +101,8 @@ def load_sweep(path):
     sq = None
     if "bit_err_sq_sum" in rows[0] and rows[0]["bit_err_sq_sum"] != "":
         sq = np.array([int(r["bit_err_sq_sum"]) for r in rows])
-    return phis, n, b, errs, rwe, sq
+    meta = {k: rows[0].get(k, "") for k in ("target", "generated_at", "f_sclk_hz")}
+    return phis, n, b, errs, rwe, sq, meta
 
 
 def load_reads_companion(path, n_steps, n, b, errs, rwe):
@@ -255,6 +258,24 @@ def analyze(phis, n, b, errs, sq):
     return out, ber, center, fits
 
 
+def plot_title(path, meta, n, b):
+    """그림 제목 2줄: 무엇을/언제 잰 것인가 + 측정 조건. 나머지(UID, 시각, 파일명)는 파일에 있다.
+
+    메타 컬럼(계약 §6)이 있으면 그것을, 없으면 파일명(sweep_<label>[_<uid>]_<stamp>)을 쓴다.
+    """
+    label = meta.get("target") or (path.stem.split("_")[1] if path.stem.startswith("sweep_")
+                                   else path.stem)
+    date = (meta.get("generated_at") or "")[:10]
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        m = re.search(r"(\d{4})(\d{2})(\d{2})T\d{6}Z", path.stem)
+        date = "-".join(m.groups()) if m else ""
+    head = " · ".join(x for x in (label, date) if x)
+    cond = f"N={n} reads × B={b} bit"
+    if meta.get("f_sclk_hz"):
+        cond = f"SCLK {float(meta['f_sclk_hz']) / 1e6:g} MHz · " + cond
+    return f"Bathtub — {head}\n{cond}"
+
+
 def make_plot(phis, ber, nb, fits, out_png, title, edges=None):
     import matplotlib
 
@@ -320,7 +341,7 @@ def selftest_csv(path, seed=7, wrap=False):
     """
     rng = np.random.default_rng(seed + (1 if wrap else 0))
     sigma_true, edge_l, edge_r = 80.0, 2000.0, 6000.0
-    n, b, dphi, f_sclk = 100, 2048, 15.87, 25_000_000
+    n, b, dphi, f_sclk = 112, 2048, 15.87, 25_000_000  # N=112: 수정안 #2
     phis = np.arange(0.0, 8000.0 + dphi, dphi)
     s = math.sqrt(2.0) * sigma_true
     p = np.clip(
@@ -353,7 +374,7 @@ def selftest_csv(path, seed=7, wrap=False):
 
 
 def run(path):
-    phis, n, b, errs, rwe, sq = load_sweep(path)
+    phis, n, b, errs, rwe, sq, meta = load_sweep(path)
     e = load_reads_companion(path, len(phis), n, b, errs, rwe)
     if sq is None and e is not None:
         sq = (e ** 2).sum(axis=1)
@@ -370,7 +391,7 @@ def run(path):
 
     png = make_plot(phis, ber, n * b, fits,
                     REPO / "build" / "plots" / f"bathtub_{path.stem}.png",
-                    f"Bathtub analysis: {path.name}  (N={n}, B={b})",
+                    plot_title(path, meta, n, b),
                     edges=out.get("_edges_adopted"))
 
     print(f"\n== 폭 3종 (병행 기록) ==")
