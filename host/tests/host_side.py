@@ -114,10 +114,16 @@ NORMAL, HOST_DIED, HALT_CALL_HUMAN, TALLY_LATE, UNCERTAIN = (
 
 
 def decide_resume(info, host_log_max):
-    """`d` 3구간 + `d >= 100` 분기. 「큰 쪽 채택」은 하지 않는다 (`[D41-20]`).
+    """2벌 병합(§8.2) → `d` 3구간 + `d >= 100` 분기(§8.3).
+
+    「큰 쪽 채택」은 하지 않는다 (`[D41-20]`) — **병합과 채택은 다른 일이다.**
+    병합은 2벌을 tally 값 하나로 합치는 것(눈금이 같다)이고, 채택은 tally 값과 호스트
+    로그 중 최종 사이클 수를 고르는 것(눈금이 다르다)이다.
 
     반환: (판정, 채택한 사이클 수)
     """
+    if info.mismatch and abs(info.tally_a - info.tally_b) > 100:
+        return HALT_CALL_HUMAN, None          # §8.2 — 정상 차단으로 설명되지 않는다
     tally = max(info.tally_a, info.tally_b) if info.mismatch else info.tally_a
     d = host_log_max - tally
     if d < 0:
