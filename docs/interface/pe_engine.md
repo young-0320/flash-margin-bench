@@ -38,7 +38,7 @@ tally 기록·판독 (§8)          ◄───────►   로그 수신�
 | 1 | `wear_start(base_sector, n_sectors, pattern, cycles)` | §5 · §6 ⑤ · §1 | 루프를 시작할 수 없다 |
 | 2 | `wear_status() → (cycle, state, defect_seen)` | §13 A1 · §6 ⑤ · §7 | 호스트가 스윕 시점을 모른다 |
 | 3 | `wear_resume() → (tally_a, tally_b, mismatch, next_tally_byte, write_ok)` | §13 B · §8.3 | B 를 판정할 수 없다 |
-| 4 | `blank_check(base_sector, n_sectors) → (erase_residual_bits, program_fail_bits, defect_addrs[], defect_addr_count, worst_page_idx, worst_page_bits)` | §7 · §9 B · §6 ④ · §8.3 4 · §13 A3 | 부분 소거를 못 잡는다 |
+| 4 | `blank_check(base_sector, n_sectors) → (erase_residual_bits, program_fail_bits, defect_addrs[], defect_addr_count, worst_page_idx, worst_page_bits)` | §7 · §9 B · §6 ④ · §8.3 5 · §13 A3 | 부분 소거를 못 잡는다 |
 | 5 | `tally_read() → (count_a, count_b, mismatch)` | §13 A4·**A5** · §8.2 · §8.3 2 | **A5 가 성립하지 않는다** |
 | 6 | `tally_dump() → 4,096B × 2벌` | §8.5 | `0x00`/`0xFF` 외의 값을 못 본다 |
 | 7 | `uid_read() → 16 hex` | §8.3 1 · §13 A7 | 중단 판단을 호스트가 못 한다 |

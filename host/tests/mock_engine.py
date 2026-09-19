@@ -46,7 +46,7 @@ BUGS = {
     "resume_picks_larger":"재개에서 엔진이 큰 쪽을 채택한다 (`[D41-20]` 이 폐기한 동작)",
     "drop_sector_rows":   "A 로그를 섹터별이 아니라 사이클당 1행만 뱉는다 (§9 A)",
     "uid_wrong":          "로그의 chip_id 가 등록부와 다르다 — 경계 7 은 맞는 값을 준다",
-    "no_reerase":         "부분 소거를 알고도 재소거하지 않는다 (§8.3 4)",
+    "no_reerase":         "부분 소거를 알고도 재소거하지 않는다 (§8.3 5)",
     "program_check_dead": "`program_fail_bits` 를 늘 0 으로 돌려준다 — 세는 경로가 죽었다",
 }
 
@@ -321,7 +321,7 @@ class MockEngine:
                           min(resid, PAGE_BYTES * 8))
 
     def reerase(self, base_sector, n_sectors):
-        """§8.3 4 의 재소거. **경계 7개에 이 수단이 없다 — 제안-9.**
+        """§8.3 5 의 재소거. **경계 7개에 이 수단이 없다 — 제안-9.**
 
         `wear_start` 는 §8.1 초기화가 안 돌면 거부하므로 재개 경로에서 부를 수 없고,
         `wear_resume()` 은 「채택하지 않는다」(제안-5)라 여기에 넣으면 모양이 어긋난다.
