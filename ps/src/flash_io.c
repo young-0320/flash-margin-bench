@@ -36,12 +36,28 @@ void uart_set_baud(void)
 
 int flash_spi_init(void)
 {
+    return flash_spi_init_prescale(64u);                   /* ≈2.6MHz, JEDEC 검증치 */
+}
+
+int flash_spi_init_prescale(u32 div)
+{
+    u8 opt;
+    switch (div) {                                          /* XSPIPS_CLK_PRESCALE_* 는 log2(div)-1 */
+    case 4u:   opt = XSPIPS_CLK_PRESCALE_4;   break;
+    case 8u:   opt = XSPIPS_CLK_PRESCALE_8;   break;
+    case 16u:  opt = XSPIPS_CLK_PRESCALE_16;  break;
+    case 32u:  opt = XSPIPS_CLK_PRESCALE_32;  break;
+    case 64u:  opt = XSPIPS_CLK_PRESCALE_64;  break;
+    case 128u: opt = XSPIPS_CLK_PRESCALE_128; break;
+    case 256u: opt = XSPIPS_CLK_PRESCALE_256; break;
+    default:   return -2;
+    }
     /* 2024.2 SDT: LookupConfig 는 BASEADDR 을 받는다 */
     XSpiPs_Config *cfg = XSpiPs_LookupConfig(XPAR_XSPIPS_0_BASEADDR);
     if (!cfg || XSpiPs_CfgInitialize(&spi, cfg, cfg->BaseAddress) != XST_SUCCESS)
         return -1;
     XSpiPs_SetOptions(&spi, XSPIPS_MASTER_OPTION | XSPIPS_FORCE_SSELECT_OPTION);
-    XSpiPs_SetClkPrescaler(&spi, XSPIPS_CLK_PRESCALE_64);   /* ≈2.6MHz, JEDEC 검증치 */
+    XSpiPs_SetClkPrescaler(&spi, opt);
     XSpiPs_SetSlaveSelect(&spi, 0);
     return 0;
 }

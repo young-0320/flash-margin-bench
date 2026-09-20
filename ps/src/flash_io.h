@@ -28,6 +28,12 @@ void uart_set_baud(void);
 /* PS SPI0 초기화 + 프리스케일러(≈2.6MHz). 0=성공, 비영=실패 */
 int  flash_spi_init(void);
 
+/* 앱별 프리스케일러 진입점 (로그 44 [U44-7] — 값은 실칩 실측으로 사람이 고른다).
+   div 는 분주비 4·8·16·32·64·128·256 (166.67MHz 기준 8→20.8MHz, 16→10.4MHz, 64→2.6MHz).
+   flash_spi_init() 은 이것을 64 로 부른다 — flash_prep·flash_id 의 값은 그대로다.
+   0=성공, -1=SPI 초기화 실패, -2=허용되지 않는 분주비 */
+int  flash_spi_init_prescale(u32 div);
+
 /* 폴드 전송. 0=성공, -1=실패 (출력 없음 — 부르는 쪽이 찍는다) */
 int  flash_xfer(u8 *t, u8 *r, u32 len);
 
