@@ -28,17 +28,38 @@
  *
  * 주의: 실칩 스윕에서 B는 2,048비트(=1페이지) 고정 — B>2,048은 읽기가 페이지
  * 경계를 넘어 시드가 어긋나므로 무의미한 설정이다 (버스트당 시드 = 페이지 단위).
+ *
+ * 체크포인트 준비 모드 (2026-09-21, 로그 44 [D44-12] · 로그 45): 빌드 타임 define
+ * PREP_BASE_SECTOR·PREP_N_SECTORS 를 주면 그 범위(섹터 단위)만 소거·PRBS·검증한다.
+ * 주지 않으면 지금까지의 동작 그대로(0~127 전체 + 전역 blank 선판독) — 신품 조사 워크플로가
+ * "#PREP" 문구를 파싱하므로 기본 모드의 출력 문구는 한 글자도 바뀌지 않는다. 체크포인트
+ * 모드는 전역 선판독을 건너뛰고 "#PREP RANGE" 한 줄을 더 찍는다. 하드 가드(tally 512·1,536 +
+ * TB 전용 1,000~1,006)는 _Static_assert 라 겹치면 빌드가 깨진다. 대조군은 넣지 않는다 —
+ * 체크포인트 준비가 대조군을 지우고 다시 쓰는 것이 정상 동작이다 (S-1 §2.3·§5.2).
+ * PRBS 시드는 page & 0x3FFF 라 페이지 16,384 이상은 시드가 겹친다 — 여기 verify 는 같은
+ * 시드로 읽으니 통과하지만 스윕 쪽 시드 규약(수정안 #1)이 미정이라 정하지 않았다.
  */
 
 #include "flash_io.h"               /* UART·SPI0·JEDEC·UID 배관 (이 파일에서 옮겨 간 코드다) */
 #include "xil_printf.h"
 #include "xiltimer.h"               /* XTime_GetTime · COUNTS_PER_SECOND (2025.2 BSP는 xtime_l.h 대신 xiltimer) */
 
-#define N_PAGES     2048u           /* = R6 상한 — N_READS를 어디까지 올려도(계약 §5
-                                       레지스터 가변) 미준비 페이지가 없도록 전 범위
-                                       준비 (리뷰 wf_16617fb7 #7). 512KB, ~1분 */
 #define PAGE_BYTES  256u
 #define SECTOR      4096u
+#define SECTOR_PAGES (SECTOR / PAGE_BYTES)
+
+#ifdef PREP_BASE_SECTOR             /* 체크포인트 준비 모드 — 빌드 스크립트가 define 으로 준다 */
+#  ifndef PREP_N_SECTORS
+#    error "PREP_BASE_SECTOR 만 있고 PREP_N_SECTORS 가 없다"
+#  endif
+#  define PREP_CHECKPOINT 1
+#else                               /* 기본 모드 — 종전 동작·문구 그대로 */
+#  define PREP_BASE_SECTOR 0u
+#  define PREP_N_SECTORS   128u     /* 0~127 = 2,048페이지 = R6 상한 (리뷰 wf_16617fb7 #7). 512KB, ~1분 */
+#  define PREP_CHECKPOINT 0
+#endif
+#define PAGE0       ((u32)PREP_BASE_SECTOR * SECTOR_PAGES)
+#define N_PAGES     ((u32)PREP_N_SECTORS * SECTOR_PAGES)
 
 #define CMD_WREN    0x06
 #define CMD_RDSR1   0x05
@@ -55,7 +76,16 @@
 
 /* addr3()가 3바이트 주소라 페이지 32,768을 넘기면 상위 비트가 조용히 잘린다 — 빌드 타임에 차단 */
 _Static_assert(BLANK_PRE_PAGE0 + BLANK_PRE_PAGES <= CHIP_PAGES, "blank 범위가 칩을 넘는다");
-_Static_assert(N_PAGES <= CHIP_PAGES, "prep 범위가 칩을 넘는다");
+_Static_assert(PREP_N_SECTORS >= 1, "prep range is empty");
+_Static_assert(PAGE0 + N_PAGES <= CHIP_PAGES, "prep range exceeds the chip (32768 pages)");
+
+/* 하드 가드 — tally 512·1,536 (S-1 §2.3) + TB 전용 마모 영역 1,000~1,006 (S-4 §9).
+   [lo, hi] 가 [PREP_BASE_SECTOR, PREP_BASE_SECTOR+PREP_N_SECTORS) 와 겹치면 빌드가 깨진다.
+   메시지는 ASCII 다 — 컴파일러가 한글을 8진수로 풀어 써서 읽을 수 없다 */
+#define PREP_HITS(lo, hi) ((u32)PREP_BASE_SECTOR <= (u32)(hi) && (u32)(lo) < (u32)PREP_BASE_SECTOR + (u32)PREP_N_SECTORS)
+_Static_assert(!PREP_HITS(512, 512),   "prep range hits tally #1 (sector 512)");
+_Static_assert(!PREP_HITS(1536, 1536), "prep range hits tally #2 (sector 1536)");
+_Static_assert(!PREP_HITS(1000, 1006), "prep range hits the TB-only wear area (sectors 1000-1006)");
 
 static u8 tx[PAGE_BYTES + 4], rx[PAGE_BYTES + 4];
 
@@ -192,15 +222,20 @@ int main(void)
     xil_printf("\r\n");
 
     xil_printf("#PREP BEGIN n_pages=%u prbs15 seed={1,page}\r\n", N_PAGES);
-
-    /* 0c. 소거 전 전역 판독 — 출고 시점 결함 비트 (G-d 전반, 로그 30 §4.2). 판정 없음 */
+#if PREP_CHECKPOINT
+    xil_printf("#PREP RANGE sectors=%u-%u\r\n", (u32)PREP_BASE_SECTOR,
+               (u32)PREP_BASE_SECTOR + (u32)PREP_N_SECTORS - 1u);
+#else
+    /* 0c. 소거 전 전역 판독 — 출고 시점 결함 비트 (G-d 전반, 로그 30 §4.2). 판정 없음.
+       체크포인트 모드에서는 건너뛴다 — 신품 조사가 아니라 준비다 */
     if (blank_scan("pre", BLANK_PRE_PAGE0, BLANK_PRE_PAGES, BLANK_ADDR_CAP)) return 1;
+#endif
 
     /* 1. 대상 범위 섹터 지우기 — 섹터마다 SE 전송 완료~WIP 해제를 재서 즉시 출력 (G-b, 로그 30 §4.4).
        배열 없이 min/max/sum 스칼라만; 중앙값은 호스트가 낸다 */
-    u32 end = N_PAGES * PAGE_BYTES;
+    u32 begin = PAGE0 * PAGE_BYTES, end = (PAGE0 + N_PAGES) * PAGE_BYTES;
     u32 er_min = 0xFFFFFFFFu, er_max = 0, er_sum = 0, er_over = 0;
-    for (u32 a = 0; a < end; a += SECTOR) {
+    for (u32 a = begin; a < end; a += SECTOR) {
         if (wren()) return 1;
         tx[0] = CMD_SE; addr3(&tx[1], a);
         if (xfer(tx, rx, 4)) return 1;
@@ -216,16 +251,16 @@ int main(void)
         if (us > er_max) er_max = us;
         er_sum += us;
     }
-    xil_printf("#PREP erase done (%u sectors)\r\n", (end + SECTOR - 1) / SECTOR);
+    xil_printf("#PREP erase done (%u sectors)\r\n", (end - begin + SECTOR - 1) / SECTOR);
     xil_printf("#PREP ERASE SUMMARY n=%u min=%u max=%u mean=%u over400ms=%u\r\n",
-               end / SECTOR, er_min, er_max, er_sum / (end / SECTOR), er_over);
+               (end - begin) / SECTOR, er_min, er_max, er_sum / ((end - begin) / SECTOR), er_over);
 
     /* 1b. 소거 직후 판독 — 소거한 범위만 (G-d 후반, 로그 30 §4.3). 전역이면 안 지운 영역을
        "소거 잔여"로 세게 된다. 판정 없음 */
-    if (blank_scan("post", 0u, N_PAGES, BLANK_ADDR_CAP)) return 1;
+    if (blank_scan("post", PAGE0, N_PAGES, BLANK_ADDR_CAP)) return 1;
 
     /* 2. 페이지 프로그램: 페이지 p ← PRBS15(시드 {1, p}) */
-    for (u32 p = 0; p < N_PAGES; p++) {
+    for (u32 p = PAGE0; p < PAGE0 + N_PAGES; p++) {
         if (wren()) return 1;
         tx[0] = CMD_PP; addr3(&tx[1], p * PAGE_BYTES);
         prbs_load((u16)p);
@@ -236,7 +271,7 @@ int main(void)
 
     /* 3. read-back 전수 비교 — 실패 페이지·바이트 수를 시끄럽게 보고 */
     u32 bad_pages = 0, bad_bytes = 0;
-    for (u32 p = 0; p < N_PAGES; p++) {
+    for (u32 p = PAGE0; p < PAGE0 + N_PAGES; p++) {
         tx[0] = CMD_READ; addr3(&tx[1], p * PAGE_BYTES);
         for (u32 i = 0; i < PAGE_BYTES; i++) tx[4 + i] = 0;
         if (xfer(tx, rx, PAGE_BYTES + 4)) return 1;
