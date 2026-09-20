@@ -9,12 +9,15 @@ uv run pytest host/tests/ -q
 
 | 파일 | 무엇 |
 | ---- | ---- |
-| `mock_engine.py` | 가짜 엔진 — `pe_engine.md` §2 경계 + 고장 주입 + **버그 주입** |
-| `host_side.py` | 호스트 쪽 — 행 문법·파서·재개 절차. **제안-1·2·3·4·5 의 실물** |
+| `host_side.py` | **호스트 쪽 문자열의 정본** — 명령·응답·행 문법(S-4 §5.2)·파서·재개 절차. mock 과 UART 어댑터가 같이 쓴다 |
+| `mock_engine.py` | 가짜 엔진 — `pe_engine.md` §2 경계 9개 + 명령 입구 `command(line)` + 고장 주입 + **버그 주입** |
 | `harness.py` | 채점표 본체. 검사를 테스트가 아닌 함수로 둔 이유는 아래 |
-| `test_acceptance.py` | §13 A·B·C · S-4 §4 경계 오용 · **T1·T3 집행** |
-| `test_faults.py` | S-4 §3 주입 고장 · §13 B (Hypothesis 임의 시점 차단) · **T2 집행** |
+| `test_acceptance.py` | §13 A·B·C · S-4 §2 J · S-4 §4 거부 11종 · HALT · R 행 · **T1·T3 집행** |
+| `test_faults.py` | S-4 §3 주입 고장 (명령 손상·중복 포함) · §13 B (Hypothesis 임의 시점 차단) · **T2 집행** |
 | `test_tb_catches_bugs.py` | **채점표가 실패하는지 확인한다** — S-4 §7 T6 (양방향) |
+| `test_sim.py` | **C 엔진**(`ps/src/flash_wear.c`)을 호스트 시뮬레이션(`ps/sim/`)으로 띄워 같은 채점표로 잰다. gcc 가 없으면 skip |
+| `test_run_wear.py` | 실행기 `host/run/run_wear.py` — 판정·로그 분리는 순수 함수로, accept·resume 은 sim 파이프로 끝까지 |
+| `conftest.py` | `sim_bin` fixture — `ps/sim/build_sim.sh` |
 
 ## 왜 버그를 심나
 
@@ -34,14 +37,15 @@ uv run pytest host/tests/ -q
 끊고, 전원을 다시 넣고(`resume_after`), §8.3 을 밟아야 잴 것이 생긴다. T6 가 같은 항목을
 정상 엔진과 버그 엔진에 **두 번** 부르므로 그 모양이 한 자리에 있어야 한다.
 
-## 경계가 Python 함수인 이유
+## 경계는 Python 함수이고, 그 위에 문자열이 있다
 
-제안-1(호출면 문법)이 닫히기 전에 UART 문자열을 고르면 그것은 발명이다.
-`pe_engine.md` §4 가 「층위와 무관하다」이므로 밖에서 보이는 모양만 맞췄고,
-UART 어댑터는 제안-1 이 닫힌 뒤에 붙인다.
+제안-1(호출면 문법)이 닫히기 전에 UART 문자열을 고르면 그것은 발명이라 mock 은 함수로 두었다.
+제안-1 이 닫힌 뒤(S-4 §5.2, 2026-09-21) **UART 어댑터**(`host/run/wear_link.py`)가 같은 메서드
+이름으로 실엔진의 명령 문자열을 만든다 — 채점표는 그대로이고 뒤에 붙는 것만 바뀐다. mock 의
+`command(line)` 은 같은 문자열을 받아 체크섬·`req` 를 두드리는 입구다. `reerase()` 는 경계 8 이다.
 
-`reerase()` 만 경계 밖에 있다. §8.3 5 의 재소거를 부를 수단이 경계 7개에 없어서 mock 이
-임시로 들고 있는 것이고, 어디에 붙일지는 **제안-9** 로 나간다.
+같은 `check_*` 가 mock 과 C 엔진(sim) 을 잰다. `test_sim.py` 에서 프로세스를 다시 띄우는 것이
+보드 리셋이고(fake NOR 의 상태 파일만 남는다), 엔진이 무상태인지를 J 와 복구 경로가 그것으로 본다.
 
 ## 실칩에서 못 보는 것 / 실칩에서만 보는 것
 
