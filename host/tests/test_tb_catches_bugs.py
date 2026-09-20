@@ -27,6 +27,7 @@ CASES = [
     ("no_checkpoint_due",   "C",  100, ()),
     ("resume_picks_larger", "resume", 100, ("tally_single",)),
     ("program_check_dead",  "probe", 100, ()),
+    ("tally_by_delta",      "J",   100, ()),        # 한 구간짜리 A1~A5 로는 안 드러난다
 ]
 
 

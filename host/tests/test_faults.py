@@ -17,7 +17,7 @@ PHASES = ["program", "erase", "tally", "between"]
 @settings(max_examples=200, deadline=None)
 @given(cut=st.integers(1, 100), phase=st.sampled_from(PHASES))
 def test_B_power_cut_any_moment(cut, phase):
-    """§13 B — **임의 시점** 전원 차단 → 재개. 두 조건을 한꺼번에 본다.
+    """§13 B — **임의 시점** 전원 차단 → 재개 → `wear_start(cycle=채택값)`. 두 조건을 한꺼번에 본다.
 
     시점을 나열하지 않고 성질을 적는다. `worn_cycles` 는 채점표가 볼 수 없는 정답이다.
     """
@@ -130,6 +130,46 @@ def test_buffer_overflow_shows_up_as_loss():
     assert r.link.dropped > 0
     with pytest.raises(AssertionError, match="A2"):
         H.check_A2(r)
+
+
+# ── §3.2 명령 채널 — 호스트→보드 (`[D44-14]`) ─────────────────────────────
+def inject_cmd(fault, line):
+    """명령 문자열에 주입한다 — 엔진이 아니라 채널이 고장난 것이다.
+
+    `cmd_corrupt`: 숫자 한 자리가 숫자로 뒤집힌다 (`delta=300` → `delta=900`처럼 접두·구분자는
+    멀쩡하다). `cmd_dup`: 응답 유실 뒤 재전송 — 같은 행이 두 번 도착한다.
+    """
+    if fault == "cmd_corrupt":
+        i = line.find("delta=") + len("delta=")
+        return [line[:i] + chr(ord(line[i]) ^ 0x01) + line[i + 1:]]
+    if fault == "cmd_dup":
+        return [line, line]
+    raise ValueError(fault)
+
+
+def test_cmd_corrupt_is_E_SUM_and_engine_untouched():
+    """숫자 한 자리가 뒤집힌 START — 체크포인트를 600 지나칠 명령이다. `E_SUM` 이어야 하고
+    `worn_cycles` 가 0 이어야 한다 (J · C)."""
+    eng = me.MockEngine(me.Chip(), me.Link())
+    line = hs.format_cmd("START", 1, base=0, n_sectors=7, pattern=0x00, cycle=0,
+                         delta=300, session=me.SESSION)
+    (bad,) = inject_cmd("cmd_corrupt", line)
+    assert "delta=200" in bad or "delta=300" not in bad
+    (resp,) = eng.command(bad)
+    assert hs.parse_response(resp).fields["code"] == "E_SUM"
+    assert eng.chip.worn_cycles == 0 and eng.wear_status()[1] == "idle"
+
+
+def test_cmd_dup_executes_once():
+    """같은 `req` 의 START 가 두 번 — 두 번째는 `E_DUP`, 마모는 한 번 (A1 · A5)."""
+    eng = me.MockEngine(me.Chip(), me.Link())
+    line = hs.format_cmd("START", 1, base=0, n_sectors=7, pattern=0x00, cycle=0,
+                         delta=100, session=me.SESSION)
+    codes = [hs.parse_response(eng.command(l)[0]) for l in inject_cmd("cmd_dup", line)]
+    assert codes[0].kind == "OK" and codes[1].fields["code"] == "E_DUP"
+    assert eng.chip.worn_cycles == 100
+    log = hs.WearLog(); log.feed(eng.link.drain())
+    H.check_A5(H.Result(eng.chip, eng.link, log, eng.cycle, eng.state, False, eng))
 
 
 def test_every_fault_has_a_case():
