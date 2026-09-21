@@ -4,7 +4,7 @@
 
 ```
 repo/flash-margin-bench/
-├── README.md           # 사람용 입구 — 프로젝트 정의·원리·3막 구조·폴더 지도
+├── README.md           # 사람용 입구 — 이 리포가 무엇인가(원리·결과·한계)와 「더 보려면」 포인터. 폴더 지도는 여기(§1)
 ├── CLAUDE.md           # 에이전트 행동 계약 — 규칙만, 설명은 README 참조
 ├── reproduce.py        # [한영웅] 빌드·검증 원샷 재현 + 채점 (build_reproduction.md §3·§5).
 │                       #   fpga·ps·sim·host 를 전부 가로지르므로 어느 하위 폴더에도 두지 않는다
@@ -15,20 +15,23 @@ repo/flash-margin-bench/
 │   │   └── flash/      # [팀원 A] SPI 마스터(더미 사이클), P/E 사이클러, 패턴/타이머/로거
 │   ├── constraints/    # [팀원 A] 핀 배치·타이밍 제약 (.xdc)
 │   └── scripts/        # [팀원 A] Vivado 프로젝트 재생성 tcl (build.tcl이 소스)
-├── ps/                 # [팀원 B] Zynq 베어메탈 C — UART 명령 서버, 온도 PID + vitis tcl
+├── ps/                 # Zynq 베어메탈 C + 빌드(vitis)·프로그래밍(xsct) 스크립트
+│   ├── src/            # g0_sweep(g3 겸용) · flash_prep · flash_id · flash_jedec · core_smoke · flash_wear(P/E 엔진, PS C) + flash_io(SPI 배관)·wear_plat_zynq(UART RX·타이머)
+│   └── sim/            # flash_wear 의 호스트 시뮬레이션 — 가짜 NOR + stdin/stdout 플랫폼 (host/tests 가 빌드해 채점)
 ├── host/               # 호스트 PC Python — 무거운 로직 전부, 코드량 최대 영역
 │   ├── capture/        # [한영웅] UART 스윕 캡처 → 계약 §6 CSV. 계약이 바뀌면 바뀐다
-│   ├── run/            # [한영웅] 실험 절차 래퍼 (run_sweep_chip). 절차가 바뀌면 바뀐다
+│   ├── run/            # [한영웅] 실험 절차 래퍼 — run_sweep_chip(측정) · run_wear(P/E 엔진, wear_link UART 어댑터) · chip_pe(이력)
 │   ├── analysis/       # [한영웅] 몬테카를로, 교정 곡선, 오차 정량화
 │   ├── tests/          # [한영웅] 블랙박스 TB (S-4) — pytest + Hypothesis, 가짜 P/E 엔진 동봉
 │   └── viz/            # [팀원 B] plot_bathtub/shmoo, chipdb
 ├── sim/                # cocotb 검증 — tb/ [팀원 A], golden/ [한영웅]
 ├── hw/                 # [팀원 B] DUT 보드 KiCad, BOM, 결선도, 열 이력 시료
 ├── docs/               # 문서가 1급 산출물 — 루트에 project_context.md · roles.md · chip_registry.md · CONTRIBUTING.md
+│   │                   #   commands.md(사람이 치는 명령의 정본) · project_pipeline.md(흐름·상태·이유) · build_reproduction.md(빌드 원전)
 │   ├── interface/      # [한영웅] 계약 — contract.md(레지스터 맵·UART·CSV 스키마) + amendments/ 수정안 + pe_engine.md(마모 엔진↔호스트 경계)
 │   ├── spec/           # [한영웅] 사양서·합격 기준 — 수신자 1인, 인수 기준으로 닫힘
 │   ├── concepts/       # [한영웅] 배경 개념 해설 (일반론 + 비유)
-│   ├── workflow/       # [한영웅] 국면별 실행 절차 — 게이트 지도·런북·재개 계획
+│   ├── workflow/       # [한영웅] 그날(국면)의 순서 — 게이트 지도·런북. 목록은 workflow/README.md, 명령 정본은 commands.md
 │   ├── log/young/      # 작업 일지 — 사람별 하위 폴더
 │   ├── ref/            # 외부 레퍼런스 PDF — 판번 기록 필수
 │   └── results/        # 게재 확정 산출물 승격처 — plots/ · data/ · captures/

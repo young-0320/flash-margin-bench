@@ -9,7 +9,8 @@
 
   | 층                              | 원전                                                                                  |
   | ------------------------------- | ------------------------------------------------------------------------------------- |
-  | 빌드 명령·기대 출력·검증 수치 | `docs/build_reproduction.md`                                                        |
+  | **사람이 치는 명령** (전부)     | `docs/commands.md` — 본 문서는 명령을 싣지 않고 그 절 번호를 가리킨다                 |
+  | 빌드 원명령·기대 출력·검증 수치 | `docs/build_reproduction.md`                                                        |
   | 측정 당일 절차·고장 판독표     | `docs/workflow/3.realchip_day_runbook.md` · `7.realchip_uid_verification_day.md` |
   | 게이트 정의·이름 규칙          | `docs/workflow/4.gate_map.md`                                                       |
   | CSV 스키마·무효 런 정의        | `docs/interface/contract.md` §6                                                    |
@@ -118,11 +119,12 @@ xsct ps/scripts/program_g0.tcl                                                  
 
 빌드 파이프라인과 별개로, RTL·호스트 코드를 만지면 먼저 여기를 통과시킨다.
 
-| 무엇                       | 명령                                                                                               | 기대                       |
-| -------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------- |
-| RTL 스모크 4종             | `sim/smoke/`에서 `iverilog` + `vvp` (build_reproduction §5.1)                               | 4/4 PASS                   |
-| 호스트 셀프테스트 3종      | `uv run python host/{analysis/bathtub_analysis,capture/chip_registry,run/chip_pe}.py --selftest` | 3/3 PASS                   |
-| G1 cocotb 회귀**[미구현]** | `sim/tb/` (지민) + `python3 sim/check_coverage.py --results sim/build/results.xml`             | 23/23 항목 · 전 항목 PASS |
+| 무엇                       | 어떻게 (명령은 `commands.md` §1)                                     | 기대                       |
+| -------------------------- | -------------------------------------------------------------------- | -------------------------- |
+| RTL 스모크 4종             | `reproduce.py` 의 `sim` 단계 (원명령 build_reproduction §5.1)        | 4/4 PASS                   |
+| 호스트 셀프테스트 3종      | `reproduce.py` 의 `selftest` 단계 (build_reproduction §5.2)          | 3/3 PASS                   |
+| 블랙박스 TB (P/E 엔진)     | `reproduce.py` 의 `tb` 단계 — mock·C 엔진 호스트 시뮬·실행기 (build_reproduction §5.3) | 전부 passed |
+| G1 cocotb 회귀**[미구현]** | `sim/tb/` (지민) + `sim/check_coverage.py`                           | 23/23 항목 · 전 항목 PASS |
 
 `check_coverage.py`는 **항목 누락만** 본다. 어서션이 그 항목을 실제로 재는지는 보지 않는다.
 
@@ -135,10 +137,7 @@ xsct ps/scripts/program_g0.tcl                                                  
 
 ### 2.1 칩 하나 = 한 명령
 
-```bash
-uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25
-```
-
+`run_sweep_chip.py --mode newchip --mhz 25` 한 줄이다 (명령·옵션·상황별은 `commands.md` §2).
 이 한 줄이 아래를 순서대로 한다 (`host/run/run_sweep_chip.py`, 로그 23·24).
 
 ```
@@ -155,6 +154,11 @@ uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25
 
 핵심은 **사람이 라벨을 입력하지 않는다**는 것이다. UID를 읽는 것은 세션 1(PS SPI)이고 CSV를
 만드는 것은 세션 2(PL)라, 사람이 중간에 끼면 UID가 파일에 닿지 못한다. 래퍼의 존재 이유가 이것이다.
+
+같은 이유로 **모드가 정한 것은 옵션으로 뒤집을 수 없다.** `sweep` 에 prep 을 켜는 스위치가 없고
+`newchip` 에 `--chip` 을 줄 수 없다. 앵커 재측정에서 옵션을 빠뜨려 칩을 한 번 더 마모시키던 사고를
+**표현 불가능**하게 만든 것이다. N(스텝당 읽기 횟수)도 옵션이 아니라 ELF 에 박힌 112 고정이다 —
+신품 측정과 파일럿의 비교가 같은 N 위에서만 성립하기 때문이다(수정안 #2).
 
 > S-2 §4의 `sweep_uart_capture.py --target chipNN` 표기는 **옛 명령**이다. 로그 24에서
 > `--loopback` / `--uid <16hex>`로 바뀌었고, 실칩의 정식 경로는 래퍼다 (build_reproduction §8).
@@ -225,7 +229,7 @@ N=112는 게이트가 아니라 조건 통일 항목이다(로그 29 §8.3·로�
 
 ---
 
-## 3. 주 루프 — 마모 체크포인트 루프 **[미구현]**
+## 3. 주 루프 — 마모 체크포인트 루프 **[엔진·실행기 구현 — 실칩 인수 대기, 체크포인트 편성 미구현]**
 
 여기서부터가 프로젝트의 본체다. 위 1단계가 x=0 점 하나를 찍는 것이라면, 주 루프는 **같은 칩을
 300k 사이클까지 태우며 x축을 만드는 것**이다.
@@ -253,14 +257,16 @@ N=112는 게이트가 아니라 조건 통일 항목이다(로그 29 §8.3·로�
 
 | 구성                 | 이름 (로그 29 §7)      | 상태                                                             |
 | -------------------- | ----------------------- | ---------------------------------------------------------------- |
-| 마모 엔진            | `flash_wear`          | **미구현.** 구현 층위(PS C vs PL RTL) 미확정 — 로그 29 D1 |
-| 호스트 실행기        | `run_wear.py`         | **미구현**                                                 |
-| 소거 시간 계측       | (prep 확장과 같은 코드) | **미구현** — G-b                                          |
-| 사이클 카운터 영속화 | tally 섹터 2벌          | **미구현**                                                 |
+| 마모 엔진            | `flash_wear`          | **구현** (`ps/src/flash_wear.c`, PS C). 실칩 P/E 는 아직 — 런북 12 |
+| 호스트 실행기        | `run_wear.py`         | **구현** — `accept`·`resume`·`tally-erase`·읽기. 조작은 `commands.md` §3 |
+| 소거 시간 계측       | A 행 `t_erase_us`·`t_program_us` | **구현** — 엔진이 매 사이클 섹터별로 낸다 |
+| 사이클 카운터 영속화 | tally 섹터 2벌          | **구현** — 100사이클마다 1바이트, `E_DIRTY` 자물쇠와 `tally_erase` 열쇠 |
+| 체크포인트 편성      | (prep → 스윕 → ELF 교체 → START) | **미구현** — 근접·원격 스윕이 RTL `BASE_SECTOR` 부재로 막혀 있다 (로그 44 `[U44-8]`) |
 
-확정된 경계는 **D2 — 반복은 PL, 판단은 PS**다. PL이 erase/program 발행·WIP 폴링·카운터·시간
-측정을 맡고, PS가 체크포인트 판정·tally 기록·resume 복원·로그 포맷·UID 확인을 맡는다.
-이 경계 덕분에 D1이 늦어도 **"판단" 쪽 + mock 엔진으로 90%를 먼저 짤 수 있다**(로그 29 §9).
+층위는 **PS C 로 확정**됐다 (로그 44 `[D44-8]`, 로그 29 의 「반복은 PL·판단은 PS」 D2 는 뒤집혔다).
+마모 경로에 PL 로직이 없고(g2 비트), 엔진은 무상태라 체크포인트마다의 리셋을 받아들인다
+(`[D44-11]`). 엔진의 논리는 블랙박스 TB(`host/tests/`)가 호스트 시뮬레이션으로 재고, PS 배관과
+칩의 물리는 실칩 인수(런북 12)가 잰다.
 
 ### 3.3 마모 경로의 산출물
 

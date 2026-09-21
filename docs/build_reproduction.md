@@ -14,18 +14,9 @@
 ## ⚡ 하나로 전부 — `reproduce.py`
 
 **이 문서의 §3(빌드)과 §5(검증)는 손으로 치지 않아도 된다.** 리포 최상위의 `reproduce.py` 가
-같은 명령을 같은 순서로 돌리고 **§3.6 기준으로 단계마다 채점**한다.
-
-```bash
-python3 reproduce.py                    # 전체 — sim selftest tb g0 g2 prep id wear g3-25 g3-45 g3-75 (약 10분)
-python3 reproduce.py --only g3-25 sim   # 골라서
-python3 reproduce.py --only tb wear     # P/E 엔진만 — TB 114 + flash_wear.elf (실칩 인수 전 최소, 약 30초)
-python3 reproduce.py --vitis-only       # §6 빠른 재빌드 — Vivado 생략, ELF 만 + 검증
-python3 reproduce.py --list             # 단계와 실제로 도는 명령
-```
-
-옵션은 위에 `--no-sim` · `--no-selftest`(tb 도 뺀다) · `--keep-going`(기본은 첫 실패에서 중단).
-`--only` 와 `--vitis-only` 는 함께 쓸 수 없다.
+같은 명령을 같은 순서로 돌리고 **§3.6 기준으로 단계마다 채점**한다. **사용법·옵션은
+`docs/commands.md` §1** — 여기에는 복사하지 않는다 (2026-09-21). 이 문서가 담는 것은 그 스크립트가
+대신 치는 원명령과 기대 산출물·검증 수치, 즉 `reproduce.py` 의 사양이다.
 
 **검증(sim·selftest·tb)이 맨 앞이다.** 합쳐 15초 남짓인 반면 빌드는 9분이라,
 RTL·엔진이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 — 「전체 흐름」의 순서 그대로다.

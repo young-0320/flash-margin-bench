@@ -1,3 +1,5 @@
+ 
+
 # flash-margin-bench
 
 **FPGA 기반 플래시 메모리 마진 계측 플랫폼**
@@ -77,69 +79,7 @@ PASS/FAIL이라는 1비트짜리 답 대신, 단위가 있는 연속적인 물�
 - 온도·전압 축은 이 시점에서 **의도적 제외** — 히터·레벨 시프터(전용 보드)가 전제라 일정 도박이 된다. 중간보고 이후 착수.
 
 **재현**: 위 수치·그림은 `.venv/bin/python host/analysis/repeatability_aggregate.py <5개 CSV>` 로 재생성된다.
-단 스윕 원본 CSV는 용량상 커밋 대상이 아니므로(`data/` 로컬 보관), clone 상태에서 되는 것은 **게재 요약본 열람**까지다 — 숫자를 다시 만들려면 실측이 필요하다. 측정부터의 전 절차는 `docs/workflow/4.gate_map.md`(게이트별 명령·기대 출력)와 `docs/workflow/3.realchip_day_runbook.md`.
-
-## 담당 역할
-
-3인 팀. 원칙은 **폴더 = 소유자**, 그리고 **RTL 작성자와 회귀 승인자를 분리**한다(자기 코드를 자기가 통과시키지 않는다).
-
-| 담당                                                            | 소유 영역                                                                                                                                                  |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **한영웅** — 실험 설계·데이터 오너 / 계측 엔진 아키텍트 | 코어 RTL(MMCM 위상 제어·스윕 FSM·AXI-Lite), 인터페이스 계약, golden model, 실험 설계(칩 배분·반복성·블라인드), 분석(욕조 판정·교정 곡선·오차 정량화) |
-| **박지민** — SPI/트랜잭션 서브시스템 오너 / DV           | flash RTL(SPI 마스터·패턴/타이머·에러 로거), 빌드 플로우(xdc·tcl), cocotb 검증 환경 + Winbond 공식 행동 모델 회귀(G1)                                     |
-| **장세은** — 실험 인프라·신뢰성 실험 오너                | DUT 보드, PS 펌웨어(UART 서버·PID·브링업 C), 실칩 브링업(G2 JEDEC ID 통신 성립·사전 쓰기), 실험 수행, 시각화·chipdb, 측정 데이터 스키마                  |
-
-설계 결정은 3인 합의로만 변경한다(인터페이스 계약 v1은 2026-07-08 동결 — 동결 자체는 예선 일정상 단독 판단이었다. 경위·정정: `docs/interface/contract.md`). 결정 이력은 `docs/log/young/3.interface_contract_v1.md`에 근거·대안·기각 사유까지 남긴다.
-
-## 디렉토리 안내
-
-```
-docs/                     문서가 1급 산출물
-  project_context.md      ← 프로젝트 전모: 문제 정의·범위·마일스톤 (가장 먼저 읽을 것)
-  project_pipeline.md     파이프라인 지도 — 어떤 스크립트가 무슨 산출물을 내고 다음 단계로 어떻게 잇히나
-  interface/contract.md   3인 병렬 개발의 인터페이스 계약 (동결) · amendments/ 수정안
-  spec/                   사양서·합격 기준 (수신자 1인, 인수 기준으로 닫힘)
-  concepts/               배경 개념 11편 (몬테카를로, MMCM 위상, CDC, PRBS, BER 스케일 …)
-  workflow/               게이트 지도 · 실칩의 날 런북 (명령·기대 출력·함정 판독표)
-  build_reproduction.md   빌드 재현 절차 — 산출물·순서·명령·검증 (Vivado 2025.2)
-  results/                게재 확정 산출물 — plots/ · data/(요약 CSV + 유래 md) · captures/
-  log/young/              작업 일지 15편 (무엇을 왜 그렇게 결정했는지)
-
-fpga/rtl/core/            계측 엔진 RTL — MMCM 위상 제어, 스윕 FSM, AXI-Lite  [한영웅]
-fpga/rtl/flash/           트랜잭션 계층 RTL — SPI 마스터, PRBS15, 에러 로거   [박지민]
-fpga/constraints/         핀 배정·CDC 제약 (xdc)
-fpga/scripts/             Vivado 재생성 tcl — .xpr이 아니라 tcl이 소스다
-
-ps/src/                   Zynq 베어메탈 C — g0_sweep, g3_sweep, flash_jedec, flash_prep
-ps/scripts/               빌드(vitis) · 프로그래밍(xsct) 스크립트
-
-host/capture/             UART 스윕 캡처 → CSV, 등록부 파서                        [한영웅]
-host/run/                 실험 절차 래퍼 — run_sweep_chip (prep→UID→스윕 ×N)     [한영웅]
-host/analysis/            욕조 곡선 판정, 반복성 집계, 몬테카를로 golden model  [한영웅]
-host/viz/                 시각화·chipdb
-
-sim/smoke/                블록 단위 스모크 TB (iverilog)
-
-reproduce.py              빌드·검증 원샷 재현 — build_reproduction.md §3·§5 를 순서대로 돌리고 §3.5 로 채점
-
-data/                     측정 원본 CSV 보관처 (커밋 금지 — 스키마·README만 추적)
-hw/                       DUT 보드 물리 설계물 (KiCad·BOM·결선도)
-```
-
-측정 원본은 커밋하지 않는다. 재현성은 원본 데이터가 아니라 **생성 스크립트 + 파라미터 + chip_id + git rev** 로 확보하며, 게재 수치의 근거가 된 요약 CSV에는 유래·재현 방법을 적은 동명 `.md`를 짝으로 둔다(`docs/results/data/`).
-
-## 진행 상태
-
-| 게이트 | 증명 대상                                 | 상태                                                                                              |
-| ------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| G0     | 측정기 자체가 동작한다 (루프백 곡선)      | 완료                                                                                              |
-| G1     | RTL이 스펙에 맞다 (cocotb + Winbond 모델) | 진행                                                                                              |
-| G2     | 보드↔칩 통신 성립 (JEDEC ID`EF 40 17`) | 완료                                                                                              |
-| G3     | 실칩 읽기 마진 곡선                       | 완료 (25/45/75MHz 완주)                                                                           |
-| G4     | 곡선이 노이즈가 아니다 (반복 5회)         | 완료 (±0.61ps)                                                                                   |
-| G5     | 마모 개시 허가 게이트                     | 이후 — 전수 신품 측정·노이즈 플로어·블라인드 사전 커밋 3조건 충족 전 어떤 칩도 마모하지 않는다 |
-
-다음: 온도 2점 윈도우 비교 → 전압 축·슈무 자동화 → NOR 종단 마모(윈도우 폭 + 소거 시간 이중 지표) → 교정 곡선(band) → 블라인드 수명 추정 오차 ±X% 산출.
+단 스윕 원본 CSV는 용량상 커밋 대상이 아니므로(`data/` 로컬 보관), clone 상태에서 되는 것은 **게재 요약본 열람**까지다 — 숫자를 다시 만들려면 실측이 필요하다. 명령은 `docs/commands.md`, 흐름과 상태는 `docs/project_pipeline.md`, 게이트별 기대 출력은 `docs/workflow/4.gate_map.md`.
 
 ## 고도화 방향 (PE 기준)
 
@@ -157,6 +97,20 @@ hw/                       DUT 보드 물리 설계물 (KiCad·BOM·결선도)
 축 1·2·4는 **현재 하드웨어만으로 완결된다.**
 
 ---
+
+## 더 보려면
+
+| 무엇 | 어디 |
+| ---- | ---- |
+| 사람이 치는 명령 (빌드·실칩 측정·P/E 엔진·분석) | `docs/commands.md` |
+| 무엇이 무엇으로 이어지고 어디까지 됐나 | `docs/project_pipeline.md` · 게이트별 기대 출력 `docs/workflow/4.gate_map.md` |
+| 폴더 구조·환경·git 규칙 | `docs/CONTRIBUTING.md` |
+| 역할 분담 | `docs/roles.md` |
+| 그날의 순서 (워크플로·런북) | `docs/workflow/README.md` |
+| 왜 그렇게 정했나 (작업 로그) | `docs/log/README.md` |
+| 빌드 산출물·검증 수치의 원전 | `docs/build_reproduction.md` |
+| 사양·인수 기준 | `docs/spec/` · 인터페이스 계약 `docs/interface/` |
+| 게재 확정 산출물 | `docs/results/` |
 
 ## 라이선스
 
