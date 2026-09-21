@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """reproduce.py — docs/build_reproduction.md §3(빌드)·§5(검증)를 순서대로 돌리고 채점한다.
 
-실행:  python3 reproduce.py                 # 전체: sim selftest g0 g2 prep id g3-25 g3-45 g3-75
+실행:  python3 reproduce.py                 # 전체: sim selftest tb g0 g2 prep id wear g3-25 g3-45 g3-75
        python3 reproduce.py --only g3-25 sim
+       python3 reproduce.py --only tb wear   # P/E 엔진만 — TB 114 + flash_wear.elf (실칩 인수 전 최소)
        python3 reproduce.py --vitis-only     # §6 빠른 재빌드 — Vivado 생략, 검증 + ELF만
        python3 reproduce.py --list
        (Windows 는 `python reproduce.py` — 셸에 기대지 않으므로 cmd/PowerShell 어디서든 같다.
         Vivado/Vitis 는 settings64.bat 를 먼저 돌려 PATH·XILINX_VIVADO 를 잡아둘 것)
 
-채점(§3.5): 단계마다 ① 명령 종료 코드 ② 로그의 완료 문구 ③ 산출물이 단계 시작 이후에 생겼는지
+채점(§3.6): 단계마다 ① 명령 종료 코드 ② 로그의 완료 문구 ③ 산출물이 단계 시작 이후에 생겼는지
 ④ (Vivado) 타이밍 리포트 "constraints are met" ⑤ (Vivado) WNS/WHS·LUT/FF 기준표 대조 — ⑤ 불일치는 WARN.
-여기에 ⑥ 빌드 파라미터(g3 의 steps·n_reads)가 로그에 찍힌 값과 맞는지 — ③ mtime 은 "다시 구웠다"만 말한다.
+여기에 ⑥ 빌드 파라미터(g3 의 steps·n_reads, wear 의 git_rev)가 로그에 찍힌 값과 맞는지 — ③ mtime 은 "다시 구웠다"만 말한다.
 ① 만으로는 판정하지 않는다 — vitis -s 는 실패해도 0 을 돌려줄 수 있다.
 
 백업: 단계 시작 전에 그 단계의 산출물(ELF·XSA·bit)만 build/_prev/<단계>/ 로 복사한다 (직전 1세대).
@@ -33,8 +34,11 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent
 B = REPO / "build"
 PREV = B / "_prev"
+# 체크아웃된 커밋 — wear ELF 의 H 행 git_rev 가 이것과 같아야 한다 (⑥). 없으면 검사를 건너뛴다
+GIT_REV = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
+                         capture_output=True, text=True).stdout.strip()
 
-# §3.5 기준값 (영웅 PC, 2026-09-14 23:06). 다르면 실패가 아니라 WARN + 기록.
+# §3.6 기준값 (영웅 PC, 2026-09-14 23:06). 다르면 실패가 아니라 WARN + 기록.
 BASELINE = {                       # step: (WNS, WHS, LUTs, Registers)
     "g0":    (29.811, 0.096, 900, 1013),
     "g3-25": (5.366, 0.111, 912, 1035),
@@ -82,7 +86,8 @@ STEPS = {
     "g2": dict(cmd=vivado("build_g2_jedec.tcl"), done="== done:",
                artifacts=["build/vivado_g2/g2_jedec.xsa", "build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper.bit"],
                rpt="build/vivado_g2/g2_jedec.runs/impl_1/g2_wrapper", tools=["vivado"]),
-    "prep": dict(cmd=vitis("build_flash_prep.py"), done="== done:",
+    # 완료 문구는 2026-09-21 체크포인트 모드(769e80d)부터 범위를 찍는다 — 기본 0~127 이 맞는지도 ⑥ 으로 본다
+    "prep": dict(cmd=vitis("build_flash_prep.py"), done="== done (default 0~127):",
                  artifacts=["build/vitis_prep/flash_prep/build/flash_prep.elf"], tools=["vitis"]),
     "sim": dict(cmd=[c for tb in (("tb_core_smoke", "core"), ("tb_flash_smoke", "flash"),
                                   ("tb_flash_spi_smoke", "flash"), ("tb_g0_smoke", "core", "flash"))
@@ -101,6 +106,14 @@ STEPS = {
                   artifacts=["build/vitis_smoke/core_smoke/build/core_smoke.elf"], tools=["vitis"]),
     "id": dict(cmd=vitis("build_flash_id.py"), done="== done:",
                artifacts=["build/vitis_id/flash_id/build/flash_id.elf"], tools=["vitis"]),
+    # P/E 엔진 (워크플로 12). g2 XSA 소비. H 행에 박히는 git_rev 가 체크아웃과 같은지를 ⑥ 으로 본다 —
+    # 커밋 전에 구운 ELF 를 실칩에 올리면 시험 기록의 신원이 한 커밋 어긋난다. 프리스케일러는 기본 64
+    "wear": dict(cmd=vitis("build_flash_wear.py"), done="== done (git_rev",
+                 expect=[f"== done (git_rev {GIT_REV}, spi prescale 64 (default))"] if GIT_REV else [],
+                 artifacts=["build/vitis_wear/flash_wear/build/flash_wear.elf"], tools=["vitis"]),
+    # 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬레이션(gcc) + 실행기. gcc 가 없으면 sim 케이스가
+    # skip 되고 test_gcc_absent_is_reported_not_hidden 이 FAIL 한다 — 그 실패가 의도다
+    "tb": dict(cmd=["uv", "run", "pytest", "host/tests", "-q"], done=" passed", tools=["uv", "gcc"]),
     # §6 빠른 재빌드 — ELF 만 (XSA 는 있는 것을 쓴다). --vitis-only 가 고른다
     "g0e": dict(cmd=vitis("build_g0_sweep.py"), done="== done:", default=False,
                 artifacts=["build/vitis/g0_sweep/build/g0_sweep.elf",
@@ -124,8 +137,9 @@ for m in ("25", "45", "75"):
 # 스모크 5초로 알 수 있는 것을 Vivado 16분 태우고 알게 된다 (문서 "RTL을 바꾸면 검증 루프부터")
 # id 는 g2 XSA 를 쓰므로 g2 뒤, prep 옆이다. --mode sweep 이 이 ELF 를 요구하므로 선택이 아니다 —
 # 빠뜨리면 "빌드는 8/8 PASS 인데 보드 앞에서 측정을 못 하는" 상태가 된다 (17초)
-FULL = ["sim", "selftest", "g0", "g2", "prep", "id", "g3-25", "g3-45", "g3-75"]
-VITIS_ONLY = ["sim", "selftest", "g0e", "prep", "id", "g3e-25", "g3e-45", "g3e-75"]
+# tb 는 11초. wear 는 id 옆 — 같은 g2 XSA 를 쓰고, 실칩 P/E 인수(워크플로 12)가 이 ELF 를 요구한다
+FULL = ["sim", "selftest", "tb", "g0", "g2", "prep", "id", "wear", "g3-25", "g3-45", "g3-75"]
+VITIS_ONLY = ["sim", "selftest", "tb", "g0e", "prep", "id", "wear", "g3e-25", "g3e-45", "g3e-75"]
 
 
 def backup(name, st):
@@ -148,7 +162,7 @@ def backup(name, st):
 
 
 def grade_vivado(name, rpt):
-    """§3.5: 타이밍 충족(실패) + 수치 기준표(경고). 반환 (fail_msgs, warn_msgs, note)."""
+    """§3.6: 타이밍 충족(실패) + 수치 기준표(경고). 반환 (fail_msgs, warn_msgs, note)."""
     t = REPO / f"{rpt}_timing_summary_routed.rpt"
     u = REPO / f"{rpt}_utilization_placed.rpt"
     if not t.exists():
@@ -282,7 +296,7 @@ def main():
     if args.no_sim:
         steps = [s for s in steps if s != "sim"]
     if args.no_selftest:
-        steps = [s for s in steps if s != "selftest"]
+        steps = [s for s in steps if s not in ("selftest", "tb")]
     if not steps:                                 # 빈 목록을 성공으로 끝내지 않는다 — 아무것도 안 돌고
         sys.exit("실행할 단계가 없다 — --only 와 --no-* 가 서로를 지웠다")   # 초록이 뜨는 것이 최악이다
 
@@ -291,7 +305,7 @@ def main():
     missing = [t for t in need if shutil.which(t) is None]
     if missing:
         sys.exit(f"PATH 에 없음: {missing}  (Vivado/Vitis 는 settings64.sh — Windows 는 settings64.bat, "
-                 f"iverilog 는 apt, uv 는 §1)")
+                 f"iverilog·gcc 는 apt, uv 는 §1)")
     if any("vivado" in STEPS[s]["tools"] for s in steps) and not os.environ.get("XILINX_VIVADO"):
         print("경고: XILINX_VIVADO 미설정 — tcl 이 PATH 의 vitis 로 대체한다", file=sys.stderr)
 

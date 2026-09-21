@@ -14,38 +14,40 @@
 ## ⚡ 하나로 전부 — `reproduce.py`
 
 **이 문서의 §3(빌드)과 §5(검증)는 손으로 치지 않아도 된다.** 리포 최상위의 `reproduce.py` 가
-같은 명령을 같은 순서로 돌리고 **§3.5 기준으로 단계마다 채점**한다.
+같은 명령을 같은 순서로 돌리고 **§3.6 기준으로 단계마다 채점**한다.
 
 ```bash
-python3 reproduce.py                    # 전체 — sim selftest g0 g2 prep id g3-25 g3-45 g3-75 (약 9분 — 2026-09-16 실측)
+python3 reproduce.py                    # 전체 — sim selftest tb g0 g2 prep id wear g3-25 g3-45 g3-75 (약 10분)
 python3 reproduce.py --only g3-25 sim   # 골라서
+python3 reproduce.py --only tb wear     # P/E 엔진만 — TB 114 + flash_wear.elf (실칩 인수 전 최소, 약 30초)
 python3 reproduce.py --vitis-only       # §6 빠른 재빌드 — Vivado 생략, ELF 만 + 검증
 python3 reproduce.py --list             # 단계와 실제로 도는 명령
 ```
 
-옵션은 위 넷에 `--no-sim` · `--no-selftest` · `--keep-going`(기본은 첫 실패에서 중단).
+옵션은 위에 `--no-sim` · `--no-selftest`(tb 도 뺀다) · `--keep-going`(기본은 첫 실패에서 중단).
 `--only` 와 `--vitis-only` 는 함께 쓸 수 없다.
 
-**검증(sim·selftest)이 맨 앞이다.** 합쳐 10초도 안 걸리는 반면 빌드는 9분이라,
-RTL 이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 — 「전체 흐름」의 순서 그대로다.
+**검증(sim·selftest·tb)이 맨 앞이다.** 합쳐 15초 남짓인 반면 빌드는 9분이라,
+RTL·엔진이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 — 「전체 흐름」의 순서 그대로다.
 
 **채점이 요점이다. 종료 코드 하나로 판정하지 않는다** — `vitis -s` 는 빌드가 깨져도 0 을 돌려준다.
 
 | 검사                                               | 잡는 실패                                                                                                   |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | ① 종료 코드                                       | 명시적 실패                                                                                                 |
-| ② 로그의 완료 문구 (횟수까지)                     | 조용한 실패 — 시뮬`PASS` ×4, 셀프테스트 `selftest PASS` ×2                                           |
+| ② 로그의 완료 문구 (횟수까지)                     | 조용한 실패 — 시뮬`PASS` ×4, 셀프테스트 `selftest PASS` ×2, TB `N passed`                              |
 | ③ 산출물이**이번 실행 이후에** 생겼는지     | **옛 산출물이 남아 성공처럼 보이는 것** (2026-09-15 에 45·75MHz ELF 가 구형인 채 세대가 섞였던 유형) |
 | ④ (Vivado) 타이밍 충족 문구                       | 타이밍 위반 비트로 측정하는 것                                                                              |
-| ⑤ (Vivado) WNS/WHS·LUT/FF 를 §3.5 기준표와 대조 | 배치가 달라진 것 →**FAIL 이 아니라 WARN**                                                            |
+| ⑤ (Vivado) WNS/WHS·LUT/FF 를 §3.6 기준표와 대조 | 배치가 달라진 것 →**FAIL 이 아니라 WARN**                                                            |
 | ⑥ (g3) 빌드 파라미터 — 로그의 `== done (<mhz>MHz, steps=…, n_reads=112)` 대조 | **무엇으로 구웠는지** — ③은 "다시 구웠다"만 말한다. 2026-09-15 에 45·75MHz ELF 가 N=100 인 채 남아 세대가 섞였던 유형 |
+| ⑥ (wear) `== done (git_rev <HEAD>, spi prescale 64 (default))` 대조 | **어느 커밋의 엔진인지** — H 행 `git_rev` 가 시험 기록의 신원이다. 2026-09-21 에 커밋 직전에 구운 ELF 가 한 커밋 전 rev 를 품고 있던 유형 |
 
 - 로그: `build/logs/reproduce_<UTC>/<단계>.log` + `summary.txt` (각 로그 첫 줄에 실제 명령과 `cwd`)
 - 백업: 단계 시작 전 그 단계의 산출물만 `build/_prev/<단계>/` 에 **직전 1세대**. Vitis 빌드
   스크립트가 워크스페이스를 통째로 지우므로 컴파일이 깨지면 옛 ELF 까지 잃는다. **복원은 사람이 한다**
 - **범위**: §3 · §5 · §6. **§4(보드 굽기)는 하지 않는다** — 보드·칩이 필요한 행위는 런북의 몫이다.
   §8 의 PAY_LEAD 보험 비트도 범위 밖이라 그것만은 §8 의 명령을 직접 친다
-- 설계 경위와 미결은 `docs/log/young/32.reproduce_script.md`
+- 설계 경위와 미결은 `docs/log/young/32.reproduce_script.md`, Windows 대응은 로그 33, tb·wear 단계 추가는 2026-09-21
 
 아래 §1\~§8 은 **각 단계를 손으로 칠 때의 원전**이자 이 스크립트가 무엇을 하는지의 근거다.
 스크립트와 문서가 어긋나면 **문서가 옳고 스크립트를 고친다.**
@@ -60,6 +62,7 @@ RTL 이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 — 「전
 [검증 루프 — 보드 불필요]
 sim/smoke/  iverilog 스모크 TB 4개 (core · flash · spi · g0)   → 전부 PASS
 host/       파이썬 셀프테스트 3개 (분석기 · 등록부 · P/E 이력) → 전부 PASS
+host/tests/ 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬(gcc) + 실행기 → 114 passed
 sim/tb/     cocotb + Winbond 모델 회귀 = G1 (박지민, 구축 중)   → 기준 docs/spec/s3.g1_test_plan.md
 
 [빌드·측정 루프 — 보드 필요]
@@ -68,6 +71,7 @@ ps/scripts/*.py     →  build/vitis*/    ELF              (vitis -s, XSA 소비
 ps/scripts/*.tcl    →  보드              JTAG 프로그래밍  (xsct)
 host/capture/       →  build/data/      CSV              (UART 수신)
 host/analysis/      →  build/plots/     욕조 곡선 · 폭    (판정)
+host/run/run_wear.py→  build/logs/wear/ P/E 시험 verdict  (xsct + UART, 워크플로 12)
 ```
 
 RTL을 바꾸면 검증 루프부터. 측정만 재현하려면 빌드·측정 루프만 돌면 된다. **g1 빌드는 없다** —
@@ -83,11 +87,13 @@ G1은 시뮬레이션 게이트라 비트스트림·ELF를 만들지 않는다.
    2. [g2 — 실칩 JEDEC 브링업 비트](#32-g2--실칩-jedec-브링업-비트) — bit·XSA
    3. [prep — 사전 쓰기·UID 앱](#33-prep--사전-쓰기uid-앱) — ELF
    4. [g3 — 실칩 스윕 계측기 (클럭별)](#34-g3--실칩-스윕-계측기-클럭별) — ×3 클럭
-   5. [빌드 확인](#35-빌드-확인) — 존재·타이밍·기준값 대조
+   5. [wear — P/E 마모 엔진](#35-wear--pe-마모-엔진) — ELF, git_rev 신원
+   6. [빌드 확인](#36-빌드-확인) — 존재·타이밍·기준값 대조
 4. [산출물을 보드에 굽는 명령](#4-산출물을-보드에-굽는-명령)
 5. [검증 파이프라인](#5-검증-파이프라인) — 검증 루프 전체
    1. [RTL 스모크 시뮬레이션](#51-rtl-스모크-시뮬레이션)
    2. [호스트 셀프테스트](#52-호스트-셀프테스트)
+   3. [블랙박스 TB — P/E 엔진](#53-블랙박스-tb--pe-엔진)
 6. [빠른 재빌드](#6-빠른-재빌드) — C 앱만 바뀐 경우의 지름길
 7. [산출물 트리](#7-산출물-트리) — `build/` 트리
 8. [디버그·과거 흐름](#8-디버그과거-흐름) — 스모크 앱·보험 비트·옛 명령
@@ -115,7 +121,33 @@ PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 �
 | 호스트 OS    | 흔한 UART 포트            | 비고                                                                                                                               |
 | ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Linux/Ubuntu | `/dev/ttyUSB1` (기본값) | 사용자를`dialout` 그룹에 추가 후 재로그인                                                                                        |
+| WSL2 Ubuntu  | `/dev/ttyUSB1` (기본값) | USB 는 기본으로 WSL 에 안 들어온다 — Windows 쪽에서 `usbipd` 로 붙인다 (아래). 붙은 뒤 `ls /dev/ttyUSB*` 로 확인. `dialout` 은 Linux 와 같다 |
 | Windows      | `COM3`, `COM4`, etc.  | FT2232의 A(JTAG)·B(UART) 둘 다 COM으로 잡힌다 — 장치 관리자에서 부모가 "USB Serial Converter**B**"인 쪽. `--port COM<N>` |
+
+**WSL2 에서 빌드·측정하는 경우** (Vivado/Vitis 를 WSL 안에 설치한 조원):
+
+- 리포는 **WSL 파일시스템**(`~/dev/…`)에 clone 한다. `/mnt/c/…` 에 두면 Vivado 가 수 배 느리고
+  실행 비트·mtime 이 Windows 쪽 규칙을 따라 `reproduce.py` 의 ③ 검사와 `build_sim.sh` 실행이 흔들린다
+- 보드 USB 는 usbipd-win 으로 WSL 에 넘긴다. `bind` 는 처음 한 번(관리자 PowerShell), 그 뒤의
+  `attach` 는 **WSL 터미널 안에서** `usbipd.exe` 로 쳐도 된다(usbipd-win 4 이상, Windows interop).
+  `--auto-attach` 를 붙여 두면 그 터미널이 살아 있는 동안 보드를 뺐다 꽂아도 다시 붙는다 — 측정
+  세션마다 한 번만 치면 된다. `reproduce.py` 에는 넣지 않는다 — 보드를 만지는 일은 §4 처럼
+  스크립트 범위 밖이고, BUSID 가 PC 마다 달라 설정 파일이 하나 더 생긴다
+
+```powershell
+winget install usbipd                     # Windows, 처음 한 번
+usbipd list                               # "USB Serial Converter A, USB Serial Converter B" 의 BUSID
+usbipd bind --busid <BUSID>               # 관리자 PowerShell, 처음 한 번
+```
+
+```bash
+usbipd.exe attach --wsl --busid <BUSID> --auto-attach &   # WSL 안, 측정 세션마다 한 번 (빼고 꽂아도 유지)
+ls /dev/ttyUSB*                                            # ttyUSB0(JTAG)·ttyUSB1(UART) 둘 다 보여야 한다
+```
+
+- 안 보이면 커널에 `ftdi_sio` 가 없는 것 — `uname -r` 이 5.10.60 미만이면 `wsl --update`.
+  JTAG(xsct) 도 같은 케이블이라 같이 넘어온다
+- 이 절차는 **2026-09-21 기준 미검증**이다 — 조원 PC 에서 처음 통과하면 이 줄을 `[검증 날짜]` 로 바꾼다
 
 ## 2. 전제: 도구와 버전
 
@@ -142,6 +174,7 @@ vivado -version | head -1        # vivado v2025.2
 | ------------------------------- | --------------------------------------------- |
 | `uv` + Python 3.13            | 캡처·분석·셀프테스트                        |
 | `iverilog` 11+ / `vvp`      | RTL 스모크 시뮬레이션                         |
+| `gcc` (apt `build-essential`) | 블랙박스 TB 의 C 엔진 호스트 시뮬레이션 (§5.3) |
 | `xsct` (Vitis 동봉)           | JTAG 프로그래밍                               |
 | Digilent Zybo Z7-20 board files | `fpga/boards/`에 벤더링 — 별도 설치 불필요 |
 
@@ -153,13 +186,15 @@ vivado -version | head -1        # vivado v2025.2
 ```
 g0  ─────────────────────────────►  루프백 계측기 (독립)
 g2  ──► flash_prep (g2 XSA 소비) ─►  실칩 사전 쓰기·UID
-    └─► flash_id   (같은 XSA)    ─►  신원 확인만 (P/E 불변 — sweep 모드 세션1)
+    ├─► flash_id   (같은 XSA)    ─►  신원 확인만 (P/E 불변 — sweep 모드 세션1)
+    └─► flash_wear (같은 XSA)    ─►  P/E 마모 엔진 (워크플로 12 실칩 인수가 요구)
 g3-25 ┐
 g3-45 ├──────────────────────────►  실칩 스윕 계측기 (클럭별, 서로 독립)
 g3-75 ┘
 ```
 
-루프백만 할 사람은 3.1만. 실칩을 할 사람은 3.1~3.4 전부 (g3는 우선 25만, 45·75는 클럭 사다리 때).
+루프백만 할 사람은 3.1만. 실칩 스윕을 할 사람은 3.1~3.4 (g3는 우선 25만, 45·75는 클럭 사다리 때).
+P/E 인수(워크플로 12)만 할 사람은 3.2 + 3.5 면 된다.
 
 **한 번에 돌리려면** `python3 reproduce.py` — 문서 최상단 「한 줄로 전부」 참조.
 
@@ -223,7 +258,7 @@ vitis -s ps/scripts/build_flash_prep.py
 build/vitis_prep/flash_prep/build/flash_prep.elf
 ```
 
-기대 출력: `== done: …/flash_prep.elf`. `[검증 2026-09-14]` 23:00 통과.
+기대 출력: `== done (default 0~127): …/flash_prep.elf` (체크포인트 모드면 `sectors <base>~<끝>`). `[검증 2026-09-21]` 02:22 통과.
 
 같은 XSA로 형제 앱 **`flash_id`** 도 만든다 — JEDEC과 UID만 읽고 **쓰기 명령을 내보내지
 않는다**(P/E 불변). `--mode sweep` 재측정의 세션 1이 이 ELF를 요구하므로 실칩 재측정을
@@ -260,15 +295,39 @@ build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf
 ```
 
 기대 출력: 클럭마다 `== timing: WNS=양수` · `== all done: bit=… elf=…`.
-`[검증 2026-09-14]` 25: 23:02 · 45: 23:04 · 75: 23:06 전부 통과 (수치는 §3.5 표).
+`[검증 2026-09-14]` 25: 23:02 · 45: 23:04 · 75: 23:06 전부 통과 (수치는 §3.6 표).
 
-### 3.5 빌드 확인
+### 3.5 wear — P/E 마모 엔진
+
+g2 XSA 에서 마모 엔진 앱을 만든다 (`docs/interface/pe_engine.md`, S-1 §6). 실칩 P/E 인수(워크플로 12)가
+이 ELF 를 요구한다.
+
+```bash
+vitis -s ps/scripts/build_flash_wear.py                          # 또는 python3 reproduce.py --only wear
+WEAR_SPI_PRESCALE=16 vitis -s ps/scripts/build_flash_wear.py     # 8·16·64 — 실측 뒤 사람이 고른다 (워크플로 12 §6)
+```
+
+입력은 `build/vivado_g2/g2_jedec.xsa` · `ps/src/flash_wear.c` · `wear_plat_zynq.c` · `flash_io.c`.
+`git rev-parse --short HEAD` 가 `build/wear_gen/wear_build.h` 로 들어가 엔진의 `#WEAR H` 행에 박힌다. 약 20초.
+
+기대 산출물:
+
+```text
+build/vitis_wear/flash_wear/build/flash_wear.elf
+```
+
+기대 출력: `== done (git_rev <HEAD>, spi prescale 64 (default)): …/flash_wear.elf`. **`git_rev` 가 지금
+체크아웃과 같아야 한다** — 커밋 전에 구우면 한 커밋 전 rev 가 박힌 채 실칩 기록에 남는다. `reproduce.py`
+는 이것을 ⑥ 으로 대조한다. `[검증 2026-09-21]` 02:18 통과 (git_rev ebc5be2).
+
+### 3.6 빌드 확인
 
 존재 + 타이밍:
 
 ```bash
 ls build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit build/vitis/g0_sweep/build/g0_sweep.elf \
    build/vivado_g2/g2_jedec.xsa build/vitis_prep/flash_prep/build/flash_prep.elf \
+   build/vitis_wear/flash_wear/build/flash_wear.elf \
    build/vivado_g3_25/g3_chip_25.runs/impl_1/g3_wrapper.bit build/vitis_g3_25/g3_sweep/build/g3_sweep.elf
 grep -L "All user specified timing constraints are met" build/vivado*/*.runs/impl_1/*_timing_summary_routed.rpt
 ```
@@ -314,6 +373,7 @@ done
 | 신원 확인만 (P/E 불변) | `xsct ps/scripts/program_g2.tcl build/vitis_id/flash_id/build/flash_id.elf`     | 같은 g2 bit + id elf                 |
 | 실칩 스윕             | `xsct ps/scripts/program_g3.tcl 25` (`45`/`75`, 보험 `25 pl4`)              | g3-<mhz></mhz> bit + elf             |
 | 실칩 전 과정 한 줄    | `uv run python host/run/run_sweep_chip.py --mhz 25`                               | 위 둘을 래퍼가 순서대로 호출         |
+| P/E 마모 엔진 (실칩)  | `uv run python host/run/run_wear.py accept --chip chip01 --cycle 0 --delta 100 --i-approve-real-pe` | g2 bit + wear elf — 실행기가 xsct 를 부른다. 절차·판독은 워크플로 12 |
 
 루프백 최소 확인 (점퍼 JE1↔JE2). 캡처를 **먼저** 켠다 — 첫 줄(BEGIN)부터 받아야 한다:
 
@@ -361,6 +421,26 @@ uv run python host/run/chip_pe.py --selftest
 
 기대 결과: 등록부·P/E 이력은 `selftest PASS`, 분석기는 셀프테스트 그림(`build/plots/bathtub_selftest_*.png`)과 체크리스트 PASS. `[검증 2026-09-14]` 3/3 통과.
 
+### 5.3 블랙박스 TB — P/E 엔진
+
+`docs/spec/s4.blackbox_tb.md` 의 채점표를 세 층으로 돌린다 — ① 가짜 엔진(mock) 채점과 「버그 심은 엔진을
+떨어뜨리는지」(T6), ② 같은 `flash_wear.c` 를 가짜 NOR 위에 gcc 로 올린 호스트 시뮬레이션을 UART 어댑터로
+채점, ③ 실행기 `run_wear.py` 의 accept·resume·status 를 시뮬레이션에 붙여 종단 확인. 보드 불필요.
+
+```bash
+uv run pytest host/tests/ -q            # 또는 python3 reproduce.py --only tb
+```
+
+기대 결과: `114 passed`. `[검증 2026-09-21]` 통과 (11초). **gcc 가 없으면** ② 가 skip 되고
+`test_gcc_absent_is_reported_not_hidden` 1개가 FAIL 한다 — 조용히 넘어가지 않게 둔 의도된 실패이니
+`build-essential` 을 깔고 다시 돌린다. Windows 네이티브는 ② 가 POSIX(`poll.h`) 라 지원하지 않는다 — WSL 로.
+
+시뮬레이션을 손으로 굴려 출력 모양을 익히려면 (P/E 없음, 결과는 `build/logs/wear/<session>/`):
+
+```bash
+uv run python host/run/run_wear.py accept --sim build/sim/flash_wear_sim --no-program
+```
+
 ## 6. 빠른 재빌드
 
 RTL·XDC는 그대로이고 `ps/src/*.c`만 바뀐 경우, Vivado를 다시 돌리지 않고 기존 XSA에서 ELF만
@@ -369,6 +449,7 @@ RTL·XDC는 그대로이고 `ps/src/*.c`만 바뀐 경우, Vivado를 다시 돌�
 ```bash
 vitis -s ps/scripts/build_g0_sweep.py                  # g0 스윕 앱   ← build/vivado/g0_loopback.xsa
 vitis -s ps/scripts/build_flash_prep.py                # prep 앱      ← build/vivado_g2/g2_jedec.xsa
+vitis -s ps/scripts/build_flash_wear.py                # 마모 엔진    ← 같은 g2 XSA (커밋 뒤에 굽는다 — §3.5)
 G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← build/vivado_g3_25/g3_chip_25.xsa
 ```
 
@@ -378,7 +459,7 @@ G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← bui
 
 RTL이 바뀌었으면 지름길이 없다 — 해당 tcl을 처음부터 (§3).
 
-래퍼로는 `python3 reproduce.py --vitis-only` (g0·prep·g3 ×3 ELF + §5 검증).
+래퍼로는 `python3 reproduce.py --vitis-only` (g0·prep·id·wear·g3 ×3 ELF + §5 검증).
 
 ## 7. 산출물 트리
 
@@ -389,11 +470,16 @@ build/
 ├── vivado_g2/              g2: g2_jedec.xsa, g2_jedec.runs/impl_1/g2_wrapper.bit
 ├── vitis_prep/             flash_prep/build/flash_prep.elf
 ├── vitis_id/               flash_id/build/flash_id.elf   (sweep 모드 세션1이 요구)
+├── vitis_wear/             flash_wear/build/flash_wear.elf   (P/E 인수 — 워크플로 12)
+├── wear_gen/               wear_build.h (git_rev — build_flash_wear.py 가 생성)
+├── vitis_prep_<base>_<n>/  (선택) prep 체크포인트 모드 — PREP_BASE=<base> PREP_N=<n> vitis -s …build_flash_prep.py (로그 45 [U45-3], reproduce.py 범위 밖)
+├── sim/                    flash_wear_sim — TB 의 C 엔진 호스트 시뮬레이션 (gcc, §5.3이 매번 다시 만든다)
 ├── vitis_jedec/            (선택) flash_jedec/build/flash_jedec.elf
 ├── vitis_smoke/            (선택) core_smoke/build/core_smoke.elf
 ├── vivado_g3_25/ 45/ 75/   g3: g3_chip_<mhz>.xsa, g3_chip_<mhz>.runs/impl_1/g3_wrapper.bit
 ├── vitis_g3_25/ 45/ 75/    g3: g3_sweep/build/g3_sweep.elf
 ├── data/                   측정 CSV·세션 로그 (빌드 산출물 아님 — 측정 때 생김)
+├── logs/                   reproduce_<UTC>/ (채점 로그) · wear/<session>/ (P/E 시험 verdict — 승격은 docs/results/)
 └── plots/                  분석 그림 (빌드 산출물 아님)
 ```
 
