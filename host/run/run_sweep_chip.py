@@ -188,12 +188,15 @@ def require_tty(why):
         raise Abort(f"{why} — stdin 이 tty 가 아니다. 사람이 해야 하는 단계다")
 
 
-def run_prep(ser, ses):
-    """세션 1. #PREP PASS + UID 가 있어야 돌아온다. 그 외 전부 중단."""
-    if not PREP_ELF.exists():
-        raise Abort(f"missing {PREP_ELF} — vitis -s ps/scripts/build_flash_prep.py 먼저")
+def run_prep(ser, ses, elf=None):
+    """세션 1. #PREP PASS + UID 가 있어야 돌아온다. 그 외 전부 중단.
+
+    elf 를 주면 그 ELF 로 — 마모 체크포인트가 범위 전용 prep(build/vitis_prep_<base>_<n>)을 부른다."""
+    elf = elf or PREP_ELF
+    if not elf.exists():
+        raise Abort(f"missing {elf} — vitis -s ps/scripts/build_flash_prep.py 먼저")
     ser.reset_input_buffer()               # rst -system 이전의 잔여물. 이후 쓰레기는 접두로 거른다
-    src = Drained(ser, run_xsct([PROGRAM_G2, PREP_ELF], ses,
+    src = Drained(ser, run_xsct([PROGRAM_G2, elf], ses,
                                 "세션1 프로그래밍 (g2_jedec + flash_prep)", ser=ser))
 
     uid = None
@@ -315,7 +318,8 @@ def main():
     g.add_argument("--reseat", action="store_true",
                    help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
     g.add_argument("--base-sector", type=int, default=0,
-                   help="수정안 #1 승인 시. 미승인이므로 0 만 허용")
+                   help="**읽는 창**의 위치 (수정안 #1). RTL 에 레지스터가 없어 0 만 허용 — 창은 "
+                        "페이지 0~111 = 섹터 0~6 에 고정이다. 태울 자리인 run_wear.py 의 --base-sector 와 다른 것")
     h = ap.add_argument_group("하드웨어")
     h.add_argument("--mhz", type=int, required=True, choices=(25, 45, 75),
                    help="필수 — 기계가 알 수 없는 값이다. 빠뜨리면 의도와 다른 조건으로 재고 나중에 안다")
