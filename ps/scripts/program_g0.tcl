@@ -15,7 +15,8 @@
 set script_dir [file dirname [file normalize [info script]]]
 set repo       [file normalize $script_dir/../..]
 # BUILD_DIR 환경변수로 산출물 폴더 선택 (기본 build). 재기준선 A/B용 — 워크플로 8 R:
-#   BUILD_DIR=build_2024.2 xsct ps/scripts/program_g0.tcl
+#   BUILD_DIR=<폴더> xsct ps/scripts/program_g0.tcl
+#   A/B 는 생략 결정, build_2024.2 는 2026-09-21 삭제 — 현재 쓰는 곳 없다
 set build      $repo/build
 if {[info exists env(BUILD_DIR)]} { set build $repo/$env(BUILD_DIR) }
 set bit        $build/vivado/g0_loopback.runs/impl_1/g0_wrapper.bit
