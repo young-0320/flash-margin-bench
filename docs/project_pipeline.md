@@ -359,7 +359,7 @@ UID + git rev**로 확보한다.
 | 포트가 안 열린다                              | miniterm과 캡처가 같은`/dev/ttyUSB1` | 동시 사용 불가                                          |
 | `phase_pos_mismatch` 거부                   | ELF만 재로드했다 (MMCM 위상이 남는다)  | `program_*.tcl` 전체 경로로 재실행 — 의도된 방어     |
 | 전 위상 BER≈0.51, e_i가 PRBS 0비트 수와 일치 | 사전 쓰기 없이 스윕                    | `flash_prep` PASS 먼저                                |
-| 전 위상 BER≈0.5 +`valid=1`                 | PAY_LEAD 어긋남 (칩 문제가 아니다)     | `--pl 4` 보험 비트                                    |
+| 전 위상 BER≈0.5 +`valid=1`                 | PAY_LEAD 어긋남 (칩 문제가 아니다)     | 보험 비트 빌드 후 `--pl 4`                            |
 | `요청 N=112 인데 ELF 는 n=100`              | `--n-reads`와 빌드가 따로 논다       | 빌드와 인자가 함께 가야 한다 (아래)                     |
 
 **현재 알려진 세대 불일치**: g3 25·45MHz ELF는 N=112 반영 완료, **75MHz는 아직 100**이다.

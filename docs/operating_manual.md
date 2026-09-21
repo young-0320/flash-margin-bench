@@ -97,7 +97,7 @@ uv run python host/run/run_sweep_chip.py --mode <newchip|sweep> --mhz <25|45|75>
 | `--chip NN` | 없음             | **재고 싶은 칩.** `2`·`02`·`chip02` 다 받는다. 주면 읽은 라벨과 대조해 어긋나면 중단. 생략하면 읽은 대로 간다 |
 | `--repeat N`    | 1                | 스윕 반복. 세션1 은 1회, 스윕만 N회                                                     |
 | `--reseat`      | 꺼짐             | 회차**사이**에 재장착 프롬프트 + UID 재확인. `--repeat 2` 이상에서만            |
-| `--pl {4,6}`    | 없음             | PAY_LEAD 보험 비트스트림. 전 위상 BER 0.5 가 나올 때(75MHz 임계)                        |
+| `--pl {4,6}`    | 없음             | PAY_LEAD 보험 비트스트림. 전 위상 BER 0.5 가 나올 때(75MHz 임계). 비트는 먼저 굽는다 (`-tclargs bit <mhz> <k>`) |
 | `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                    |
 | `--baud`        | 921600           | 2026-09-15 이전에 구운 ELF 는`115200`                                                 |
 | `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                            |
