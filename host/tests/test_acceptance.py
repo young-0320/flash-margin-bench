@@ -39,7 +39,7 @@ def test_score_table_covers_spec():
     assert "A6" not in H.SCORE, "A6 는 실칩 전용이다 (S-4 §2)"
 
 
-# ── S-4 §4 경계 오용 — 가짜 엔진 없이 직접 두드린다 (열한 줄, T3) ─────────
+# ── S-4 §4 경계 오용 — 가짜 엔진 없이 직접 두드린다 (열두 줄, T3) ─────────
 @pytest.mark.parametrize("code, kwargs", [
     ("E_NSECT0",        dict(base=0, n=0)),
     ("E_TALLY_OVERLAP", dict(base=510, n=7)),
@@ -205,14 +205,14 @@ def test_reject_priority_is_the_table_order():
 
 
 def test_every_reject_has_a_case():
-    """T3 집행 — §4 의 열한 줄과 거부 코드가 1:1 인가.
+    """T3 집행 — §4 의 열두 줄과 거부 코드가 1:1 인가.
 
     목록에만 있고 케이스가 없으면 **거부한다고 적어 두고 안 재는 줄**이 생긴다.
     """
     src = (Path(__file__).parent / "test_acceptance.py").read_text(encoding="utf-8")
     missing = {c for c in me.REJECTS if f'"{c}"' not in src}
     assert not missing, f"케이스 없는 거부 코드: {sorted(missing)}"
-    assert len(me.REJECTS) == 11
+    assert len(me.REJECTS) == 12
 
 
 # ── HALT · 이어 돌리기 · R 행 ──────────────────────────────────────────────
@@ -296,3 +296,10 @@ def test_command_strings_round_trip():
     log.feed("\n".join(out[1:]).encode())
     assert len(log.d) == 64 and {d["copy"] for d in log.d} == {0, 1}
     assert all(d["hex"] == "ff" * 128 for d in log.d)
+    line = hs.format_cmd("TALLY_ERASE", 3, uid=me.REGISTRY_UID)
+    assert hs.parse_cmd(line).args == {"uid": me.REGISTRY_UID}     # uid 는 int 로 새지 않는다
+    assert hs.parse_cmd(hs.format_cmd("TALLY_ERASE", 4, uid="1234567890123456")).args == {"uid": "1234567890123456"}
+    (rj,) = eng.command(hs.format_cmd("TALLY_ERASE", 5, uid="0000000000000000"))
+    assert hs.parse_response(rj).fields["code"] == "E_UID"
+    (ok,) = eng.command(hs.format_cmd("TALLY_ERASE", 6, uid=me.REGISTRY_UID))
+    assert hs.parse_response(ok).fields == dict(count_a=0, count_b=0, t_erase_us=2 * me.ERASE_US, clean=1)

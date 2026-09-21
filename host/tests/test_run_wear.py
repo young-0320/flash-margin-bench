@@ -24,20 +24,30 @@ def _mock_result(**kw):
     return r, r.engine.wear_status(), r.engine.tally_read(), r.engine.tally_dump(), r.engine.uid_read()
 
 
+def _probe(r):
+    return r.engine.blank_check(r.base, r.n_sectors)          # accept 가 멈춘 뒤 부르는 시험 버튼
+
+
 def test_judge_accept_passes_on_good_run():
     r, st, tally, dumps, uid = _mock_result()
-    v = rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID)
-    assert [i for i, _, _ in v] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "C"]
+    v = rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID, probe=_probe(r))
+    assert [i for i, _, _ in v] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "C", "probe"]
     assert all(ok for _, ok, _ in v), v
 
 
 @pytest.mark.parametrize("bug, item", [("undercount", "A1"), ("drop_sector_rows", "A2"),
                                        ("drop_b_row", "A3"), ("tally_single", "A5"),
-                                       ("uid_wrong", "A7")])
+                                       ("uid_wrong", "A7"), ("program_check_dead", "probe")])
 def test_judge_accept_fails_the_right_item(bug, item):
     r, st, tally, dumps, uid = _mock_result(bugs={bug})
-    failed = {i for i, ok, _ in rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID) if not ok}
+    failed = {i for i, ok, _ in rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID, probe=_probe(r)) if not ok}
     assert item in failed
+
+
+def test_judge_accept_probe_none_is_fail():
+    r, st, tally, dumps, uid = _mock_result()
+    v = dict((i, ok) for i, ok, _ in rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID, probe=None))
+    assert v["probe"] is False and v["C"] is True                  # BLANK 거부 = 확인 못 함 = FAIL
 
 
 def test_judge_accept_C_needs_checkpoint_due():
@@ -82,14 +92,44 @@ CHIP_PE_DOC = ("# 이력\n\n## 이력\n\n"
                "| 2026-07-08 | chip01 | (미확보) | 0~127 | 미상(≥1) | flash_prep | 소급 불가 |\n")
 
 
-def _run(args, tmp_path, sim_bin, extra_env=None):
+def _run(args, tmp_path, sim_bin, extra_env=None, stdin=""):
     pe = tmp_path / "chip_pe.md"
     if not pe.exists():
         pe.write_text(CHIP_PE_DOC)
     cmd = [sys.executable, str(RUN_WEAR), *args, "--sim", str(sim_bin), "--no-program",
            "--logdir", str(tmp_path / "logs"), "--chip-pe", str(pe), "--sim-state", str(tmp_path / "chip.bin")]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, input=stdin)
     return r, pe
+
+
+def test_tally_erase_needs_typed_uid_and_writes_ledger_first(sim_bin, tmp_path):
+    """같은 칩으로 0 부터 다시 — 자물쇠 셋 (UID 타이핑 · 장부 먼저 · 엔진의 idle/UID 대조)."""
+    r, pe = _run(["accept", "--session", "1758412900"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr                 # tally 에 1바이트가 남는다
+    rows_before = pe.read_text().count("tally erase")
+    # 빈 입력 · 틀린 UID → 지우지 않고 장부도 안 건드린다. 종료 코드 3
+    for typed in ("", "0000000000000000\n", "y\n"):
+        r, _ = _run(["tally-erase", "--session", "1758412901"], tmp_path, sim_bin, stdin=typed)
+        assert r.returncode == 3 and "지우지 않는다" in r.stderr, (typed, r.stdout, r.stderr)
+        assert pe.read_text().count("tally erase") == rows_before
+    r, _ = _run(["tally"], tmp_path, sim_bin)
+    assert "tally_a=1 tally_b=1" in r.stdout
+    # 맞는 UID (소문자도 받는다) → 장부 두 행(512·1,536) 뒤에 소거. 그 다음 cycle=0 신규 시작이 열린다
+    r, _ = _run(["tally-erase", "--session", "1758412902"], tmp_path, sim_bin, stdin=CHIP01_UID.lower() + "\n")
+    assert r.returncode == 0 and "clean=1" in r.stdout and "지운 값 a=1 b=1" in r.stdout, r.stdout + r.stderr
+    tail = pe.read_text().splitlines()[-2:]
+    assert "| 512 | +1 | run_wear tally-erase (session 1758412902) | tally erase · 지운 값 a=1 b=1 |" in tail[0]
+    assert "| 1536 | +1 |" in tail[1]
+    r, _ = _run(["tally"], tmp_path, sim_bin)
+    assert "tally_a=0 tally_b=0" in r.stdout
+    r, _ = _run(["accept", "--session", "1758412903"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr                 # E_DIRTY 가 아니다
+
+
+def test_tally_erase_refuses_real_chip_without_flag(tmp_path):
+    r = subprocess.run([sys.executable, str(RUN_WEAR), "tally-erase", "--no-program", "--port", "/dev/null",
+                        "--logdir", str(tmp_path)], capture_output=True, text=True)
+    assert r.returncode == 3 and "--i-approve-tally-erase" in r.stderr
 
 
 def test_accept_end_to_end_on_sim(sim_bin, tmp_path):
@@ -97,7 +137,8 @@ def test_accept_end_to_end_on_sim(sim_bin, tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     d = tmp_path / "logs" / "1758412800"
     verdict = (d / "verdict.txt").read_text()
-    assert verdict.count("PASS") == 8 and "FAIL" not in verdict, verdict
+    assert verdict.count("PASS") == 9 and "FAIL" not in verdict, verdict
+    assert "PASS  probe program_fail_bits 229376 (기대 229376) 잔류 0" in verdict
     assert len((d / "A.txt").read_text().splitlines()) == 700
     assert len((d / "B.txt").read_text().splitlines()) == 1 and (d / "H.txt").exists()
     assert "WEAR START base=1000 n_sectors=7 pattern=0x00 cycle=0 delta=100 session=1758412800" in (d / "commands.txt").read_text()

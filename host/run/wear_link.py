@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""UART 어댑터 — 경계 9개(`docs/interface/pe_engine.md` §2)와 같은 메서드 이름으로 실엔진을 부른다.
+"""UART 어댑터 — 경계 10개(`docs/interface/pe_engine.md` §2)와 같은 메서드 이름으로 실엔진을 부른다.
 
     link = WearLink(SerialTransport(ser))          # 실칩 — pyserial
     link = WearLink(PipeTransport([sim_bin]))      # 호스트 시뮬레이션 — ps/sim/ 파이프
@@ -227,6 +227,11 @@ class WearLink:
 
     def halt(self):
         self._send("HALT")
+
+    def tally_erase(self, uid):
+        """경계 10 — tally 두 벌 소거. idle 에서, uid 가 칩과 같을 때만 (E_UID). 반환 count 는 사이클 단위."""
+        f = self._send("TALLY_ERASE", uid=uid).fields
+        return hs.TallyErase(f["count_a"] * TALLY_STRIDE, f["count_b"] * TALLY_STRIDE, f["t_erase_us"], bool(f["clean"]))
 
     def close(self):
         self.t.close()

@@ -109,6 +109,35 @@ def test_sim_100_cycles_scores(sim_bin, tmp_path):
         sim.close()
 
 
+# ── tally 소거 — 경계 10 (S-1 §8.1 초기화) ────────────────────────────────
+def test_sim_tally_erase_locks(sim_bin, tmp_path):
+    sim = Sim(sim_bin, tmp_path)
+    try:
+        start(sim.link, 0, 100)
+        assert sim.link.wait_stopped()[:2] == (100, "checkpoint_due")
+        with pytest.raises(hs.Reject, match="E_STATE"):            # idle 이 아니다
+            sim.link.tally_erase(me.REGISTRY_UID)
+        sim.restart()                                               # 리셋 = idle
+        with pytest.raises(hs.Reject, match="E_RANGE"):            # 길이가 아니다
+            sim.link.tally_erase("ABC")
+        with pytest.raises(hs.Reject, match="E_UID"):              # 다른 칩의 UID
+            sim.link.tally_erase("0000000000000000")
+        assert sim.link.tally_read()[:2] == (100, 100)              # 거부는 거부로 끝났다
+        with pytest.raises(hs.Reject, match="E_DIRTY"):
+            start(sim.link, 0, 10)
+        r = sim.link.tally_erase(me.REGISTRY_UID.lower())           # 소문자도 같은 UID
+        assert (r.count_a, r.count_b, r.clean) == (100, 100, True)   # t_erase_us 는 sim 에선 0 일 수 있다 (시계가 가짜)
+        assert sim.link.tally_read() == (0, 0, False)
+        a, b = sim.link.tally_dump()
+        assert a == b == b"\xff" * 4096
+        se, _ = sim.pe_sectors()
+        assert se == set(range(TB_BASE, TB_BASE + N)) | {512, 1536}   # 지운 것은 tally 두 섹터뿐
+        start(sim.link, 0, 10)                                      # 자물쇠가 열렸다
+        assert sim.link.wait_stopped()[:2] == (10, "checkpoint_due")
+    finally:
+        sim.close()
+
+
 # ── J — 두 구간 + 리셋 ─────────────────────────────────────────────────
 def test_sim_J_split_across_reset(sim_bin, tmp_path):
     sim = Sim(sim_bin, tmp_path)
@@ -124,7 +153,7 @@ def test_sim_J_split_across_reset(sim_bin, tmp_path):
         sim.close()
 
 
-# ── 거부 11종 — 어댑터 경유 ───────────────────────────────────────────────
+# ── 거부 12종 — 어댑터 경유 ───────────────────────────────────────────────
 @pytest.mark.parametrize("code, kwargs", [
     ("E_NSECT0",        dict(base=0, n=0)),
     ("E_RANGE",         dict(base=2045, n=7)),

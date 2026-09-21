@@ -1,7 +1,7 @@
 /*
  * flash_wear.c — P/E 마모 엔진 (PS C, 무상태)
  *
- * 정본: docs/interface/pe_engine.md §2 (경계 9개) · docs/spec/s4.blackbox_tb.md §4·§5.2 (거부 11종 ·
+ * 정본: docs/interface/pe_engine.md §2 (경계 10개) · docs/spec/s4.blackbox_tb.md §4·§5.2 (거부 12종 ·
  * 명령/응답/행 문법) · docs/spec/s1.wear_bench_spec.md §6~§10 (루프·무결성·tally·로그·중단).
  * 기본값이 비어 있던 자리의 결정은 docs/log/young/45 이다.
  *
@@ -10,7 +10,8 @@
  * 시뮬레이션(ps/sim/) 에서 같은 TB(host/tests/) 로 채점된다.
  *
  * 절대 규칙 — START 가 받은 [base, base+n_sectors) 밖은 한 번도 지우지 않는다. 예외는 tally
- * 섹터(512·1,536) 의 1바이트 쓰기뿐이다. 명령은 체크섬 → req → 인자 범위 → 상태 → (tally 읽기 뒤)
+ * 섹터(512·1,536) 의 1바이트 쓰기와, idle 에서 칩 UID 를 되받아야만 받는 TALLY_ERASE(S-1 §8.1 의
+ * 실험 개시 소거) 뿐이다. 명령은 체크섬 → req → 인자 범위 → 상태 → (tally 읽기 뒤)
  * E_DIRTY/E_CYCLE 을 전부 통과한 뒤에만 플래시에 P/E 를 낸다. 거부는 거부로 끝난다.
  *
  * 빌드: vitis -s ps/scripts/build_flash_wear.py (Zynq) · ps/sim/build_sim.sh (호스트).
@@ -21,6 +22,7 @@
 #include "wear_plat.h"
 #include "wear_build.h"                 /* WEAR_GIT_REV "<short hash>" — 생성 파일 */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -581,6 +583,46 @@ static void cmd_reerase(u32 req)
     ln_end();
 }
 
+/* tally 를 지우는 유일한 길 — S-1 §8.1 「실험 시작 시 tally 섹터 2개를 각 1회 소거」. 자물쇠 셋:
+ * ① idle 에서만 (부팅 직후, 아무것도 돌지 않았다) ② uid 인자가 부팅 때 읽은 칩 UID 와 같아야 한다
+ * (E_UID — 호스트가 소켓의 칩을 알고 있어야 지울 수 있다) ③ 범위는 상수 512·1,536 뿐, 인자로 못 바꾼다.
+ * 지운 뒤 다시 읽어 전부 0xFF 인지(clean) 되돌린다. 지우기 전 값(count_a·count_b)도 되돌린다 — 호스트가
+ * 장부(chip_pe.md)에 옮겨 적는 값이다. */
+static void cmd_tally_erase(u32 req)
+{
+    const char *u = arg("uid");
+    if (!u || strlen(u) != UID_LEN * 2u) { reject(req, "E_RANGE"); return; }
+    for (u32 i = 0; i < UID_LEN; i++) {
+        char hex[3]; snprintf(hex, sizeof hex, "%02X", g_uid[i]);
+        if (toupper((unsigned char)u[2 * i]) != hex[0] || toupper((unsigned char)u[2 * i + 1]) != hex[1]) {
+            reject(req, "E_UID"); return;
+        }
+    }
+    if (g_state != ST_IDLE) { reject(req, "E_STATE"); return; }
+    tally_t ta, tb;
+    if (tally_read_copy(0, &ta) || tally_read_copy(1, &tb)) { reject(req, "E_STATE"); g_state = ST_ERROR; return; }
+    u64 t_sum = 0;
+    for (u32 copy = 0; copy < 2u; copy++) {
+        u32 sector = copy ? TALLY_SECTOR_B : TALLY_SECTOR_A;
+        u64 t = 0;
+        int rc = sector_erase(sector, &t);
+        t_sum += t;
+        if (rc) {
+            if (rc > 0) { stop_error("wip_timeout", sector, "erase", 1, t, 0, 0); } else { g_state = ST_ERROR; }
+            reject(req, "E_STATE");
+            return;
+        }
+    }
+    tally_t ra, rb;                                   /* 다시 읽어 확인 — 안 지워졌으면 error 로 앉는다 */
+    if (tally_read_copy(0, &ra) || tally_read_copy(1, &rb)) { reject(req, "E_STATE"); g_state = ST_ERROR; return; }
+    int clean = !ra.marked && !rb.marked;
+    if (!clean) g_state = ST_ERROR;
+    g_tally_idx[0] = g_tally_idx[1] = 0;
+    ok_begin(req);
+    ap(" count_a=%u count_b=%u t_erase_us=", ta.count, tb.count); ap_u64(t_sum); ap(" clean=%d", clean);
+    ln_end();
+}
+
 static void cmd_halt(u32 req)
 {
     if (g_state != ST_RUNNING) { reject(req, "E_STATE"); return; }
@@ -619,6 +661,7 @@ static void process_line(char *s)
     else if (!strcmp(verb, "UID"))     cmd_uid(req);
     else if (!strcmp(verb, "REERASE")) cmd_reerase(req);
     else if (!strcmp(verb, "HALT"))    cmd_halt(req);
+    else if (!strcmp(verb, "TALLY_ERASE")) cmd_tally_erase(req);
     else reject(req, "E_STATE");                      /* 모르는 동사 */
 }
 

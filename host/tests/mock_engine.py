@@ -1,4 +1,4 @@
-"""가짜 P/E 엔진 — `docs/interface/pe_engine.md` §2 경계 9개를 채운다.
+"""가짜 P/E 엔진 — `docs/interface/pe_engine.md` §2 경계 10개를 채운다.
 
 실칩 없이 `docs/spec/s4.blackbox_tb.md` 의 채점표를 돌리기 위한 것이다.
 흉내 내는 것은 **엔진 밖에서 나는 고장**뿐이고 칩 물리는 건드리지 않는다 (로그 41 `[D41-9]`).
@@ -64,7 +64,7 @@ BUGS = {
     "tally_by_delta":     "tally 눈금을 절대 사이클이 아니라 delta 상대로 찍는다 — 60+40 에서 100 눈금이 안 나온다 (J)",
 }
 
-REJECTS = {   # S-4 §4 의 열한 줄과 1:1. 순서가 우선순위다 (`E_RUNNING`/`E_STATE` 는 같은 자리)
+REJECTS = {   # S-4 §4 의 열두 줄과 1:1. 순서가 우선순위다 (`E_RUNNING`/`E_STATE` 는 같은 자리)
     "E_SUM":           "명령 체크섬 불일치 (제안-4 · `[D44-14]`)",
     "E_DUP":           "이미 처리한 req 재도착 — 재실행 없음 (`[D44-14]`)",
     "E_NSECT0":        "n_sectors=0",
@@ -76,6 +76,7 @@ REJECTS = {   # S-4 §4 의 열한 줄과 1:1. 순서가 우선순위다 (`E_RUN
     "E_STATE":         "상태에 맞지 않는 명령 (recovering 밖의 reerase 등, `[D44-3]`)",
     "E_DIRTY":         "tally 에 마크가 있는데 cycle=0 — §8.1 초기화 미실행 (`[D44-10]`)",
     "E_CYCLE":         "cycle 이 tally×100 과 d 규칙(0 ≤ d < 100) 밖 (`[D44-10]`)",
+    "E_UID":           "TALLY_ERASE 의 uid 가 소켓의 칩과 다르다 — 경계 10 의 자물쇠",
 }
 assert tuple(REJECTS) == hs.REJECT_CODES
 
@@ -85,7 +86,7 @@ class PowerCut(Exception):
 
 
 Reject = hs.Reject                                  # 거부 예외와 경계 반환 모양은 host_side 가 정본
-ResumeInfo, BlankCheck, Reerase = hs.ResumeInfo, hs.BlankCheck, hs.Reerase
+ResumeInfo, BlankCheck, Reerase, TallyErase = hs.ResumeInfo, hs.BlankCheck, hs.Reerase, hs.TallyErase
 
 
 @dataclass
@@ -184,7 +185,7 @@ def check_range(base_sector, n_sectors):
 
 
 class MockEngine:
-    """경계 9개 + 명령 입구. 각 메서드의 근거 조항은 `pe_engine.md` §2 표."""
+    """경계 10개 + 명령 입구. 각 메서드의 근거 조항은 `pe_engine.md` §2 표."""
 
     def __init__(self, chip, link, faults=frozenset(), bugs=frozenset(),
                  cut_at=None, cut_phase="between", halt_at=None):
@@ -441,6 +442,19 @@ class MockEngine:
         self._not_running()
         return self.chip.uid
 
+    def tally_erase(self, uid):
+        """경계 10 — tally 두 벌 소거 (S-1 §8.1 초기화). `idle` 에서만, `uid` 가 칩과 같을 때만.
+        지우기 전 값을 돌려준다 — 호스트가 장부에 옮겨 적는다."""
+        if len(uid) != 16:
+            raise Reject("E_RANGE")
+        if uid.upper() != self.chip.uid.upper():
+            raise Reject("E_UID")
+        if self.state != "idle":
+            raise Reject("E_STATE")
+        a, b = self.chip.tally_count(0), self.chip.tally_count(1)
+        self.chip.tally = [bytearray(b"\xff" * TALLY_BYTES) for _ in range(2)]
+        return TallyErase(a, b, 2 * ERASE_US, True)
+
     # ── 명령 입구 (S-4 §5.2 제안-1) ───────────────────────────────────────
     def command(self, line: str):
         """명령 문자열 하나 → 응답 행 목록 (`OK`/`REJECT`, DUMP 는 뒤에 `#WEAR D` 64행).
@@ -510,6 +524,11 @@ class MockEngine:
         if cmd.verb == "HALT":
             self.halt()
             return [hs.format_response("OK", req)]
+        if cmd.verb == "TALLY_ERASE":
+            r = self.tally_erase(str(a["uid"]))
+            return [hs.format_response("OK", req, count_a=r.count_a // TALLY_STRIDE,
+                                       count_b=r.count_b // TALLY_STRIDE, t_erase_us=r.t_erase_us,
+                                       clean=int(r.clean))]
         raise Reject("E_STATE")                                     # 모르는 동사
 
 

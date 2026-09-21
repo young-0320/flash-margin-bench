@@ -10,9 +10,9 @@ uv run pytest host/tests/ -q
 | 파일 | 무엇 |
 | ---- | ---- |
 | `host_side.py` | **호스트 쪽 문자열의 정본** — 명령·응답·행 문법(S-4 §5.2)·파서·재개 절차. mock 과 UART 어댑터가 같이 쓴다 |
-| `mock_engine.py` | 가짜 엔진 — `pe_engine.md` §2 경계 9개 + 명령 입구 `command(line)` + 고장 주입 + **버그 주입** |
+| `mock_engine.py` | 가짜 엔진 — `pe_engine.md` §2 경계 10개 + 명령 입구 `command(line)` + 고장 주입 + **버그 주입** |
 | `harness.py` | 채점표 본체. 검사를 테스트가 아닌 함수로 둔 이유는 아래 |
-| `test_acceptance.py` | §13 A·B·C · S-4 §2 J · S-4 §4 거부 11종 · HALT · R 행 · **T1·T3 집행** |
+| `test_acceptance.py` | §13 A·B·C · S-4 §2 J · S-4 §4 거부 12종 · HALT · R 행 · **T1·T3 집행** |
 | `test_faults.py` | S-4 §3 주입 고장 (명령 손상·중복 포함) · §13 B (Hypothesis 임의 시점 차단) · **T2 집행** |
 | `test_tb_catches_bugs.py` | **채점표가 실패하는지 확인한다** — S-4 §7 T6 (양방향) |
 | `test_sim.py` | **C 엔진**(`ps/src/flash_wear.c`)을 호스트 시뮬레이션(`ps/sim/`)으로 띄워 같은 채점표로 잰다. gcc 가 없으면 skip |

@@ -4,6 +4,7 @@
     run_wear.py accept  --i-approve-real-pe [--cycle 0] [--delta 100]   ELF 프로그래밍 → START → 캡처 → A1~A7·C 판정
     run_wear.py status | halt | tally | dump | uid                      읽기·정지 (halt 는 다음 사이클 경계)
     run_wear.py resume  --host-log-max N | --from-session <dir>          RESUME → decide_resume → BLANK → (REERASE) → 채택값 출력
+    run_wear.py tally-erase --i-approve-tally-erase                      tally 두 벌 소거 — UID 를 직접 타이핑해야 하고, 장부에 먼저 적는다
 
     공통: --port /dev/ttyUSB1 --baud 921600 | --sim build/sim/flash_wear_sim (호스트 시뮬레이션, P/E 없음)
           --no-program (accept 에서 xsct 단계 생략 — 이미 떠 있는 엔진에 붙는다)
@@ -45,11 +46,16 @@ PATTERN = 0x00                                              # 파일럿 고정�
 PILOT_CHIP = "chip01"                                       # 등록부 — 파일럿 칩
 ERASE_WARN_US = 400_000                                     # S-1 §10·§13 A6
 SEC_PER_CYCLE = 2.0                                         # typ 0.405s — 대기 상한 산정용
+PROBE_TOTAL = TB_N * 4096 * 8                               # 7섹터 전 비트 = 229,376 — probe 의 정답 (pattern 0x00)
 
 
 # ── 순수 함수 — pytest 가 잰다 ──────────────────────────────────────────────
-def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100):
-    """S-1 §13 A1~A7 + C. [(항목, 통과, 설명)]. A6 는 실칩에서만 뜻이 있다 (mock·sim 은 시계가 가짜)."""
+def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None):
+    """S-1 §13 A1~A7 + C + probe. [(항목, 통과, 설명)]. A6 는 실칩에서만 뜻이 있다 (mock·sim 은 시계가 가짜).
+
+    probe 는 멈춘 뒤 BLANK 를 부른 결과다 — 마지막 동작이 소거였으니 0xFF 를 0x00 과 대조하면
+    전량(PROBE_TOTAL)이 나와야 한다. 0 이면 세는 경로가 죽은 것이고, 그때는 B 행의 0 도 못 믿는다
+    (harness.check_probe 와 같은 검사, 워크플로 12 §3.3). None 은 BLANK 자체가 거부된 것."""
     cycle, state, _, _ = status
     ta, tb, mismatch = tally
     b_cycle = log.b[-1]["cycle"] if log.b else None
@@ -70,6 +76,10 @@ def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100):
         ("A7", ids == {expected_uid} and uid == expected_uid,
          f"로그 chip_id {sorted(ids)} · 경계 7 {uid} · 등록부 {expected_uid}"),
         ("C", state == "checkpoint_due", f"state={state}"),
+        ("probe", probe is not None and probe.erase_residual_bits == 0 and probe.program_fail_bits == PROBE_TOTAL,
+         "BLANK 거부 — 세는 경로를 확인 못 했다" if probe is None else
+         f"program_fail_bits {probe.program_fail_bits} (기대 {PROBE_TOTAL}) 잔류 {probe.erase_residual_bits}"
+         + ("" if probe.program_fail_bits else " — 세는 경로가 죽었다, B 행의 0 을 믿지 말 것")),
     ]
     return out
 
@@ -202,8 +212,13 @@ def cmd_accept(run):
                    f"cycle {a.cycle}→{status[0]}" + ("" if status[1] == "checkpoint_due" else f" · {status[1]}"))
     tally = link.tally_read()
     dumps = link.tally_dump()
+    try:                                                     # 시험 버튼 — 읽기 전용, 판정은 judge_accept
+        probe = link.blank_check(TB_BASE, TB_N)
+    except hs.Reject as e:
+        run.ses.log(f"probe BLANK 거부: {e}")
+        probe = None
     n = a.cycle + a.delta
-    verdict = judge_accept(link.log, status, tally, dumps, uid, run.expected_uid(), n=n)
+    verdict = judge_accept(link.log, status, tally, dumps, uid, run.expected_uid(), n=n, probe=probe)
     lines = [f"{'PASS' if ok else 'FAIL'}  {item:5s} {detail}" for item, ok, detail in verdict]
     if link.log.r:
         lines.append("R 행: " + " | ".join(f"{r['kind']}@{r['cycle']}" for r in link.log.r))
@@ -255,6 +270,44 @@ def cmd_resume(run):
     return 0 if restored is not None else 2
 
 
+def cmd_tally_erase(run):
+    """tally 두 벌(512·1,536) 소거 — 같은 칩으로 0 부터 다시 시작할 때. 자물쇠 셋:
+    ① --i-approve-tally-erase ② 사람이 그 칩의 UID 를 직접 타이핑 ③ 지우기 전 값을 chip_pe.md 에 먼저 적는다
+    (장부 기입이 실패하면 소거를 보내지 않는다). 엔진 쪽 자물쇠(idle · UID 대조)는 flash_wear.c."""
+    a = run.args
+    if not a.sim and not a.i_approve_tally_erase:
+        raise Abort("tally 를 지운다 — --i-approve-tally-erase 를 명시해야 한다 (--sim 은 예외)")
+    link = run.open(program=not a.no_program)
+    status = link.wear_status()
+    run.ses.log(f"boot: {status}")
+    if status[1] != "idle":
+        raise Abort(f"엔진이 {status[1]} 이다 — TALLY_ERASE 는 idle(부팅 직후)에서만. 리셋 뒤 다시")
+    uid = run.check_uid()
+    ta, tb, m = link.tally_read()
+    ledger = [ln for ln in Path(a.chip_pe).read_text(encoding="utf-8").splitlines() if f"| {a.chip} |" in ln]
+    print(f"칩 {a.chip} uid={uid}")
+    print(f"지울 tally: a={ta // 100} b={tb // 100} 바이트 (사이클 {ta}/{tb}){' · 두 벌 불일치' if m else ''}")
+    print(f"chip_pe.md 의 {a.chip} 이력 (최근 5행):")
+    print("\n".join(ledger[-5:]) or "(없음)")
+    print("tally 두 벌(512·1,536)을 소거한다 — 칩이 스스로 기억하는 마모 눈금이 지워진다.")
+    print("진행하려면 이 칩의 UID 를 그대로 입력 (다르면 지우지 않는다):")
+    try:
+        typed = input("UID> ").strip().upper()
+    except EOFError:
+        typed = ""
+    if typed != uid:
+        raise Abort(f"입력 {typed or '(빈 값)'} ≠ 소켓 {uid} — 지우지 않는다")
+    for s in (512, 1536):                                            # ③ 장부가 먼저 — 칩의 기억을 옮긴다
+        run.pe_row(str(s), "+1", f"run_wear tally-erase (session {run.session})",
+                   f"tally erase · 지운 값 a={ta // 100} b={tb // 100}")
+    r = link.tally_erase(uid)
+    line = (f"tally 소거: 지운 값 a={r.count_a // 100} b={r.count_b // 100} t_erase_us={r.t_erase_us} "
+            f"clean={int(r.clean)}" + ("" if r.clean else " — 소거 뒤에도 0xFF 가 아니다, 엔진은 error 로 앉았다"))
+    run.ses.log(line)
+    print(line)
+    return 0 if r.clean else 1
+
+
 def cmd_simple(run):
     a = run.args
     link = run.open()
@@ -283,7 +336,7 @@ def cmd_simple(run):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("cmd", choices=("accept", "status", "halt", "resume", "tally", "dump", "uid"))
+    ap.add_argument("cmd", choices=("accept", "status", "halt", "resume", "tally", "dump", "uid", "tally-erase"))
     link = ap.add_argument_group("링크")
     link.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
     link.add_argument("--baud", type=int, default=921600)
@@ -301,17 +354,20 @@ def main(argv=None):
     acc.add_argument("--delta", type=int, default=100, help="이번 구간에 추가로 돌릴 횟수")
     acc.add_argument("--i-approve-real-pe", action="store_true",
                      help="실칩에 P/E 를 내는 것을 승인한다 — 없으면 START 를 보내지 않는다")
+    te = ap.add_argument_group("tally-erase")
+    te.add_argument("--i-approve-tally-erase", action="store_true",
+                    help="tally 두 벌 소거를 승인한다 — 그래도 UID 를 직접 타이핑해야 지운다")
     res = ap.add_argument_group("resume")
     res.add_argument("--host-log-max", type=int, help="호스트 A 로그의 최대 cycle")
     res.add_argument("--from-session", help="이전 세션 폴더 — A.txt 에서 최대 cycle 을 읽는다")
     args = ap.parse_args(argv)
     if args.cmd == "accept" and args.delta < 0:
         ap.error("--delta 는 0 이상")
-    if args.cmd == "accept" and not args.sim and not args.no_program:
-        require_tty("실칩 accept 는 사람이 보는 자리에서")
+    if args.cmd in ("accept", "tally-erase") and not args.sim and not args.no_program:
+        require_tty(f"실칩 {args.cmd} 는 사람이 보는 자리에서")
     run = Run(args)
     try:
-        rc = {"accept": cmd_accept, "resume": cmd_resume}.get(args.cmd, cmd_simple)(run)
+        rc = {"accept": cmd_accept, "resume": cmd_resume, "tally-erase": cmd_tally_erase}.get(args.cmd, cmd_simple)(run)
     except (Abort, hs.Reject, TimeoutError, ConnectionError) as e:
         run.ses.log(str(e))
         print(f"중단: {e}", file=sys.stderr)

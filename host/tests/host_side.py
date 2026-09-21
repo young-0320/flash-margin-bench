@@ -53,7 +53,7 @@ INT_FIELDS = ("session", "cycle", "delta", "sector", "t_erase_us", "t_program_us
               "die_temp_mc", "uid_ok", "base_sector", "base", "n_sectors",
               "t_us", "ok", "resid_before", "resid_after", "copy", "off",
               "defect_seen", "tally_a", "tally_b", "mismatch", "next_byte", "write_ok",
-              "count_a", "count_b")
+              "count_a", "count_b", "clean")
 ADDR_FIELDS = ("p_addrs", "e_addrs", "addrs")
 
 # 명령별 인자 순서 — S-4 §5.2 코드 블록과 같다. `req` 는 항상 마지막
@@ -67,10 +67,11 @@ CMD_ARGS = {
     "UID":     (),
     "REERASE": ("base", "n_sectors"),
     "HALT":    (),
+    "TALLY_ERASE": ("uid",),          # 경계 10 — uid 는 16 hex 문자열, 칩 UID 와 같아야 받는다 (E_UID)
 }
 
 REJECT_CODES = ("E_SUM", "E_DUP", "E_NSECT0", "E_RANGE", "E_TALLY_OVERLAP",
-                "E_CTRL_OVERLAP", "E_CAP", "E_RUNNING", "E_STATE", "E_DIRTY", "E_CYCLE")
+                "E_CTRL_OVERLAP", "E_CAP", "E_RUNNING", "E_STATE", "E_DIRTY", "E_CYCLE", "E_UID")
 
 # 경계 3·4·8 의 반환 모양 (`pe_engine.md` §2) — mock 과 UART 어댑터가 같은 것을 돌려준다.
 # tally 값은 **사이클 단위**(바이트 수 × 100) 다. 명령 채널은 바이트 수를 실어 오고 어댑터가 곱한다
@@ -78,10 +79,11 @@ ResumeInfo = namedtuple("ResumeInfo", "tally_a tally_b mismatch next_byte write_
 BlankCheck = namedtuple("BlankCheck", "erase_residual_bits program_fail_bits "
                                       "addrs addr_count worst_page_idx worst_page_bits")
 Reerase = namedtuple("Reerase", "ok t_erase_us resid_after")
+TallyErase = namedtuple("TallyErase", "count_a count_b t_erase_us clean")   # count 는 사이클 단위 (×100)
 
 
 class Reject(ValueError):
-    """`REJECT code=<E_*>` — 제안-2. 열한 거부가 코드로 갈린다.
+    """`REJECT code=<E_*>` — 제안-2. 열두 거부가 코드로 갈린다.
 
     사유 문자열로만 두면 「거부했다」는 알아도 **무엇을 거부했는지** 를 채점할 수 없다.
     """
@@ -181,6 +183,9 @@ def parse_cmd(line: str):
         req = 0
     args = {}
     for k, v in kv.items():
+        if k == "uid":                    # 16 hex 는 문자열이다 — 숫자로만 된 UID 가 int 로 새면 안 된다
+            args[k] = v
+            continue
         try:
             args[k] = int(v, 0)
         except ValueError:
