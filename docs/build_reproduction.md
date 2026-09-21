@@ -364,7 +364,7 @@ done
 | 신원 확인만 (P/E 불변) | `xsct ps/scripts/program_g2.tcl build/vitis_id/flash_id/build/flash_id.elf`     | 같은 g2 bit + id elf                 |
 | 실칩 스윕             | `xsct ps/scripts/program_g3.tcl 25` (`45`/`75`, 보험 `25 pl4`)              | g3-<mhz></mhz> bit + elf             |
 | 실칩 전 과정 한 줄    | `uv run python host/run/run_sweep_chip.py --mhz 25`                               | 위 둘을 래퍼가 순서대로 호출         |
-| P/E 마모 엔진 (실칩)  | `uv run python host/run/run_wear.py accept --chip chip01 --cycle 0 --delta 100 --i-approve-real-pe` | g2 bit + wear elf — 실행기가 xsct 를 부른다. 절차·판독은 워크플로 12 |
+| P/E 마모 엔진 (실칩)  | `uv run python host/run/run_wear.py accept --chip chip01 --base-sector 1000 --cycle 0 --to 100` | g2 bit + wear elf — 실행기가 xsct 를 부른다. 절차·판독은 워크플로 12 |
 
 루프백 최소 확인 (점퍼 JE1↔JE2). 캡처를 **먼저** 켠다 — 첫 줄(BEGIN)부터 받아야 한다:
 

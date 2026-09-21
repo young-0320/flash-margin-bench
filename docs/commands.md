@@ -49,12 +49,12 @@ python reproduce.py --vitis-only       # ELF 만 다시 (Vivado 생략)
 python reproduce.py --list             # 단계 목록과 실제 명령
 ```
 
-| 옵션                             | 언제                                       |
-| -------------------------------- | ------------------------------------------ |
-| `--only <단계…>`              | 한두 단계만. 단계 이름은`--list` 에      |
-| `--vitis-only`                 | C 코드만 고쳤을 때 (비트스트림 재사용)     |
+| 옵션                             | 언제                                                                          |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| `--only <단계…>`              | 한두 단계만. 단계 이름은`--list` 에                                         |
+| `--vitis-only`                 | C 코드만 고쳤을 때 (비트스트림 재사용)                                        |
 | `--no-sim` / `--no-selftest` | `iverilog`·`uv`·`gcc` 가 없는 PC. `--no-selftest` 는 `tb` 도 뺀다 |
-| `--keep-going`                 | 실패해도 끝까지 — 기본은 첫 실패에서 중단 |
+| `--keep-going`                 | 실패해도 끝까지 — 기본은 첫 실패에서 중단                                    |
 
 기본 단계: `sim · selftest · tb · g0 · g2 · prep · id · wear · g3-25 · g3-45 · g3-75`
 선택 단계(`--only` 로만): `jedec · smoke · g0e · g3e-25/45/75`
@@ -93,18 +93,18 @@ uv run python host/run/run_sweep_chip.py --mode <newchip|sweep> --mhz <25|45|75>
 
 ### 옵션
 
-| 옵션              | 기본             | 무엇 / 언제                                                                             |
-| ----------------- | ---------------- | --------------------------------------------------------------------------------------- |
-| `--mode`        | **필수**   | 위 표                                                                                   |
-| `--mhz`         | **필수**   | SPI 클럭. 어느 g3 비트를 구울지 정한다. 기계가 알 수 없는 값이라 필수다                 |
-| `--chip NN` | 없음             | **재고 싶은 칩.** `2`·`02`·`chip02` 다 받는다. 주면 읽은 라벨과 대조해 어긋나면 중단. 생략하면 읽은 대로 간다 |
-| `--repeat N`    | 1                | 스윕 반복. 세션1 은 1회, 스윕만 N회                                                     |
-| `--reseat`      | 꺼짐             | 회차**사이**에 재장착 프롬프트 + UID 재확인. `--repeat 2` 이상에서만            |
-| `--pl {4,6}`    | 없음             | PAY_LEAD 보험 비트스트림. 전 위상 BER 0.5 가 나올 때(75MHz 임계). 비트는 먼저 굽는다 (`-tclargs bit <mhz> <k>`) |
-| `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                    |
-| `--baud`        | 921600           | 2026-09-15 이전에 구운 ELF 는`115200`                                                 |
-| `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                            |
-| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(봉인)`. `newchip` 에서만                              |
+| 옵션              | 기본             | 무엇 / 언제                                                                                                                 |
+| ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `--mode`        | **필수**   | 위 표                                                                                                                       |
+| `--mhz`         | **필수**   | SPI 클럭. 어느 g3 비트를 구울지 정한다. 기계가 알 수 없는 값이라 필수다                                                     |
+| `--chip NN`     | 없음             | **재고 싶은 칩.** `2`·`02`·`chip02` 다 받는다. 주면 읽은 라벨과 대조해 어긋나면 중단. 생략하면 읽은 대로 간다 |
+| `--repeat N`    | 1                | 스윕 반복. 세션1 은 1회, 스윕만 N회                                                                                         |
+| `--reseat`      | 꺼짐             | 회차**사이**에 재장착 프롬프트 + UID 재확인. `--repeat 2` 이상에서만                                                |
+| `--pl {4,6}`    | 없음             | PAY_LEAD 보험 비트스트림. 전 위상 BER 0.5 가 나올 때(75MHz 임계). 비트는 먼저 굽는다 (`-tclargs bit <mhz> <k>`)           |
+| `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                                                        |
+| `--baud`        | 921600           | 2026-09-15 이전에 구운 ELF 는`115200`                                                                                     |
+| `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                                                                |
+| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(봉인)`. `newchip` 에서만                                                                  |
 
 N(위상 스텝당 읽기 횟수)은 옵션이 아니다 — 실칩은 **112 고정**. `BEGIN` 의 `n=` 이 다르면 첫 줄에서 중단한다.
 
@@ -136,7 +136,7 @@ uv run python host/run/run_sweep_chip.py --mode sweep --mhz 25 --chip 2 --repeat
 | `session_prepfail_*.log`              | `flash_prep` 이 PASS 전에 죽었다               | `#PREP FAIL`·`#PREP ERROR` 줄 |
 | `session_<batch_id>.log` (개명 안 됨) | ELF 누락·타임아웃 등 칩 신원과 무관한 실패      | 마지막 몇 줄                       |
 | `*_invalid.csv`                       | 스윕이 완주하지 못했다 (행 결측·중단)           | `#G0 SWEEP END` 줄의 `valid=`  |
-| `분석 실패 — 측정은 유효하다`        | CSV 는 정상. 분석만 다시 돌리면 된다             | §4 「분석만 다시」                 |
+| `분석 실패 — 측정은 유효하다`        | CSV 는 정상. 분석만 다시 돌리면 된다             | §4 「분석만 다시」                |
 
 세션 로그는 `build/data/session_*.log`, CSV 는 `build/data/sweep_*.csv` 에 생긴다.
 **측정이 끝나면 원본을 `data/` 로 옮긴다** — `build/` 는 재빌드 때 지워진다.
@@ -152,40 +152,66 @@ g2 비트 + `flash_wear.elf`. 한 프로세스가 xsct 로 굽고 UART 를 쥔 �
 uv run python host/run/run_wear.py <명령> [옵션…]
 ```
 
-| 명령 | 무엇을 하는가 | P/E | 자물쇠 |
-| ---- | ------------- | --- | ------ |
-| `accept` | 프로그래밍 → UID 대조 → START → 완주 대기 → verdict 9줄 (A1~A7 · C · probe) | TB 영역 1,000~1,006 에 `--delta` 사이클 | `--i-approve-real-pe` 없으면 START 를 보내지 않는다 |
-| `resume` | RESUME → 판정 → BLANK → (잔류 있으면 REERASE) → 채택값 출력. **START 는 보내지 않는다** | 재소거 때만 섹터 ±1 | — |
-| `tally-erase` | tally 두 벌(512·1,536) 소거 — 같은 칩으로 0 부터 다시 | 512·1,536 각 +1 | `--i-approve-tally-erase` + **그 칩의 UID 를 직접 타이핑** + 지우기 전 값을 `chip_pe.md` 에 먼저 |
-| `status` · `tally` · `dump` · `uid` | 읽기 | 0 | — |
-| `halt` | 다음 사이클 경계에서 정지. 이어 가려면 `accept --cycle <표시값>` | 0 | — |
+| 명령                                           | 무엇을 하는가                                                                                   | P/E                                      | 자물쇠                                                                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `accept` (계획 승인 → 마모)                                     | 프로그래밍 → UID 대조 → START → 완주 대기 → verdict 9줄 (A1~A7 · C · probe)               | `--base-sector` 영역에 `--to` 까지 | 계획 화면에서 사람이 enter 를 쳐야 START 를 보낸다 (`--i-approve-real-pe` 는 그 화면을 건너뛴다)                                                      |
+| `resume`                                     | RESUME → 판정 → BLANK → (잔류 있으면 REERASE) → 채택값 출력.**START는 보내지 않는다** | 재소거 때만 섹터 ±1                     | —                                                                                                         |
+| `tally-erase`                                | tally 두 벌(512·1,536) 소거 — 같은 칩으로 0 부터 다시                                         | 512·1,536 각 +1                         | `--i-approve-tally-erase` + **그 칩의 UID 를 직접 타이핑** + 지우기 전 값을 `chip_pe.md` 에 먼저 |
+| `status` · `tally` · `dump` · `uid` | 읽기                                                                                            | 0                                        | —                                                                                                         |
+| `halt`                                       | 다음 사이클 경계에서 정지. 이어 가려면 `accept` (표시값은 tally 에서 읽는다 — 눈금 밖이면 `--cycle <표시값>`)                               | 0                                        | —                                                                                                         |
 
-| 옵션 | 기본 | 무엇 / 언제 |
-| ---- | ---- | ----------- |
-| `--chip NN` | `chip01` | 등록부 라벨. 소켓의 UID 와 다르면 아무것도 하지 않는다 |
-| `--cycle N` | 0 | 누적 현재값 — 신규 0, 복구·정지 뒤엔 채택값·표시값 |
-| `--delta N` | 100 | 이번 구간에 추가로 돌릴 사이클 |
-| `--no-program` | 꺼짐 | xsct 생략 — 이미 떠 있는 엔진에 붙는다 (`tally-erase` 는 idle 이어야 하므로 보통 켜지 않는다) |
-| `--sim BIN` | 없음 | 실칩 대신 호스트 시뮬레이션 (`build/sim/flash_wear_sim`). P/E 없음, 승인 플래그 불필요 |
-| `--host-log-max N` / `--from-session DIR` | — | `resume` 이 §8.3 판정에 쓰는 호스트 A 로그의 최대 cycle |
-| `--port` / `--baud` | `/dev/ttyUSB1` / 921600 | Windows 는 `COM<N>` |
+| 옵션                                          | 기본                        | 무엇 / 언제                                                                                                                                                                                                                       |
+| --------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--chip NN`                                 | `chip01`                  | 등록부 라벨. 소켓의 UID 와 다르면 아무것도 하지 않는다                                                                                                                                                                            |
+| `--to N`                                    | 마지막 체크포인트 (300,000) | **여기까지 누적으로 태운다.** 칩이 닳는 양은 이 값만이 정한다. 체크포인트가 없으면(TB) 기본 100                                                                                                                             |
+| `--confirm-first K`                         | 1                           | 앞의**K 체크포인트**에서 사람이 확인한다 — enter 로 계속, `q` 로 정지. K 번 치고 나면 그 뒤는 무인                                                                                                                       |
+| `--cycle N`                                 | **칩의 tally**        | 어디서부터인가. 안 주면 칩이 기억하는 누적(정본)을 읽어 쓴다. 복구 뒤에는`resume` 이 준 채택값을 명시한다                                                                                                                       |
+| `--base-sector N`                           | **0**                 | **태울 자리**(7섹터의 시작). 0 = 마모 그룹 0~6 (S-1 §2) · 1000 = TB 전용 (S-4 §9, 인수 시험). 대조군·tally 는 엔진이 거부한다. `resume` 도 같은 값을 줘야 한다. 스윕의 `--base-sector`(읽는 창)와 **다른 것** |
+| `--checkpoints 목록`                        | 마모 그룹이면 고정 12점     | 체크포인트 누적값(쉼표) 또는`none`. **구간 경계이자 측정 지점**이다                                                                                                                                                       |
+| `--sweep-mhz N`                             | 25                          | 체크포인트 스윕의 SPI 클럭 (S-1 §3 은 25MHz 고정).**마모 속도와는 무관하다**                                                                                                                                               |
+| `--no-measure`                              | 꺼짐                        | 체크포인트에서 재지 않고 태우기만 한다. 소거 시간 요약은 그래도`checkpoints.csv` 에 남는다                                                                                                                                      |
+| `--i-approve-real-pe`                       | 꺼짐                        | **계획 확인 화면을 건너뛴다** — 비대화형(스크립트)에서 실칩에 P/E 를 낼 때 필요                                                                                                                                            |
+| `--no-program`                              | 꺼짐                        | xsct 생략 — 이미 떠 있는 엔진에 붙는다                                                                                                                                                                                           |
+| `--sim BIN`                                 | 없음                        | 실칩 대신 호스트 시뮬레이션. P/E 없음, 계획 확인·체크포인트 측정은 건너뛴다                                                                                                                                                      |
+| `--host-log-max N` / `--from-session DIR` | —                          | `resume` 이 §8.3 판정에 쓰는 호스트 A 로그의 최대 cycle                                                                                                                                                                        |
+| `--port` / `--baud`                       | `/dev/ttyUSB1` / 921600   | Windows 는`COM<N>`                                                                                                                                                                                                              |
+
+**사람이 치는 것은 칩과 명령뿐이다.** 나머지는 기본값이고, START 전에 실행기가 계획을 화면에
+띄우고 enter 를 기다린다 — 고칠 것이 있으면 그 자리에서 옵션을 쳐 넣으면 계획을 다시 띄운다.
+구간을 몇 개로 나누는지는 옵션이 아니다: **체크포인트가 경계**이고, 그 사이가 30,000사이클보다
+길면 실행기가 알아서 더 쪼개 파일로 흘린다(호스트가 33시간치를 들고 있지 않도록). `--to` 와
+`--checkpoints` 는 **100 의 배수**여야 한다 — tally 가 100사이클마다 1바이트라 그 사이에서 끊으면
+칩의 눈금과 호스트의 숫자가 어긋난다(§13 A5). `--cycle` 은 예외다.
+
+**예상 시간**은 `남은 사이클 × 사이클 단가 + 남은 체크포인트 × 점당 비용`이다. 사이클 단가는
+직전 체크포인트가 남긴 실측(`checkpoints.csv` 의 `cycle_s_p50`)을 쓰고, 없으면 typ 0.405초
+(S-1 §1)로 떨어진다. 화면에 어느 쪽인지 같이 찍힌다.
 
 ### 상황별
 
 ```bash
 # 보드 없이 연습 — 실칩과 같은 명령·같은 verdict.txt (조원 교육용)
-uv run python host/run/run_wear.py accept --sim build/sim/flash_wear_sim --no-program
+#   임시 장부를 반드시 준다 — 안 주면 연습이 docs/chip_pe.md 에 증분 행을 남긴다
+cp docs/chip_pe.md /tmp/practice_pe.md
+uv run python host/run/run_wear.py accept --sim build/sim/flash_wear_sim --no-program \
+    --to 300 --chip-pe /tmp/practice_pe.md --logdir /tmp/practice_logs
 
 # 실칩, 읽기 전용 점검 (P/E 0) — 소켓의 칩·tally 상태
 uv run python host/run/run_wear.py uid
 uv run python host/run/run_wear.py tally
-# 공짜 probe — START 없이 BLANK 만. 신품 TB 영역이면 program_fail 229376 이 나와야 한다
-uv run python host/run/run_wear.py resume --host-log-max 0
+# 공짜 probe — START 없이 BLANK 만. 갓 소거된 7섹터면 program_fail 229376 이 나와야 한다
+#   --base-sector 를 accept 와 같은 값으로 줘야 한다 (기본 0 = 마모 그룹)
+uv run python host/run/run_wear.py resume --base-sector 1000 --host-log-max 0
 
-# 100사이클 인수 (A 시험) — 1분
-uv run python host/run/run_wear.py accept --chip chip01 --cycle 0 --delta 100 --i-approve-real-pe
-# 이어 돌리기 (halt 뒤 · 복구 뒤) — cycle 은 표시값/채택값
-uv run python host/run/run_wear.py accept --cycle 100 --delta 100 --i-approve-real-pe
+# 마모 — 이것만 친다. 계획을 띄우고 enter 를 기다린다
+uv run python host/run/run_wear.py accept --chip chip01
+#   enter = 그대로 진행 · "--to 100000 --confirm-first 3" 처럼 쳐 넣으면 고쳐서 다시 띄운다 · q = 취소
+#   체크포인트마다 0~6 소거+PRBS(P/E +1) → 스윕 → 분석·plot 을 실행기가 하고, 앞 K 점에서만 사람에게 묻는다
+
+# 100사이클 인수 (A 시험) — 엔진을 고친 뒤에만. 본 마모의 첫 체크포인트(100)가 같은 판정을 돌린다 (런북 12)
+uv run python host/run/run_wear.py accept --chip chip01 --base-sector 1000 --cycle 0 --to 100
+# 이어 돌리기 (halt 뒤) — --cycle 을 빼면 칩의 tally 에서 이어 간다
+uv run python host/run/run_wear.py accept --base-sector 1000 --to 200
 # 전원 차단 뒤 — 채택값만 출력한다. START 는 사람이 위 명령으로
 uv run python host/run/run_wear.py resume --from-session build/logs/wear/<세션>
 # 같은 칩으로 처음부터 — UID 를 타이핑해야 지운다. 지운 값은 chip_pe.md 에 먼저 남는다
@@ -194,21 +220,24 @@ uv run python host/run/run_wear.py tally-erase --chip chip01 --i-approve-tally-e
 
 ### 남는 것
 
-`build/logs/wear/<session>/` — `verdict.txt` · `A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` ·
-`raw.txt` · `commands.txt` · `session.log`. `chip_pe.md` 에 증분 행. `build/` 는 재빌드에 지워지지
+`build/logs/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
+동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요) · `verdict.txt` ·
+`A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` · `raw.txt` · `commands.txt` · `session.log`.
+구간마다 **덧붙는다** — 판정 9줄도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
+흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `build/` 는 재빌드에 지워지지
 않지만 커밋도 안 되므로 필요하면 `docs/results/` 로 승격한다. 종료 코드 0 = 전부 PASS ·
 1 = FAIL 있음 · 2 = `resume` 이 사람을 부름 · 3 = 중단(거부·UID 불일치·타임아웃).
 
 ### 실패하면 무엇을 보는가
 
-| 증상 | 뜻 | 다음 |
-| ---- | -- | ---- |
-| `REJECT E_DIRTY` | tally 에 마크가 있는데 `--cycle 0` | 이어 돌리기(`--cycle <tally×100>`) 또는 `tally-erase` |
-| `UID 불일치` | 소켓의 칩이 `--chip` 과 다르다 | 칩 확인. 아무것도 하지 않았다 |
-| `엔진이 error 로 부팅했다` | SPI/JEDEC/UID 실패 | 배선·JP5·칩 장착. START 는 안 갔다 |
-| `엔진이 running 이다` | 이전 세션이 돌고 있다 | `halt` 로 세우거나 끝나기를 기다린다 |
-| verdict `probe` FAIL | 세는 경로가 죽었다 | B 행의 0 을 믿지 않는다. 런북 12 §3.3 |
-| `clean=0` (`tally-erase`) | 소거 뒤에도 `0xFF` 가 아니다 — 엔진은 error | 쓰기 보호(BP)·배선 |
+| 증상                          | 뜻                                            | 다음                                                       |
+| ----------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| `REJECT E_DIRTY`            | tally 에 마크가 있는데`--cycle 0`           | 이어 돌리기(`--cycle <tally×100>`) 또는 `tally-erase` |
+| `UID 불일치`                | 소켓의 칩이`--chip` 과 다르다               | 칩 확인. 아무것도 하지 않았다                              |
+| `엔진이 error 로 부팅했다`  | SPI/JEDEC/UID 실패                            | 배선·JP5·칩 장착. START 는 안 갔다                       |
+| `엔진이 running 이다`       | 이전 세션이 돌고 있다                         | `halt` 로 세우거나 끝나기를 기다린다                     |
+| verdict`probe` FAIL         | 세는 경로가 죽었다                            | B 행의 0 을 믿지 않는다. 런북 12 §3.3                     |
+| `clean=0` (`tally-erase`) | 소거 뒤에도`0xFF` 가 아니다 — 엔진은 error | 쓰기 보호(BP)·배선                                        |
 
 ---
 

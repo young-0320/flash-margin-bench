@@ -1,26 +1,28 @@
 # 프로젝트 파이프라인
 
-- **작성일**: 2026-09-15
-- **용도**: "어떤 스크립트를 치면 무슨 파일이 생기고, 그 파일이 다음 단계에서 무엇으로 쓰이는가"를
-  한 문서에서 따라가기 위한 지도.
+- **작성일**: 2026-09-15 · **개정**: 2026-09-22 (축 중심으로 재구성 — 각 축이 무슨 일을 하고 무엇을 내는가)
+- **이 문서는** 축마다 **무슨 일이 일어나고 무엇이 남으며 어디까지 됐나**를 적는다. 축마다
+  「무엇을 하는가 · 사람이 하는 일 · 나오는 것 · 지금 막힌 것」 네 칸을 같은 순서로 쓴다.
+  **명령은 여기 없다** → `docs/commands.md` · 왜 이 실험인가는 → `docs/project_context.md`
 - 실험 서사(왜 재는가)는 `docs/project_context.md`, 게이트 정의는
   `docs/workflow/4.gate_map.md`가 원전이고 **본 문서는 그 사이의 흐름을 그린다.**
 - 소스
 
-  | 층                              | 원전                                                                                  |
-  | ------------------------------- | ------------------------------------------------------------------------------------- |
-  | **사람이 치는 명령** (전부)     | `docs/commands.md` — 본 문서는 명령을 싣지 않고 그 절 번호를 가리킨다                 |
-  | 빌드 원명령·기대 출력·검증 수치 | `docs/build_reproduction.md`                                                        |
-  | 측정 당일 절차·고장 판독표     | `docs/workflow/3.realchip_day_runbook.md` · `7.realchip_uid_verification_day.md` |
-  | 게이트 정의·이름 규칙          | `docs/workflow/4.gate_map.md`                                                       |
-  | CSV 스키마·무효 런 정의        | `docs/interface/contract.md` §6                                                    |
-  | 신품 전수 측정 절차             | `docs/spec/s2.newchip_protocol.md`                                                  |
-  | 마모 벤치 절차·인수 기준       | `docs/spec/s1.wear_bench_spec.md`                                                   |
+  | 층 | 원전 |
+  | --- | --- |
+  | **사람이 치는 명령** (전부) | `docs/commands.md` — 본 문서는 명령을 싣지 않고 그 절 번호를 가리킨다 |
+  | 빌드 원명령·기대 출력·검증 수치 | `docs/build_reproduction.md` |
+  | 측정 당일 절차·고장 판독표 | `docs/workflow/3.realchip_day_runbook.md` · `7.realchip_uid_verification_day.md` |
+  | 마모 당일 절차·판정 읽는 법 | `docs/workflow/12.pe_engine_acceptance_runbook.md` |
+  | 게이트 정의·이름 규칙 | `docs/workflow/4.gate_map.md` |
+  | CSV 스키마·무효 런 정의 | `docs/interface/contract.md` §6 |
+  | 신품 전수 측정 절차 | `docs/spec/s2.newchip_protocol.md` |
+  | 마모 벤치 절차·인수 기준 | `docs/spec/s1.wear_bench_spec.md` |
 
   본 문서는 이들을 **연결만** 한다. 합격 기준·문턱값·시료 배분표를 여기에 복제하지 않는다
   (복제하면 원전과 어긋나는 문서가 하나 더 생긴다).
-- **표기**: 각 절 머리에 **[동작]** / **[부분]** / **[미구현]** 을 붙인다. 이 문서를 읽고
-  "그럼 지금 P/E를 돌릴 수 있겠네"로 오독하는 것을 막기 위한 장치다.
+- **표기**: 축 머리에 **[동작]** / **[부분]** / **[미착수]** 를 붙인다. 읽는 사람이 무엇을
+  지금 돌릴 수 있고 무엇이 아직 없는지를 절 제목만 보고 알게 하기 위한 장치다.
 - **용어** (로그 29 §7): 읽기 마진 측정 = **스윕**, 그 그림 = **욕조 곡선**, P/E 마모 = **마모 벤치**.
   문장에서는 **측정 경로(스윕, PL) / 마모 경로(P/E, PS SPI)** 로 가른다.
 
@@ -29,370 +31,327 @@
 ## 0. 한 장 지도
 
 ```
-  [소스]                          [빌드 산출물]                 [측정 산출물]              [게재물]
+  [소스]                       [빌드]                    [보드에서]                 [남는 것]
 
-  fpga/rtl/core/ · flash/  ┐
-  fpga/constraints/*.xdc   ┼─ vivado ─► build/vivado*/ *.bit + *.xsa
-  fpga/scripts/*.tcl       ┘                    │
-                                                ├─ vitis ─► build/vitis*/ *.elf
-  ps/src/g0_sweep.c        ────────────────────┘                │
-  ps/src/flash_prep.c      ──────────────────────────────────────┤
-                                                                 │  xsct program_*.tcl
-                          ┌──────────────────────────────────────┴──────────────────┐
-                          │                                                          │
-             [마모 경로]  PS SPI · g2_jedec 비트                  [측정 경로]  PL · g3_chip_<mhz> 비트
-             flash_prep.elf                                       g3_sweep.elf
-                          │  UART: #PREP UID / BLANK / ERASE / PASS  │  UART: #G0 SWEEP BEGIN…END
-                          └──────────────────────────────────────┬──┘
-                                                                 │
-                       host/run/run_sweep_chip.py  (두 세션을 한 프로세스가 잇는다)
-                                  └─ host/capture/sweep_uart_capture.py
-                                  └─ host/capture/chip_registry.py   (UID → 라벨 역조회)
-                                  └─ host/run/chip_pe.py             (P/E 이력 +1)
-                                                                 │
-                    build/data/  sweep_<label>_<uid16>_<stamp>.csv · _reads.csv · session_*.log
-                                                                 │
-                       host/analysis/bathtub_analysis.py      → build/plots/*.png + 폭 3종(θ)
-                       host/analysis/repeatability_aggregate.py → 평균 ± σ + 대표 곡선
-                                                                 │
-                    data/ (원본 보관)   docs/results/ (승격)   docs/chip_registry.md · chip_pe.md (기입)
+  fpga/rtl/ · constraints/ ┐
+  fpga/scripts/*.tcl       ┼ vivado ► build/vivado*/ *.bit + *.xsa
+  ps/src/*.c               ┴ vitis  ► build/vitis*/  *.elf
+                                          │  xsct program_{g0,g2,g3}.tcl 가 올린다
+          ┌───────────────────────────────┴───────────────────────────────┐
+          │                                                               │
+   [측정 경로]  PL · g3_chip_<mhz> 비트                    [마모 경로]  PS SPI · g2_jedec 비트
+   g3_sweep.elf   위상 ×2,520 × 읽기 112                    flash_prep.elf  소거 + PRBS 기록
+      UART  #G0 SWEEP BEGIN … END                           flash_wear.elf  0x00 프로그램 + 소거 반복
+          │                                                     UART  #WEAR H/A/B/R/D 행
+          │                                                               │
+   host/run/run_sweep_chip.py                              host/run/run_wear.py
+     └ sweep_uart_capture.py (CSV 2개)                       └ wear_link.py (행 수신·체크섬)
+     └ chip_registry.py      (UID → 라벨)                    └ chip_pe.py   (P/E 증분 기입)
+     └ chip_pe.py            (prep = P/E +1)                 └ run_sweep_chip.py 를 체크포인트마다 부른다
+          │                                                               │
+   build/data/sweep_*.csv · _reads.csv              build/logs/wear/<세션>/
+   build/plots/bathtub_*.png                          plan.txt · verdict.txt · A/B/R/H.txt
+          │                                            checkpoints.csv (C 행 + 소거 시간 요약)
+          └──────────────────────┬────────────────────────────────┘
+                                 │
+        data/ (원본 보관)   docs/results/ (승격)   docs/chip_registry.md · chip_pe.md (기입)
 ```
 
-읽는 요령 두 가지.
-
-1. **가로는 층위 4단**이다 — 빌드 → 측정 → 분석 → 기록. 층을 건너뛰는 지름길은 없다.
-2. **세로는 경로 2개**다 — 같은 칩에 마모 경로(PS가 SPI로 직접 때린다)와 측정 경로(PL이 위상을
-   밀며 읽는다)가 번갈아 닿는다. **둘은 비트스트림이 다르고 서로를 볼 수 없다**(로그 29 F5).
-   그래서 "칩 1개 = 1세션"이 절차 규칙으로 강제된다(S-2 §3.2) — 하드웨어가 보증해 주지 않는다.
+**두 경로는 비트스트림이 다르다.** 측정은 PL 로직(g3)이 하고 마모는 PS 의 SPI(g2)가 한다. 한 보드에
+동시에 올릴 수 없으므로, 체크포인트마다 ELF·비트를 갈아 끼운다 — 그 교체를 사람 대신 `run_wear.py`
+가 한다(축 3).
 
 ---
 
-## 1. 0단계 — 계측기를 만든다 (빌드) **[동작]**
+## 1. 축 1 — 계측기를 만든다 (빌드·검증) **[동작]**
 
-측정 산출물을 논하기 전에 계측기부터 만든다. `build/`는 커밋하지 않으므로 **측정하는 PC마다**
-아래를 돌린다. 명령·기대 출력·기준 수치(WNS·LUT)는 `docs/build_reproduction.md` §3이 원전이고,
-여기서는 "무엇이 무엇을 낳는가"만 적는다.
+### 무엇을 하는가
 
-| 대상             | 명령                                                                                  | 산출물                                                                                 | 소요      |
-| ---------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------- |
-| g0 루프백 계측기 | `vivado -mode batch -source fpga/scripts/build_g0_loopback.tcl`                     | `build/vivado/g0_loopback.{bit,xsa}` + `build/vitis/g0_sweep/build/g0_sweep.elf`   | ~8분      |
-| g2 브링업 비트   | `vivado -mode batch -source fpga/scripts/build_g2_jedec.tcl`                        | `build/vivado_g2/g2_jedec.{bit,xsa}`                                                 | ~1분      |
-| prep 앱          | `vitis -s ps/scripts/build_flash_prep.py`                                           | `build/vitis_prep/flash_prep/build/flash_prep.elf`                                   | ~20초     |
-| g3 스윕 계측기   | `vivado -mode batch -source fpga/scripts/build_g3_chip.tcl -tclargs all <25\|45\|75>` | `build/vivado_g3_<mhz>/…bit` + `build/vitis_g3_<mhz>/g3_sweep/build/g3_sweep.elf` | ~2분/클럭 |
+측정도 마모도 **소스에서 만든 비트와 ELF** 로만 돈다. 이 축은 보드를 건드리지 않고 그 전부를
+다시 만들고, 만든 것이 맞는지 보드 없이 채점한다. 새 PC 에서 처음 시작할 때와 소스를 고쳤을 때
+거치는 자리다.
 
-의존 사슬: **g2 XSA → prep ELF**, **g3 XSA → g3_sweep ELF**. g0은 독립이다.
+### 사람이 하는 일
 
-### 1.1 굽기 — 산출물이 보드로 가는 자리
+`python reproduce.py` 한 줄 (명령·옵션은 `commands.md` §1). 약 10분, 보드 불필요. 기본 11단계는
+`sim · selftest · tb · g0 · g2 · prep · id · wear · g3-25 · g3-45 · g3-75`.
 
-JTAG 프로그래밍은 `xsct`가 한다. bit·ELF·`ps7_init.tcl`을 한 묶음으로 올리므로 **ELF만 재로드하는
-경로를 두지 않는다**(MMCM 위상이 남아 `phase_pos_mismatch`로 거부된다 — 의도된 방어).
+각 단계는 6겹으로 채점된다 — 종료 코드 · 완료 문구 · 산출물 존재와 갱신 · 타이밍 · 수치 기준표 ·
+빌드 파라미터. `WARN` 은 실패가 아니라 기준표와 다른 것이고 **로그에 적을 거리**다.
 
-| 무엇을                | 명령                                                                                |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| 루프백 계측기 (G0)    | `xsct ps/scripts/program_g0.tcl`                                                  |
-| 사전 쓰기·UID (실칩) | `xsct ps/scripts/program_g2.tcl build/vitis_prep/flash_prep/build/flash_prep.elf` |
-| 실칩 스윕             | `xsct ps/scripts/program_g3.tcl 25` (`45`/`75`, 보험 `25 pl4`)              |
+**보드 측정 직전에는 돌리지 않는다** — 단계가 중간에 실패하면 그 ELF 는 깨진 채 남는다.
 
-실칩은 **뒤 둘을 사람이 직접 치지 않는다** — 래퍼가 순서대로 호출한다(§2.1). 직접 치는 것은
-루프백뿐이고, 그때도 캡처를 **먼저** 켠다:
+### 나오는 것
 
-```bash
-uv run python host/capture/sweep_uart_capture.py --loopback --port /dev/ttyUSB1   # 터미널 1
-xsct ps/scripts/program_g0.tcl                                                    # 터미널 2
-```
+| 산출물 | 무엇 | 누가 쓰나 |
+| --- | --- | --- |
+| `build/vivado/` · `vivado_g2/` · `vivado_g3_<mhz>/` | g0 루프백 · g2(PS SPI 를 EMIO 로) · g3 스윕 계측기 비트 + XSA | xsct 가 보드에 올린다 |
+| `build/vitis*/…/*.elf` | `g0_sweep` · `g3_sweep` · `flash_prep` · `flash_id` · `flash_wear` | 같음 |
+| `build/vitis_prep_<base>_<n>/` | 범위 전용 prep (0\_7 · 7\_7 · 2041\_7) — 체크포인트가 쓴다 | 축 3 |
+| `build/sim/flash_wear_sim` | 마모 엔진의 호스트 시뮬레이션 (보드 없이 같은 명령) | 블랙박스 TB · 조원 연습 |
+| `build/logs/reproduce_<UTC>/summary.txt` | 단계별 채점 결과 | 사람 |
 
-### 1.2 한 소스가 두 앱이 되는 자리 — `g0_sweep.c`
+**한 소스가 두 앱이 되는 자리** — `ps/src/g0_sweep.c` 하나에서 g0(루프백)과 g3(실칩)이 나온다.
+`build_g3_sweep.py` 가 상수 셋(`SWEEP_STEPS` · `F_SCLK_HZ` · `N_READS_CFG=112`)만 치환한 사본을
+빌드한다. **N 은 옵션이 아니라 ELF 에 박힌다** — 신품과 파일럿의 비교가 같은 N 위에서만 성립하기
+때문이다(수정안 #2). 래퍼는 `BEGIN` 의 `n=` 이 112 가 아니면 첫 줄에서 중단한다.
 
-`ps/src/g0_sweep.c` 하나가 루프백(g0)과 실칩(g3) 스윕 앱의 공통 원본이다. `build_g3_sweep.py`가
-**사본을 떠서 상수 3개를 텍스트 치환**한다 (원본 무수정 원칙, 로그 8 R7):
+**보드 없이 도는 검증 루프** — iverilog 블록 스모크 4종 · 호스트 셀프테스트 3종 ·
+블랙박스 TB 127개(`host/tests/`, mock 엔진 + 호스트 시뮬 + 실행기). RTL·호스트 코드를 만지면
+여기를 먼저 통과시킨다.
 
-| 상수            | 원본          | g3 치환값                                               |
-| --------------- | ------------- | ------------------------------------------------------- |
-| `SWEEP_STEPS` | 2,520         | 56 × O — 25MHz 2,520 / 45MHz 1,400 / 75MHz 840        |
-| `F_SCLK_HZ`   | 25,000,000    | 클럭별                                                  |
-| `N_READS_CFG` | **100** | **112** (수정안 #2, 2026-09-15 승인 — 실칩 전용) |
+### 지금 막힌 것
 
-**루프백은 100을 유지한다.** 계측기 자기 이력과 비교하는 경로라 칩 데이터와 섞이지 않는다
-(로그 29 §8.1). 즉 같은 파일에서 나온 두 ELF의 N이 서로 다르다 — 이것이 의도다.
-
-### 1.3 보드 없이 도는 검증 루프
-
-빌드 파이프라인과 별개로, RTL·호스트 코드를 만지면 먼저 여기를 통과시킨다.
-
-| 무엇                       | 어떻게 (명령은 `commands.md` §1)                                     | 기대                       |
-| -------------------------- | -------------------------------------------------------------------- | -------------------------- |
-| RTL 스모크 4종             | `reproduce.py` 의 `sim` 단계 (원명령 build_reproduction §5.1)        | 4/4 PASS                   |
-| 호스트 셀프테스트 3종      | `reproduce.py` 의 `selftest` 단계 (build_reproduction §5.2)          | 3/3 PASS                   |
-| 블랙박스 TB (P/E 엔진)     | `reproduce.py` 의 `tb` 단계 — mock·C 엔진 호스트 시뮬·실행기 (build_reproduction §5.3) | 전부 passed |
-| G1 cocotb 회귀**[미구현]** | `sim/tb/` (지민) + `sim/check_coverage.py`                           | 23/23 항목 · 전 항목 PASS |
-
-`check_coverage.py`는 **항목 누락만** 본다. 어서션이 그 항목을 실제로 재는지는 보지 않는다.
+- **G1 cocotb 회귀 미착수** — `sim/tb/` 가 비어 있다. 블록 스모크 4종은 돈다 (지민 담당)
 
 ---
 
-## 2. 1단계 — 신품 측정 **[부분: 게이트 2개 미구현]**
+## 2. 축 2 — 신품을 잰다 **[측정 종료 · 게이트 판정 보류]**
 
-신품에서만 얻을 수 있는 값을 전부 걷는 단계다. **마모를 한 번이라도 시작하면 영원히 확보
-불가능**하므로(S-2 머리말) 파이프라인에서 유일하게 "지금 안 하면 끝"인 자리다.
+### 무엇을 하는가
 
-### 2.1 칩 하나 = 한 명령
+**마모를 한 번이라도 시작하면 영원히 못 얻는 값**을 전부 걷는다 — UID 등록, 출고 blank 상태,
+신품 윈도우 폭, 재장착 σ. 파이프라인에서 유일하게 "지금 안 하면 끝"인 자리다(S-2 머리말).
+곡선의 x=0 점이 여기서 나온다.
 
-`run_sweep_chip.py --mode newchip --mhz 25` 한 줄이다 (명령·옵션·상황별은 `commands.md` §2).
-이 한 줄이 아래를 순서대로 한다 (`host/run/run_sweep_chip.py`, 로그 23·24).
+### 사람이 하는 일
+
+`run_sweep_chip.py --mode newchip --mhz 25` (신품 첫 투입, P/E +1) 또는 `--mode sweep` (재측정,
+P/E 불변). 명령·옵션은 `commands.md` §2, 당일 절차는 런북 3·7.
 
 ```
   등록부 파싱 (깨져 있으면 보드를 건드리기 전에 죽는다)
-  포트 개방 ──────────────────────────────── 캡처가 먼저다. 첫 줄을 놓치면 런이 무효
-  세션1  xsct program_g2.tcl + flash_prep.elf
+  포트 개방 ──────────────────── 캡처가 먼저다. 첫 줄을 놓치면 런이 무효
+  세션1  xsct program_g2.tcl + flash_prep.elf   (sweep 모드는 flash_id.elf — 쓰기 없음)
            #PREP JEDEC EF 40 17 → #PREP UID <16hex> → (BLANK/ERASE) → #PREP PASS
-           UID로 docs/chip_registry.md 역조회 → 라벨 확정 → docs/chip_pe.md 에 +1 행
+           UID 로 docs/chip_registry.md 역조회 → 라벨 확정 → docs/chip_pe.md 에 +1 행
   세션2  xsct program_g3.tcl <mhz>   ×N회 (--repeat, --reseat)
            #G0 SWEEP BEGIN … END valid=1 reason=complete
-           → build/data/sweep_<label>_<uid16>_<stamp>.csv (+ _reads.csv)
-  종료   "k/N 완료" + build/data/session_<label>_<uid16>_<batch_id>.log
+  분석   bathtub_analysis.py 자동 호출 → 폭 3종(θ) + 그림
 ```
 
-핵심은 **사람이 라벨을 입력하지 않는다**는 것이다. UID를 읽는 것은 세션 1(PS SPI)이고 CSV를
-만드는 것은 세션 2(PL)라, 사람이 중간에 끼면 UID가 파일에 닿지 못한다. 래퍼의 존재 이유가 이것이다.
+**사람이 라벨을 입력하지 않는다.** UID 를 읽는 것은 세션 1(PS SPI)이고 CSV 를 만드는 것은
+세션 2(PL)라, 사람이 중간에 끼면 UID 가 파일에 닿지 못한다. 래퍼의 존재 이유가 이것이다.
 
-같은 이유로 **모드가 정한 것은 옵션으로 뒤집을 수 없다.** `sweep` 에 prep 을 켜는 스위치가 없고
-`newchip` 에 `--chip` 을 줄 수 없다. 앵커 재측정에서 옵션을 빠뜨려 칩을 한 번 더 마모시키던 사고를
-**표현 불가능**하게 만든 것이다. N(스텝당 읽기 횟수)도 옵션이 아니라 ELF 에 박힌 112 고정이다 —
-신품 측정과 파일럿의 비교가 같은 N 위에서만 성립하기 때문이다(수정안 #2).
+**모드가 정한 것은 옵션으로 뒤집을 수 없다.** `sweep` 에 prep 을 켜는 스위치가 없고 `newchip` 에
+`--chip` 을 줄 수 없다. 앵커 재측정에서 옵션을 빠뜨려 칩을 한 번 더 마모시키던 사고를
+**표현 불가능**하게 만든 것이다.
 
-> S-2 §4의 `sweep_uart_capture.py --target chipNN` 표기는 **옛 명령**이다. 로그 24에서
-> `--loopback` / `--uid <16hex>`로 바뀌었고, 실칩의 정식 경로는 래퍼다 (build_reproduction §8).
+### 나오는 것
 
-### 2.2 `flash_prep`이 내는 것
+| 산출물 | 무엇 |
+| --- | --- |
+| `build/data/sweep_<label>_<uid16>_<stamp>.csv` · `_reads.csv` | 위상별 오류 수 · 읽기별 상세 (계약 §6). 완주 못 하면 `_invalid` 접미 |
+| `build/data/session_<label>_<uid16>_<batch>.log` | 그날의 원문 전부. 칩 신원이 어긋나면 `session_idfail_*` 로 개명 |
+| `build/plots/bathtub_*.png` + 폭 3종 | θ=10⁻²/10⁻³/10⁻⁴ 에서의 윈도우 폭 |
+| `docs/chip_registry.md` | UID ↔ 라벨. 기계가 쓴다 |
+| `docs/chip_pe.md` | prep 1회 = 그 범위 P/E +1 |
 
-| 출력                                     | 무엇                                           | 상태                                                   |
-| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `#PREP JEDEC EF 40 17`                 | 칩 동일성. 불일치면 스스로 중단                | 동작                                                   |
-| `#PREP UID <16hex>`                    | 개체 정본 식별자 (4Bh ×3회 일치)              | 동작 (G-c)                                             |
-| `#PREP PASS all 2048 pages verified`   | PRBS15 사전 쓰기 + 전수 read-back              | 동작                                                   |
-| `#PREP BLANK pre/post` + `BLANKADDR` | 출고 시점 결함 비트 / 소거 잔여 비트 + 주소    | 구현됨 (G-d, 로그 30) —**미커밋·실칩 확인 전** |
-| `#PREP ERASE <sector> <us>` + SUMMARY  | 섹터별 소거 시간 128건 = 노화 이중 지표의 후자 | 구현됨 (G-b, 로그 30) —**미커밋·실칩 확인 전** |
+### 지금 막힌 것
 
-`blank_pre`는 **첫 소거와 함께 질문 자체가 소멸**한다. 그래서 이 둘이 S-2 §2의 게이트이고,
-지금 chip02를 꽂으면 신품 데이터를 잃기만 하고 얻지 못한다. 확장 후 prep 소요는 16초 → 약 47초.
+| 게이트 | 조건 | 현재 |
+| --- | --- | --- |
+| W10-M 전수 측정 | chip04\~10 + 앵커 | **2026-09-20 종료** |
+| G-a | 드리프트 판정 (chip01 재측정) | **보류** — 재장착 σ 확보 후 판정 (워크플로 7) |
+| G5 ② | 예상 노화 이동량 Δ (분자) | **없음** — 분모 σ_repeat 13.86ps 는 확보, 비교 대상이 문서에 없다 |
+| G5 ③ | 블라인드 절차 | **미설계** (로그 23 부록 D) |
 
-### 2.3 스윕이 산출하는 것
-
-스윕 1회 = 위상 2,520스텝 × 112읽기 × 2,048비트(25MHz 기준), **59초**(UART 921600 실측). 산출물 3개:
-
-| 파일                                       | 내용                                                                                                | 스키마 원전         |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------- |
-| `sweep_<label>_<uid16>_<stamp>.csv`      | 위상 스텝 1행. 메타 열(target·generated_at·git_rev·uid·reseat·repeat_idx·batch_id) 전 행 반복 | 계약 §6 + 수정안#3 |
-| `..._reads.csv`                          | 읽기별 에러 수 e_i 원본 (~27만 행).**선택이 아니라 필수** — 버스트성 검사(체크 4)의 입력     | 계약 결정 3-4       |
-| `session_<label>_<uid16>_<batch_id>.log` | `#PREP` 전문 + 배치 진행. 시작부터 디스크에 쓴다 (Ctrl-C에도 UID가 남는다)                        | 로그 24 §8          |
-
-무효 런(계약 §6 ①~⑥)이면 두 CSV 모두 `_invalid` 접미가 붙는다. **필터 코드를 안 짜도 기본
-동작이 안전한 쪽**이 되도록 파일명 층에서 처리한다.
-
-### 2.4 분석 — 곡선에서 숫자로
-
-```bash
-uv run python host/analysis/bathtub_analysis.py build/data/sweep_<…>.csv
-uv run python host/analysis/repeatability_aggregate.py <csv> <csv> ...      # 2개 이상
-```
-
-| 스크립트                        | 산출                                                                                                                                                   |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bathtub_analysis.py`         | 유효 윈도우 폭 3종(θ=10⁻²/10⁻³/10⁻⁴) + 체크리스트 5종 판정 +`build/plots/*.png`. 동반 `_reads.csv`가 옆에 있으면 R8 무결성 검사를 자동 수행 |
-| `repeatability_aggregate.py`  | 여러 런의 폭을 같은 알고리즘으로 구해**평균 ± 표준편차** + 대표 곡선 1장 (G4 에러바, 게재 4번)                                                  |
-| `monte_carlo_sweep_params.py` | 측정**전에** N·θ를 정한 사전 등록 근거. 실측 σ_j가 나오면 재실행해 N을 재확인한다                                                             |
-
-체크리스트 5는 곡선이 아니라 **RTL을 의심하라**는 신호다(프레이밍 슬립). 판정이 FAIL이면
-데이터를 해석하지 않고 위로 되돌아간다.
-
-### 2.5 기입 — 파이프라인이 문서로 끝나는 자리
-
-| 목적지                    | 무엇                                                                  | 쓰는 주체                                      |
-| ------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| `docs/chip_registry.md` | UID ↔ 라벨 대응표 (정본은 md 표 자체. 별도 CSV/JSON을 두지 않는다)   | `chip_registry.py` — 공란 채우기·행 추가만 |
-| `docs/chip_pe.md`       | P/E 증분 이력 (append-only,`--blind`면 `(봉인)`)                  | `chip_pe.py`                                 |
-| `docs/results/data/`    | 집계 md + 요약 CSV (개체 산포 σ, 소거 시간 기준선, blank, 재장착 σ) | 사람                                           |
-
-### 2.6 지금 막혀 있는 곳
-
-| 게이트 | 조건                          | 현재                                                                                |
-| ------ | ----------------------------- | ----------------------------------------------------------------------------------- |
-| G-a    | 드리프트 판정 (chip01 재측정) | **보류** — 재장착 σ 확보 후 판정 (워크플로 7)                               |
-| G-b    | 섹터별 소거 시간 계측         | 코드 완료 (미커밋) ·**ELF 빌드 통과 2026-09-15 23:53** — 실칩 1회 확인 남음 |
-| G-c    | UID 출력                      | 완료                                                                                |
-| G-d    | blank check 판독              | G-b와 같음 (같은 파일·같은 구현)                                                   |
-
-G-b·G-d는 `flash_prep.c` 단일 파일 변경이었고(명세 로그 30), 2026-09-15 구현이 working tree에
-들어와 ELF 빌드까지 통과했다 — 커밋과 실칩 1회 확인이 남아 있다. **측정 데이터를 뜨기 전에
-커밋한다**: CSV의 `git_rev` 열이 dirty tree를 가리키면 그 데이터의 출처가 재구성되지 않는다. **그것이 끝나면 남는 게이트는 G-a 하나**이며,
-N=112는 게이트가 아니라 조건 통일 항목이다(로그 29 §8.3·로그 30 미결 4).
+**G5 ②③ 이 축 3 의 착수 조건이다.** 마모 전에 문서에 수치가 있어야 한다 — 데이터를 본 뒤 정하면
+S-2 §6 이 금지한 사후 해석이 된다.
 
 ---
 
-## 3. 주 루프 — 마모 체크포인트 루프 **[엔진·실행기 구현 — 실칩 인수 대기, 체크포인트 편성 미구현]**
+## 3. 축 3 — 마모시킨다 **[동작 — 대조군 스윕만 막혀 있다]**
 
-여기서부터가 프로젝트의 본체다. 위 1단계가 x=0 점 하나를 찍는 것이라면, 주 루프는 **같은 칩을
-300k 사이클까지 태우며 x축을 만드는 것**이다.
+### 무엇을 하는가
 
-### 3.1 루프의 모양
+프로젝트의 본체다. 축 2 가 x=0 점 하나를 찍는 것이라면, 이 축은 **같은 칩의 7섹터를 300k 사이클까지
+태우며 x축을 만든다.** 체크포인트마다 그 자리를 다시 재서 곡선의 점을 찍는다.
 
 ```
-  초기화 1회 (S-1 §4)  UID 대조 → tally 섹터 소거 → 대조군·마모군 PRBS 기록 → blank check → 체크포인트 0
+  초기화 1회 (S-1 §4·§8.1)  UID 대조 → tally 두 벌 소거 → 마모군·대조군 PRBS 기록 → blank check
 
   반복 {
-      마모 루프 (S-1 §6)          ① 0x00 프로그램 112페이지  → t_program_us
-                                   ② 7섹터 소거              → 섹터별 t_erase_us
-                                   ③ wear_loop_cycles +1
-                                   ④ 검사 주기(100사이클)마다 blank check · tally 기록 · UID 재확인
-      체크포인트 도달 (S-1 §5)     마모군·근접 대조군·원격 대조군 각각
-                                     소거 → PRBS 기록 → verify → 스윕 ×반복
-      다음 체크포인트 산정 (§11)   ×2.15 (조용할 때) / ×1.47 (직전 폭 변화 > 1.83ps)
-  }  종점 300,000
+      마모 루프 (S-1 §6)   ① 0x00 프로그램 112페이지      → t_program_us
+                           ② 7섹터 소거                   → 섹터별 t_erase_us
+                           ③ 카운터 +1
+                           ④ 100사이클마다 blank check · tally 1바이트 · UID 재확인
+      체크포인트 도달       마모군 소거 → PRBS 기록(P/E +1) → 스윕 → 분석·plot
+  }  종점 300,000 (12점: 100 · 300 · 600 · 1,400 · 3,000 · 6,400 · 13,800 · 29,600 · 63,700 ·
+                          137,000 · 294,500 · 300,000)
 ```
 
-**여기서 "읽기 스윕"은 루프와 병렬인 항목이 아니라 루프 안의 계측 프리미티브**다. 1단계에서 쓴
-측정 경로를 그대로 다시 부른다 — 그래서 신품 측정을 N=112로 떠야 파일럿과 비교가 성립한다.
+**얻는 것이 둘이다** — 체크포인트의 스윕이 주는 **윈도우 폭**(y1)과, 매 사이클 A 행이 주는
+**동작 시간**(y2: 소거 `t_erase_us` · 쓰기 `t_program_us`). 칩이 낡을수록 지우고 쓰는 데 오래
+걸리는 성질을 재서 **동작 시간 자체를 칩의 나이를 읽는 센서로 쓴다**(`project_context.md`).
+둘 다 칩 내부 WIP 해제까지의 실측이라 SPI 클럭과 무관하다. 사전 등록된 **1차 지표는 소거 시간**
+이고(G5 이중 지표 · A6 판정선 400ms), 쓰기 시간은 같은 행·같은 해상도로 남는 **보조 지표**다 —
+변화 폭이 작고 단조롭지 않을 수 있어 1차로 걸지 않았다. 쓰기 쪽의 더 강한 신호는 시간이 아니라
+B 행의 `program_fail_bits`(전하가 안 들어간 비트)다.
 
-### 3.2 무엇을 만들어야 하는가
+영역 배치는 S-1 §2.1 — 마모군 0\~6 · 근접 대조군 7\~13 · 원격 대조군 2,041\~2,047 · tally 512·1,536.
+**대조군은 마모 루프를 받지 않고** 체크포인트마다 한 번씩만 다시 기록된다(읽기 교란을 마모군과
+대칭으로 맞추려는 것, `[D17-13]`). 300k 끝에서 마모군 300,012 : 대조군 12 다.
 
-| 구성                 | 이름 (로그 29 §7)      | 상태                                                             |
-| -------------------- | ----------------------- | ---------------------------------------------------------------- |
-| 마모 엔진            | `flash_wear`          | **구현** (`ps/src/flash_wear.c`, PS C). 실칩 P/E 는 아직 — 런북 12 |
-| 호스트 실행기        | `run_wear.py`         | **구현** — `accept`·`resume`·`tally-erase`·읽기. 조작은 `commands.md` §3 |
-| 소거 시간 계측       | A 행 `t_erase_us`·`t_program_us` | **구현** — 엔진이 매 사이클 섹터별로 낸다 |
-| 사이클 카운터 영속화 | tally 섹터 2벌          | **구현** — 100사이클마다 1바이트, `E_DIRTY` 자물쇠와 `tally_erase` 열쇠 |
-| 체크포인트 편성      | (prep → 스윕 → ELF 교체 → START) | **미구현** — 근접·원격 스윕이 RTL `BASE_SECTOR` 부재로 막혀 있다 (로그 44 `[U44-8]`) |
+### 사람이 하는 일
 
-층위는 **PS C 로 확정**됐다 (로그 44 `[D44-8]`, 로그 29 의 「반복은 PL·판단은 PS」 D2 는 뒤집혔다).
-마모 경로에 PL 로직이 없고(g2 비트), 엔진은 무상태라 체크포인트마다의 리셋을 받아들인다
-(`[D44-11]`). 엔진의 논리는 블랙박스 TB(`host/tests/`)가 호스트 시뮬레이션으로 재고, PS 배관과
-칩의 물리는 실칩 인수(런북 12)가 잰다.
+`run_wear.py accept --chip chip01` 한 줄 (`commands.md` §3, 판정 읽는 법은 런북 12).
 
-### 3.3 마모 경로의 산출물
+1. 실행기가 보드를 올리고 UID 를 대조한 뒤 **계획 한 장**을 띄운다 — 태울 자리, 보호 섹터,
+   칩의 tally 와 장부 누적, 체크포인트 12점, 예상 시간(실측 단가 기준). 사람은 읽고 `enter`
+2. 고칠 것이 있으면 그 자리에서 옵션을 쳐 넣는다(`--to 100000 --confirm-first 3`) — 계획을 다시 띄운다
+3. **앞 K 체크포인트에서만** 판정 9줄·장부 행·plot 을 확인하고 `enter`. K 번 치고 나면 무인으로 종점까지
+4. 전원이 나가면 `resume` 이 tally 두 벌과 호스트 A 로그로 채택값을 계산한다 — **START 는 사람이**
 
-스윕 CSV와 **다른 계열**의 로그 3종이 새로 생긴다 (S-1 §9).
+**사람이 치는 것은 칩과 명령뿐이다.** 체크포인트 배치·구간 나누기·측정 편성은 전부 기본값이고,
+비가역 행위 앞에는 계획 승인 화면이 선다.
 
-| 로그         | 주기                  | 핵심 열                                                                                                              |
-| ------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| A 사이클     | 매 사이클, 섹터별 1행 | `cycle, sector, t_erase_us, t_program_us, timestamp`                                                               |
-| B 무결성     | 검사 주기마다         | `erase_residual_bits, program_fail_bits, defect_addrs, die_temp_c, uid_ok`                                         |
-| C 체크포인트 | 스윕 1개당 1행        | `cycle, area, sweep_csv, chip_id(UID), base_sector, n_reads, pattern, repeat_idx, area_cumulative_cycles, git_rev` |
+### 나오는 것
 
-C의 `sweep_csv` 열이 **마모 경로와 측정 경로를 잇는 유일한 못**이다. 공통 필수는
-`chip_id(UID)` · `git_rev` · `base_sector` · `timestamp` 넷.
+| 산출물 | 주기 | 무엇 |
+| --- | --- | --- |
+| `A.txt` (A 행) | 매 사이클 × 7섹터 | `cycle · sector · t_erase_us · t_program_us · ts` — **곡선 y2 의 원자료**, 300k 면 210만 행 |
+| `B.txt` (B 행) | 검사 주기(100, 결함 뒤 10) | 두 읽기의 결함 비트와 주소 · `uid_ok` |
+| `R.txt` (R 행) | 사건마다 | `wip_timeout` · `program_fail` · `erase_fail` · `uid_mismatch` · `halt` · `reerase` |
+| `H.txt` (H 행) | START 마다 | `chip_id` · **`git_rev`** · `session` · `cycle` · `delta` |
+| `plan.txt` | 실행마다 | 사람이 승인한 계획 그대로 |
+| `verdict.txt` | 구간마다 | A1\~A7 · C · probe 9줄 |
+| `checkpoints.csv` (C 행) | 체크포인트마다 | `cycle · area · sweep_csv · chip_id · base_sector · n_reads · mhz · session` + 동작 시간 요약(`t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50`) · 점당 소요 |
+| `docs/chip_pe.md` | 구간·체크포인트마다 | P/E 증분 행 (append-only) |
+| 체크포인트의 스윕 CSV·png | 체크포인트마다 | 축 2 와 같은 경로·같은 형식 — **곡선 y1** |
 
-### 3.4 시간
+**C 행의 `sweep_csv` 열이 마모 경로와 측정 경로를 잇는 유일한 못이다.** 공통 필수는
+`chip_id`(UID) · `git_rev` · `base_sector` · `timestamp` 넷.
 
-1사이클 405ms(typ) · 300k 사이클 = **33.7시간** · 체크포인트 1점 = 파일럿 약 3분 / 본 실험 약 15분 (S-1 §12, 2026-09-16 개정).
-tSE는 칩 내부 고전압 펄스 시간이라 SPI 클럭으로 줄일 수 없고, 소켓이 1개라 전 과정 직렬이다.
+### 지금 막힌 것
 
-### 3.5 이 루프에 들어가기 전의 잠금
-
-**마모는 이 프로젝트에서 유일한 비가역 행위다.** G5 게이트 3조건(전수 신품 측정 · 노이즈 플로어
-수치 확인 · 체크포인트 계획과 블라인드 정답 사전 커밋)이 모두 충족되기 전에는 어떤 칩도
-마모하지 않는다. 파이프라인 문서에서 이 절을 빼면 **점선이 실선처럼 읽힌다.**
+- **근접·원격 대조군 스윕 불가** — 읽기 창이 RTL 에 페이지 0\~111 로 고정이라 섹터 7\~13 도
+  2,041 도 못 읽는다(수정안 #1 `BASE_SECTOR` 미구현, 로그 44 `[U44-8]`, 지민 담당).
+  **파일럿은 마모군 곡선만 나오고 S-1 §15 ③(인접 간섭)은 답이 안 나온다**
+- **체크포인트 측정 경로는 실칩 미검증** — prep ELF → 스윕 → 엔진 복귀를 sim 으로는 못 잰다.
+  기본 `--confirm-first 1` 이 첫 체크포인트(100)에서 사람을 세우는 이유가 이것이다
+- **G5 3조건** — ① 전수 신품 측정(종료) ② 분자 Δ(없음) ③ 블라인드 절차(미설계).
+  **셋이 차기 전에는 어떤 칩도 마모하지 않는다.** 이 절에서 이 문장을 빼면 점선이 실선처럼 읽힌다
 
 ---
 
-## 4. 축 추가 — 온도, 그리고 전압 **[미착수]**
+## 4. 축 4 — 환경을 바꾼다 (온도, 그리고 전압) **[센서 브링업 착수]**
 
-온도는 루프의 4번째 단계가 아니다. **체크포인트를 곱하는 축**이다 — 같은 측정을 온도마다 반복한다.
+### 무엇을 하는가
+
+온도는 루프의 4번째 단계가 아니라 **체크포인트를 곱하는 축**이다 — 같은 측정을 온도마다 반복한다.
 
 ```
    현재:   체크포인트 → 스윕 (상온)
    온도축: 체크포인트 → { 25°C · 40°C · 60°C } 각각에서 스윕
 ```
 
-- 선행 조건은 소프트웨어가 아니라 **하드웨어**다: 히터 + 온도 센서 + PID 제어(PS), 그리고 짧은
-  배선의 DUT 보드. 전압 축은 추가로 레벨 시프터가 전제다 — 없이 전압을 내리면 과전압 스트레스가
-  실험 교란 변수가 된다(`project_context.md` §5).
-- 소유는 장세은(DUT 보드, 온도 축 우선), 파이프라인에는 `die_temp_c` 열(S-1 §9 B·C)과
-  XADC 판독이 자리만 잡혀 있다 — **리포에 XADC 사용 0건**.
-- 이 축은 G5를 막지 않는 **병렬 트랙**이다. 마모 루프가 온도를 기다리지 않는다.
+### 사람이 하는 일
+
+아직 파이프라인에 명령이 없다. 지금은 **하드웨어 브링업** 단계다 — TMP117 온도 센서를
+아두이노로 읽는 시험이 `hw/arduino/tmp117_test/` 에 들어왔다(2026-09-22).
+
+### 나오는 것
 
 기대 산출물은 온도별 윈도우 축소 곡선과, 전압-클럭 평면의 슈무 플롯(온도별 여러 장)이다.
+파이프라인에는 자리만 잡혀 있다 — `die_temp_c` 열(S-1 §9 B·C)과 XADC 판독.
+
+### 지금 막힌 것
+
+- 선행 조건이 소프트웨어가 아니라 **하드웨어**다: 히터 + 온도 센서 + PID 제어(PS), 짧은 배선의
+  DUT 보드. 전압 축은 추가로 레벨 시프터가 전제다 — 없이 전압을 내리면 과전압 스트레스가
+  실험 교란 변수가 된다(`project_context.md` §5)
+- 소유는 장세은(`hw/`, 온도 축 우선). **리포에 XADC 사용 0건**
+- 이 축은 G5 를 막지 않는 **병렬 트랙**이다. 마모 루프가 온도를 기다리지 않는다
 
 ---
 
-## 5. 산출물의 생애 — 3단 착지
+## 5. 축을 잇는 것 — 산출물의 생애와 추적성
 
-측정 원본은 커밋하지 않는다. 재현성은 원본 데이터가 아니라 **생성 스크립트 + 파라미터 +
-UID + git rev**로 확보한다.
+측정 원본은 커밋하지 않는다. 재현성은 원본 데이터가 아니라 **생성 스크립트 + 파라미터 + UID +
+git rev** 로 확보한다.
 
-| 단 | 위치              | 누가 쓰나         | 규칙                                                                                                                 |
-| -- | ----------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1  | `build/data/`   | 기계 (캡처·래퍼) | 생성은`open(path, "x")` — 덮어쓰기 경로 자체를 두지 않는다                                                        |
-| 2  | `data/`         | 사람이 옮긴다     | 원본 보관.`.gitignore` (스키마·README만 커밋)                                                                     |
-| 3  | `docs/results/` | 사람이 승격한다   | `plots/` · `data/` · `captures/` (게이트별). **승격분은 동명 `.md`로 유래·재현 방법을 짝지어 둔다** |
+| 단 | 위치 | 누가 쓰나 | 규칙 |
+| -- | --- | --- | --- |
+| 1 | `build/data/` · `build/logs/` | 기계 (캡처·래퍼·실행기) | 생성은 `open(path, "x")` — 덮어쓰기 경로 자체를 두지 않는다 |
+| 2 | `data/` | 사람이 옮긴다 | 원본 보관. `.gitignore` (스키마·README만 커밋) |
+| 3 | `docs/results/` | 사람이 승격한다 | `plots/` · `data/` · `captures/` (게이트별). **승격분은 동명 `.md` 로 유래·재현 방법을 짝지어 둔다** |
 
-추적성의 못은 셋이다. ① 파일명에 박힌 `<uid16>` ② CSV의 `uid`·`git_rev` 열 ③ 등록부와 P/E 이력.
-**라벨과 데이터가 어긋나면 UID가 진실이다.**
+추적성의 못은 넷이다. ① 파일명에 박힌 `<uid16>` ② CSV·로그 행의 `uid`·`git_rev` 열
+③ 등록부(`chip_registry.md`)와 P/E 이력(`chip_pe.md`) ④ C 행의 `sweep_csv`.
+**라벨과 데이터가 어긋나면 UID 가 진실이다.**
+
+**누적 P/E 의 정본은 칩 자신의 tally 섹터다**(S-1 §8). `chip_pe.md` 는 호스트 측 이력이고 둘이
+어긋나면 칩이 진실이다 — 다만 tally 는 100사이클 눈금이라 그 아래는 호스트 A 로그가 메운다.
+실행기는 START 전에 셋(tally 두 벌 · 장부 합계 · 영역)을 맞대보고 어긋나면 멈춘다.
 
 ---
 
 ## 6. 스크립트 색인
 
-| 스크립트                                                                                  | 무엇을                                                                    | 산출물                                         |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
-| `fpga/scripts/build_g0_loopback.tcl`                                                    | g0 프로젝트 재생성 → 합성·구현·비트·XSA → ELF 체인 호출              | `build/vivado/`, `build/vitis/`            |
-| `fpga/scripts/build_g2_jedec.tcl`                                                       | PS SPI0을 EMIO로 JB에 라우팅 (PL 로직 없음)                               | `build/vivado_g2/`                           |
-| `fpga/scripts/build_g3_chip.tcl`                                                        | 실칩 스윕 계측기 (클럭별).`-tclargs bit <mhz> <k>`는 PAY_LEAD 보험 비트 | `build/vivado_g3_<mhz>/`                     |
-| `ps/scripts/build_g0_sweep.py` · `build_g3_sweep.py`                                 | 스윕 앱 ELF. g3는 상수 3개 치환 사본                                      | `build/vitis*/…/g*_sweep.elf`               |
-| `ps/scripts/build_flash_prep.py` · `build_flash_jedec.py` · `build_core_smoke.py` | prep · JEDEC 확인 · AXI 스모크 앱                                       | `build/vitis_prep/` 등                       |
-| `ps/scripts/program_g0.tcl` · `program_g2.tcl` · `program_g3.tcl`                 | xsct JTAG 프로그래밍 (bit + ELF + ps7_init)                               | 보드                                           |
-| `host/run/run_sweep_chip.py`                                                            | **실칩 정식 경로.** 세션1(prep·UID) → 세션2(스윕 ×N)             | CSV 2개 ×N + 세션 로그                        |
-| `host/capture/sweep_uart_capture.py`                                                    | UART 행 스트림 → 계약 §6 CSV 2개. 무효 런 판정·`_invalid` 접미       | `build/data/sweep_*.csv`                     |
-| `host/capture/chip_registry.py`                                                         | 등록부 파서. UID→라벨 역조회, 제한된 쓰기                                | `docs/chip_registry.md`                      |
-| `host/run/chip_pe.py`                                                                   | P/E 증분 append-only                                                      | `docs/chip_pe.md`                            |
-| `host/analysis/bathtub_analysis.py`                                                     | 폭 3종 + 체크리스트 5종 + 그림                                            | `build/plots/`                               |
-| `host/analysis/repeatability_aggregate.py`                                              | 반복 런 집계 (평균±σ)                                                   | `build/plots/bathtub_<target>_repeat<n>.png` |
-| `host/analysis/monte_carlo_sweep_params.py`                                             | N·θ 사전 등록 golden model                                              | `docs/results/plots/monte_carlo_*.png`       |
-| `sim/smoke/*.v` + `iverilog`                                                          | 블록 스모크 4종                                                           | PASS/FAIL                                      |
-| `sim/check_coverage.py`                                                                 | G1 회귀 커버리지 대조 (항목 누락만)                                       | 비영 종료 = FAIL                               |
-| `ps/src/flash_wear` · `host/run/run_wear.py`                                         | **미구현** — 마모 벤치                                             | S-1 §9 로그 A/B/C                             |
-| `ps/src/flash_io.*` · `ps/src/flash_id.c`                                            | 신원 확인 (JEDEC+UID, 쓰기 없음) — `--mode sweep` 세션1              | `#G2 UID <16hex>` → 등록부 대조               |
-| `host/run/run_newchip.py`                                                              | **미구현** — 다칩 배치(재장착마다 UID 재확인, `flash_id` 재사용)   | —                                             |
+| 스크립트 | 무엇을 | 산출물 |
+| --- | --- | --- |
+| `reproduce.py` | 빌드·검증 전체 (보드 없이) | `build/*` + `build/logs/reproduce_<UTC>/` |
+| `fpga/scripts/build_g0_loopback.tcl` | g0 프로젝트 재생성 → 비트·XSA → ELF 체인 | `build/vivado/`, `build/vitis/` |
+| `fpga/scripts/build_g2_jedec.tcl` | PS SPI0 을 EMIO 로 JB 에 라우팅 (PL 로직 없음) | `build/vivado_g2/` |
+| `fpga/scripts/build_g3_chip.tcl` | 실칩 스윕 계측기 (클럭별). `-tclargs bit <mhz> <k>` 는 PAY_LEAD 보험 비트 | `build/vivado_g3_<mhz>/` |
+| `ps/scripts/build_g3_sweep.py` · `build_g0_sweep.py` | 스윕 앱 ELF. g3 는 상수 3개 치환 사본 (N=112) | `build/vitis*/…/g*_sweep.elf` |
+| `ps/scripts/build_flash_prep.py` | prep 앱. 인자로 범위 지정 사본 (`vitis_prep_<base>_<n>`) | `build/vitis_prep*/` |
+| `ps/scripts/build_flash_wear.py` · `build_flash_id.py` | 마모 엔진 · 신원 확인 앱 | `build/vitis_wear/`, `build/vitis_id/` |
+| `ps/scripts/program_g0.tcl` · `program_g2.tcl` · `program_g3.tcl` | xsct JTAG 프로그래밍 (bit + ELF + ps7_init) | 보드 |
+| `host/run/run_sweep_chip.py` | **측정의 정본.** 세션1(prep·UID) → 세션2(스윕 ×N) → 분석 | CSV 2개 ×N + 세션 로그 + png |
+| `host/run/run_wear.py` | **마모의 정본.** 계획 승인 → 구간 → 체크포인트 측정 → 판정 | `build/logs/wear/<세션>/` + `chip_pe.md` 행 |
+| `host/run/wear_link.py` | UART 어댑터 — 경계 10개, 행 체크섬·재전송 | — |
+| `host/capture/sweep_uart_capture.py` | UART 행 스트림 → 계약 §6 CSV 2개. 무효 런 판정 | `build/data/sweep_*.csv` |
+| `host/capture/chip_registry.py` | 등록부 파서. UID→라벨 역조회, 제한된 쓰기 | `docs/chip_registry.md` |
+| `host/run/chip_pe.py` | P/E 증분 append-only | `docs/chip_pe.md` |
+| `host/analysis/bathtub_analysis.py` | 폭 3종 + 체크리스트 5종 + 그림 | `build/plots/` |
+| `host/analysis/repeatability_aggregate.py` | 반복 런 집계 (평균±σ) | `build/plots/bathtub_<target>_repeat<n>.png` |
+| `host/analysis/monte_carlo_sweep_params.py` | N·θ 사전 등록 golden model | `docs/results/plots/monte_carlo_*.png` |
+| `ps/src/flash_wear.c` | 마모 엔진 (PS C, 무상태). tally 2벌·보호 범위는 엔진 상수 | `#WEAR` 행 |
+| `ps/src/flash_prep.c` · `flash_io.*` · `flash_id.c` | 소거·PRBS 기록·verify · SPI 배관 · 신원 확인 | `#PREP` · `#G2` 행 |
+| `host/tests/` | 블랙박스 TB 127 — mock 엔진 · 호스트 시뮬 · 실행기 | PASS/FAIL |
+| `sim/smoke/*.v` + `iverilog` | 블록 스모크 4종 | PASS/FAIL |
+| `sim/check_coverage.py` | G1 회귀 커버리지 대조 (항목 누락만) | 비영 종료 = FAIL |
+| `host/run/run_newchip.py` | **미구현** — 다칩 배치 | — |
 
 ---
 
 ## 7. 파이프라인이 자주 새는 자리
 
-런북 3 표 E가 원전이고, 그중 **파이프라인 층에서 나는 것**만 옮긴다.
+런북 3 표 E 가 원전이고, 그중 **파이프라인 층에서 나는 것**만 옮긴다.
 
-| 증상                                          | 원인                                   | 처치                                                    |
-| --------------------------------------------- | -------------------------------------- | ------------------------------------------------------- |
-| BEGIN 줄이 없다                               | 송신(xsct)을 수신(캡처)보다 먼저 켰다  | **수신 먼저.** 래퍼는 포트를 프로그래밍 전에 연다 |
-| 포트가 안 열린다                              | miniterm과 캡처가 같은`/dev/ttyUSB1` | 동시 사용 불가                                          |
-| `phase_pos_mismatch` 거부                   | ELF만 재로드했다 (MMCM 위상이 남는다)  | `program_*.tcl` 전체 경로로 재실행 — 의도된 방어     |
-| 전 위상 BER≈0.51, e_i가 PRBS 0비트 수와 일치 | 사전 쓰기 없이 스윕                    | `flash_prep` PASS 먼저                                |
-| 전 위상 BER≈0.5 +`valid=1`                 | PAY_LEAD 어긋남 (칩 문제가 아니다)     | 보험 비트 빌드 후 `--pl 4`                            |
-| `요청 N=112 인데 ELF 는 n=100`              | `--n-reads`와 빌드가 따로 논다       | 빌드와 인자가 함께 가야 한다 (아래)                     |
-
-**현재 알려진 세대 불일치**: g3 25·45MHz ELF는 N=112 반영 완료, **75MHz는 아직 100**이다.
-그리고 `run_sweep_chip.py --n-reads` 기본값도 아직 100이라, 실칩 25MHz를 돌릴 때 인자를 빠뜨리면
-1회차 캡처 후 중단된다 (로그 30 미결 3·4).
+| 증상 | 원인 | 처치 |
+| --- | --- | --- |
+| BEGIN 줄이 없다 | 송신(xsct)을 수신(캡처)보다 먼저 켰다 | **수신 먼저.** 래퍼는 포트를 프로그래밍 전에 연다 |
+| 포트가 안 열린다 | miniterm 과 캡처가 같은 `/dev/ttyUSB1` | 동시 사용 불가 |
+| `phase_pos_mismatch` 거부 | ELF 만 재로드했다 (MMCM 위상이 남는다) | `program_*.tcl` 전체 경로로 재실행 — 의도된 방어 |
+| 전 위상 BER≈0.51, e_i 가 PRBS 0비트 수와 일치 | 사전 쓰기 없이 스윕 | `flash_prep` PASS 먼저 |
+| 전 위상 BER≈0.5 + `valid=1` | PAY_LEAD 어긋남 (칩 문제가 아니다) | 보험 비트 빌드 후 `--pl 4` |
+| `BEGIN` 의 `n=` 이 112 가 아니다 | ELF 세대가 다르다 (N 은 빌드 시 고정) | `reproduce.py --only g3e-<mhz>` 로 다시 굽는다 |
+| `E_CYCLE` · `E_DIRTY` 거부 | 호스트가 준 `cycle` 이 칩의 tally 와 안 맞는다 | `resume` 으로 채택값을 받거나, 새 실험이면 `tally-erase` |
+| 「칩과 장부가 다른 이야기를 한다」 | `chip_pe.md` 와 tally 가 창을 벗어났다 | 실행기가 찍는 세 갈래 안내를 따른다 (장부 정정 · `--cycle` · `tally-erase`) |
 
 ---
 
-## 8. 실선/점선 요약 (2026-09-15)
+## 8. 실선/점선 요약 (2026-09-22)
 
-| 단계                                   | 상태                                                        |
-| -------------------------------------- | ----------------------------------------------------------- |
-| 빌드 파이프라인 (g0·g2·prep·g3 ×3) | **동작** — 2025.2에서 전 빌드 검증 (2026-09-14)      |
-| 검증 루프 (스모크 4 + 셀프테스트 3)    | **동작** / G1 cocotb는 미착수                         |
-| 측정 경로 (스윕 → CSV → 폭)          | **동작** — G0·G2·G3·G4 통과                       |
-| 신품 측정 (M 트랙)                     | **부분** — G-b·G-d 코드 완료(미커밋), G-a 판정 보류 |
-| 마모 루프 (P/E)                        | **미구현** — 엔진 층위 미확정(D1), G5 잠금           |
-| 온도·전압 축                          | **미착수** — 하드웨어 선행                           |
+| 축 | 상태 |
+| --- | --- |
+| 축 1 빌드·검증 | **동작** — 2025.2 전 빌드 검증(2026-09-14) · 스모크 4 + 셀프테스트 3 + TB 127 / G1 cocotb 미착수 |
+| 축 2 신품 측정 | **측정 종료**(2026-09-20 전수 10개) / G-a 판정 보류 · G5 ②③ 미충족 |
+| 축 3 마모 | **동작** — 엔진·실행기 구현, 실칩 인수 통과(2026-09-22). 체크포인트 편성·자동 측정 구현 / 대조군 스윕 막힘(`[U44-8]`) · 실칩 체크포인트 미검증 |
+| 축 4 온도·전압 | **센서 브링업** — TMP117 시험 코드. DUT 보드·히터·레벨 시프터 선행 |
 
 ---
 
 ## 9. 미결 의사결정
 
-| # | 항목                                                                   | 상태                                                            |
-| - | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 1 | 마모 엔진 층위 (PS C vs PL RTL)                                        | 로그 29 D1 잠정, 근거 재검토 중                                 |
-| 2 | `flash_prep` G-b·G-d 구현 주체                                      | 세은 B 트랙 배정이나 온도 트랙 이동 중 — 워크플로 9 §2-3 미결 |
-| 3 | 신품 조사 2단 CSV(호스트 파서)를 언제 만드나                           | 로그 30 미결 1 —`run_newchip.py`와 겹친다                    |
-| 4 | `--n-reads` 기본값과 75MHz ELF 세대 정리                             | 로그 30 미결 3·4                                               |
-| 5 | 수정안#1(BASE_SECTOR) 승인 — 승인 전까지 `--base-sector`는 0만 허용 | 워크플로 9 §5                                                  |
+| # | 항목 | 상태 |
+| - | --- | --- |
+| 1 | **G5 ② 예상 노화 이동량 Δ** — 마모 착수 전에 수치가 문서에 있어야 한다 | 워크플로 10 §N — 후보 3안 제시, 미정 |
+| 2 | **G5 ③ 블라인드 절차** | 미설계 (로그 23 부록 D) |
+| 3 | 수정안 #1 `BASE_SECTOR` (읽기 창) — 없으면 대조군을 못 잰다 | 발의 2026-08-23, 구현 0건 (지민) |
+| 4 | 본 실험 3칩의 그룹 수·마모량 배분·패턴 — 파일럿이 답한다 | S-1 §15 ①\~⑥ |
+| 5 | 엔진 보호 범위(`CTRL_RANGES`)는 ELF 상수다 — 본 실험 배치로 가면 재빌드 | `[D44-2]` |
+| 6 | 신품 조사 2단 CSV(호스트 파서)를 언제 만드나 | 로그 30 미결 1 — `run_newchip.py` 와 겹친다 |
