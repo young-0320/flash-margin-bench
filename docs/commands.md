@@ -207,6 +207,7 @@ uv run python host/run/run_wear.py resume --base-sector 1000 --host-log-max 0
 
 # 마모 — 이것만 친다. 계획을 띄우고 enter 를 기다린다
 uv run python host/run/run_wear.py accept --chip chip01
+#   선행: 그 칩의 신품 25MHz 스윕(x=0)이 집계표에 있어야 한다 — 없으면 run_sweep_chip.py --mode newchip --mhz 25 먼저
 #   enter = 그대로 진행 · "--to 100000 --confirm-first 3" 처럼 쳐 넣으면 고쳐서 다시 띄운다 · q = 취소
 #   체크포인트마다 0~6 소거+PRBS(P/E +1) → 스윕 → 분석·plot 을 실행기가 하고, 앞 K 점에서만 사람에게 묻는다
 
