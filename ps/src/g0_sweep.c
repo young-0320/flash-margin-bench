@@ -54,14 +54,15 @@
 
 /* 계약 §5 수치 */
 /* UART 보 레이트 — 첫 출력보다 먼저, 전 앱 공통 (2026-09-15, 로그 30 §10.3 B). 호스트 기본값도 921600.
+   값은 전역 변수 — 호스트가 UART_BAUD 환경변수로 주면 program_*.tcl 이 ELF 를 올린 뒤 덮어쓴다.
    드라이버가 TRM 절차(TX/RX 정지 → CD·BDIV 기록 → FIFO 리셋 → 재개)로 바꾸고 분주비도 고른다:
    100MHz 기준 클럭에서 CD=18·BDIV=5 → 925,925bps (+0.47%, 허용치 3% 안) */
-#define UART_BAUD   921600u
+volatile u32 g_uart_baud = 921600u;   /* xsct 가 dow 뒤 con 앞에 덮어쓴다 (print -set) — 지민 PC 는 115200 */
 static XUartPs uart;
 static void uart_set_baud(void)
 {
     XUartPs_CfgInitialize(&uart, XUartPs_LookupConfig(XPAR_XUARTPS_0_BASEADDR), XPAR_XUARTPS_0_BASEADDR);
-    XUartPs_SetBaudRate(&uart, UART_BAUD);
+    XUartPs_SetBaudRate(&uart, g_uart_baud);
 }
 
 #define N_READS_CFG     100u

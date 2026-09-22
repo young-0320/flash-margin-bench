@@ -218,6 +218,7 @@ def test_accept_end_to_end_on_sim(sim_bin, tmp_path):
     assert len((d / "A.txt").read_text().splitlines()) == 700
     assert len((d / "B.txt").read_text().splitlines()) == 1 and (d / "H.txt").exists()
     assert "WEAR START base=1000 n_sectors=7 pattern=0x00 cycle=0 delta=100 session=1758412800" in (d / "commands.txt").read_text()
+    assert "baud rate  : 마모 921600 · 스윕 921600" in (d / "plan.txt").read_text()   # 계획서에 보 레이트가 남는다
     tail = pe.read_text().splitlines()[-1]
     assert tail.startswith("| ") and "| chip01 | D1654CB09B352233 | 1000~1006 | +100 | run_wear accept (session 1758412800) |" in tail
 
@@ -278,7 +279,7 @@ def test_accept_confirms_at_the_first_k_checkpoints(sim_bin, tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     assert r.stdout.count("확인했으면 enter") == 2
     assert "체크포인트 100 확인 (남은 유인 2회)" in r.stdout
-    assert "유인 확인 끝 — 여기부터 1,000 까지 무인으로 간다" in r.stdout
+    assert "유인 확인 종료 — 여기부터 1,000 까지 무인 실행" in r.stdout
 
 
 def test_accept_refuses_a_target_off_the_tally_grid(tmp_path):

@@ -8,7 +8,9 @@
     run_wear.py resume  --host-log-max N | --from-session <dir>          RESUME → decide_resume → BLANK → (REERASE) → 채택값 출력
     run_wear.py tally-erase --i-approve-tally-erase                      tally 두 벌 소거 — UID 를 직접 타이핑해야 하고, 장부에 먼저 적는다
 
-    공통: --port /dev/ttyUSB1 --baud 921600 | --sim build/sim/flash_wear_sim (호스트 시뮬레이션, P/E 없음)
+    공통: --port /dev/ttyUSB1 | --sim build/sim/flash_wear_sim (호스트 시뮬레이션, P/E 없음)
+          --wear-baud 921600 (마모 링크 · 체크포인트 prep) · --sweep-baud 921600 (체크포인트 스윕만) — 호스트 포트와
+          펌웨어 양쪽에 걸린다. 921600 스윕에서 CSV 행이 빠지는 PC(지민)는 --sweep-baud 115200
           --no-program (accept 에서 xsct 단계 생략 — 이미 떠 있는 엔진에 붙는다)
 
 **P/E 는 비가역이다.** `accept` 는 `--i-approve-real-pe` 없이는 실칩에 START 를 보내지 않는다 (`--sim` 은 예외).
@@ -50,6 +52,7 @@ PLOT_DIR = REPO / "build" / "plots"
 LOG_ROOT = REPO / "build" / "logs" / "wear"
 WEAR_BASE_TB, WEAR_N = 1000, 7                              # S-4 §9 TB 전용 마모 영역 — 인수 시험의 기본값
 WEAR_BASE_GROUP = 0                                         # S-1 §2 마모 그룹 0~6 — 읽기 창과 같은 자리. 파일럿·종단 다 여기
+                                                            # (reproduce.py "prep-wear" 의 PREP_BASE=0 · PREP_N=7 과 같은 값 — 옮기면 둘 다)
 AREA_NAME = {WEAR_BASE_GROUP: "마모 그룹 (S-1 §2)", WEAR_BASE_TB: "TB 전용 (S-4 §9)"}
 TALLY_STRIDE = 100                                          # tally 1바이트 = 100사이클 (S-1 §8.1) — 구간의 눈금
 PATTERN = 0x00                                              # 파일럿 고정값 (S-1 §1)
@@ -249,19 +252,20 @@ def fmt_dur(seconds):
 
 def plan_banner(chip, uid, segs, to, base=WEAR_BASE_GROUP, mhz=25, measure=True,
                 tally=None, note=None, cycle_s=CYCLE_TYP_S, src="", cp_s=CP_COST_S,
-                total=None, unknown=0):
+                total=None, unknown=0, wear_baud=921600, sweep_baud=921600):
     """승인 전에 사람이 읽는 계획 한 장 — 어디를·어디서부터·얼마나·어디서 재고·어디까지 사람이 보나."""
     confirm = sum(1 for g in segs if g[2])
     cps = [g[0] + g[1] for g in segs if g[3]]
     start, span = segs[0][0], to - segs[0][0]
     dur = fmt_dur(estimate(segs, cycle_s, cp_s))
     out = ["── 마모 계획 ────────────────────────────────────────────────",
-           f"칩         : {chip}  UID {uid}"]
+           f"칩         : {chip}  UID {uid}",
+           f"baud rate  : 마모 {wear_baud} · 스윕 {sweep_baud}"]
     if tally is not None:
-        out.append(f"tally      : {tally:,}  (2벌 일치 · 마모 루프만)" + (f"  ⚠ {note}" if note else ""))
+        out.append(f"tally      : {tally:,}  (마모 사이클만 집계 · 2벌 일치)" + (f"  ⚠ {note}" if note else ""))
     if total is not None:
         out.append(f"누적 P/E   : {total:,}  ({wear_area(base)} · 장부 기준 — 마모 + prep · 체크포인트)"
-                   + (f"  ⚠ 값을 모르는 행 {unknown}개 제외" if unknown else ""))
+                   + (f"  ⚠ 증분 미상 행 {unknown}개는 합계에서 제외" if unknown else ""))
     out += [
         f"마모 섹터  : {wear_area(base)} (7섹터 · 112페이지)",
         "보호 섹터  : 근접 대조군 7~13 · 원격 대조군 2,041~2,047 · tally 2벌 512 · 1,536 (엔진이 거부)",
@@ -345,7 +349,7 @@ class Run:
             transport = wl.PipeTransport([a.sim], env=env)
         else:
             import serial
-            self.ser = serial.Serial(a.port, a.baud, timeout=0.5)
+            self.ser = serial.Serial(a.port, a.wear_baud, timeout=0.5)
             reader = self.ser
             if program:
                 if not WEAR_ELF.exists():
@@ -443,18 +447,18 @@ def checkpoint_measure(run, n, acc):
     elf = REPO / f"build/vitis_prep_{a.base_sector}_{WEAR_N}" / "flash_prep" / "build" / "flash_prep.elf"
     if not elf.exists():
         raise Abort(f"missing {elf.relative_to(REPO)} — 체크포인트 prep ELF 가 없다 "
-                    f"(vitis -s ps/scripts/build_flash_prep.py {a.base_sector} {WEAR_N})")
+                    f"(PREP_BASE={a.base_sector} PREP_N={WEAR_N} vitis -s ps/scripts/build_flash_prep.py)")
     import serial
     run.close_link()
     print(f"체크포인트 {n:,} — {wear_area(a.base_sector)} 소거 + PRBS 기록 (P/E +1)")
-    with serial.Serial(a.port, a.baud, timeout=2) as ser:
+    with serial.Serial(a.port, a.wear_baud, timeout=2) as ser:
         uid = run_prep(ser, run.ses, elf=elf)
     if uid != run.expected_uid():
         raise Abort(f"체크포인트 prep 의 UID 가 다르다 — 소켓 {uid}, 등록부 {run.expected_uid()}")
     run.pe_row(wear_area(a.base_sector), "+1", f"run_wear checkpoint (session {run.session})",
                f"체크포인트 {n} — 소거+PRBS (측정용, 마모 카운터에는 안 센다)")
     cmd = [sys.executable, str(SWEEP_RUNNER), "--mode", "sweep", "--mhz", str(a.sweep_mhz),
-           "--chip", a.chip, "--port", a.port, "--baud", str(a.baud)]
+           "--chip", a.chip, "--port", a.port, "--baud", str(a.sweep_baud)]
     run.ses.log("체크포인트 스윕: " + " ".join(cmd))
     print(f"체크포인트 {n:,} — {a.sweep_mhz}MHz 스윕 (약 1분)")
     if subprocess.run(cmd).returncode != 0:
@@ -472,7 +476,7 @@ def checkpoint_confirm(run, n, csv, png, left):
               if f"| {a.chip} |" in ln][-2:]
     print(f"\n체크포인트 {n:,} 확인 (남은 유인 {left}회)")
     print(f"  판정  {run.dir / 'verdict.txt'} — 이번 구간 9줄이 전부 PASS 인가")
-    print("  장부  docs/chip_pe.md 마지막 두 행 — 마모 증분과 체크포인트 prep +1 이 둘 다 들어갔나")
+    print("  장부  docs/chip_pe.md 마지막 두 행 — 마모 증분과 체크포인트 prep +1 이 둘 다 들어갔나 확인")
     for ln in ledger:
         print(f"        {ln}")
     print(f"  plot  {png if png else '(스윕 CSV 를 못 찾았다 — build/data 확인)'}")
@@ -650,7 +654,8 @@ def cmd_accept(run):
         to = resolve_target(lambda m: print(f"  ⚠ {m}", file=sys.stderr), a, cycle)
         segs = build_segments(a, cycle, to)
         banner = plan_banner(a.chip, uid, segs, to, a.base_sector, a.sweep_mhz,
-                             a.measure and not a.sim, tally, note, cycle_s, src, cp_s, total, unknown)
+                             a.measure and not a.sim, tally, note, cycle_s, src, cp_s, total, unknown,
+                             a.wear_baud, a.sweep_baud)
         print(banner)
         if a.sim or a.i_approve_real_pe:                     # 비대화형·연습은 확인 화면을 건너뛴다
             break
@@ -685,8 +690,7 @@ def cmd_accept(run):
     for i, (start, delta, confirm, is_cp) in enumerate(segs, 1):
         n = start + delta
         head = (f"[구간 {i}/{len(segs)}] 누적 {start:,} → {n:,} · {delta:,} 사이클 · "
-                f"예상 {fmt_dur(delta * cycle_s)} · 섹터 {wear_area(a.base_sector)}"
-                + (" · 체크포인트" if is_cp else ""))
+                f"예상 {fmt_dur(delta * cycle_s)} · 섹터 {wear_area(a.base_sector)}")
         print(head)
         run.ses.log(head)
         if not run_segment(run, link, uid, start, delta, head if len(segs) > 1 else None, acc):
@@ -723,7 +727,7 @@ def cmd_accept(run):
                 break
             left -= 1
             if left == 0:
-                print(f"유인 확인 끝 — 여기부터 {to:,} 까지 무인으로 간다")
+                print(f"유인 확인 종료 — 여기부터 {to:,} 까지 무인 실행")
     print(f"세션 로그: {run.dir}")
     return rc
 
@@ -840,7 +844,10 @@ def build_parser():
                     help="accept = 계획을 승인하고 마모를 돌린다 (인수 시험도 같은 명령 — --base-sector 1000)")
     link = ap.add_argument_group("링크")
     link.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
-    link.add_argument("--baud", type=int, default=921600)
+    link.add_argument("--wear-baud", type=int, default=921600,
+                      help="마모 링크 + 체크포인트 prep — 호스트 포트와 펌웨어 양쪽 (UART_BAUD 로 xsct 에 전달)")
+    link.add_argument("--sweep-baud", type=int, default=921600,
+                      help="체크포인트 스윕만 — run_sweep_chip.py --baud 로 넘긴다. 921600 스윕에서 행이 빠지는 PC 는 115200")
     link.add_argument("--sim", metavar="BIN", help="호스트 시뮬레이션 바이너리 (build/sim/flash_wear_sim) — 실칩 대신")
     link.add_argument("--sim-image", help="fake NOR 초기 이미지 (테스트용)")
     link.add_argument("--sim-state", help="fake NOR 상태 파일 (테스트용)")
@@ -894,6 +901,8 @@ def main(argv=None):
         return 2
     args = ap.parse_args(argv)
     args.argv = argv
+    os.environ["UART_BAUD"] = str(args.wear_baud)           # program_g2.tcl 이 마모·prep ELF 의 g_uart_baud 를 이 값으로 덮어쓴다
+                                                             # (스윕은 run_sweep_chip.py 자식이 --baud 로 자기 값을 다시 넣는다)
     if args.sim and args.cmd in ("accept", "resume", "tally-erase") \
             and Path(args.chip_pe).resolve() == chip_pe.CHIP_PE.resolve():
         ap.error("--sim 연습은 임시 장부로 한다 — cp docs/chip_pe.md /tmp/practice_pe.md 뒤 "

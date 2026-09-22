@@ -56,7 +56,8 @@ python reproduce.py --list             # 단계 목록과 실제 명령
 | `--no-sim` / `--no-selftest` | `iverilog`·`uv`·`gcc` 가 없는 PC. `--no-selftest` 는 `tb` 도 뺀다 |
 | `--keep-going`                 | 실패해도 끝까지 — 기본은 첫 실패에서 중단                                    |
 
-기본 단계: `sim · selftest · tb · g0 · g2 · prep · id · wear · g3-25 · g3-45 · g3-75`
+기본 단계: `sim · selftest · tb · g0 · g2 · prep · prep-wear · id · wear · g3-25 · g3-45 · g3-75`
+(`prep-wear` = 파일럿 체크포인트용 `build/vitis_prep_0_7` — 2026-09-22 추가)
 선택 단계(`--only` 로만): `jedec · smoke · g0e · g3e-25/45/75`
 
 **읽는 법.** 각 단계는 6겹으로 채점된다 — 종료 코드 · 완료 문구 · 산출물 존재와 갱신 ·
@@ -102,7 +103,7 @@ uv run python host/run/run_sweep_chip.py --mode <newchip|sweep> --mhz <25|45|75>
 | `--reseat`      | 꺼짐             | 회차**사이**에 재장착 프롬프트 + UID 재확인. `--repeat 2` 이상에서만                                                |
 | `--pl {4,6}`    | 없음             | PAY_LEAD 보험 비트스트림. 전 위상 BER 0.5 가 나올 때(75MHz 임계). 비트는 먼저 굽는다 (`-tclargs bit <mhz> <k>`)           |
 | `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                                                        |
-| `--baud`        | 921600           | 2026-09-15 이전에 구운 ELF 는`115200`                                                                                     |
+| `--baud`        | 921600           | 호스트 포트 + 펌웨어 양쪽 (xsct 가 ELF 의 `g_uart_baud` 를 덮어쓴다). 921600 을 못 받는 PC 는 `115200`                    |
 | `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                                                                |
 | `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(봉인)`. `newchip` 에서만                                                                  |
 
@@ -174,7 +175,8 @@ uv run python host/run/run_wear.py <명령> [옵션…]
 | `--no-program`                              | 꺼짐                        | xsct 생략 — 이미 떠 있는 엔진에 붙는다                                                                                                                                                                                           |
 | `--sim BIN`                                 | 없음                        | 실칩 대신 호스트 시뮬레이션. P/E 없음, 계획 확인·체크포인트 측정은 건너뛴다                                                                                                                                                      |
 | `--host-log-max N` / `--from-session DIR` | —                          | `resume` 이 §8.3 판정에 쓰는 호스트 A 로그의 최대 cycle                                                                                                                                                                        |
-| `--port` / `--baud`                       | `/dev/ttyUSB1` / 921600   | Windows 는`COM<N>`                                                                                                                                                                                                              |
+| `--port`                                  | `/dev/ttyUSB1`            | Windows 는`COM<N>`                                                                                                                                                                                                              |
+| `--wear-baud` / `--sweep-baud`            | 921600 / 921600           | 마모 링크·prep / 체크포인트 스윕. 둘 다 호스트 포트 + 펌웨어 양쪽에 걸리고 계획서에 `baud rate : 마모 · 스윕` 행으로 남는다 — 921600 스윕에서 CSV 행이 빠지는 PC(지민)는 `--sweep-baud 115200`                                  |
 
 **사람이 치는 것은 칩과 명령뿐이다.** 나머지는 기본값이고, START 전에 실행기가 계획을 화면에
 띄우고 enter 를 기다린다 — 고칠 것이 있으면 그 자리에서 옵션을 쳐 넣으면 계획을 다시 띄운다.

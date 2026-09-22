@@ -89,6 +89,12 @@ STEPS = {
     # 완료 문구는 2026-09-21 체크포인트 모드(769e80d)부터 범위를 찍는다 — 기본 0~127 이 맞는지도 ⑥ 으로 본다
     "prep": dict(cmd=vitis("build_flash_prep.py"), done="== done (default 0~127):",
                  artifacts=["build/vitis_prep/flash_prep/build/flash_prep.elf"], tools=["vitis"]),
+    # 파일럿 체크포인트 prep — 마모 그룹 0~6 만 소거+PRBS (run_wear.py checkpoint_measure 가 이 경로를 본다).
+    # 0·7 은 run_wear.py 의 WEAR_BASE_GROUP·WEAR_N 과 같은 값 — 마모 그룹을 옮기면 둘 다 고친다.
+    # 나머지 변형(7~13 · 510 · 2041)은 대조군 스윕이 열리면 넣는다 ([U44-8])
+    "prep-wear": dict(cmd=vitis("build_flash_prep.py"), env={"PREP_BASE": "0", "PREP_N": "7"},
+                      done="== done (sectors 0~6):",
+                      artifacts=["build/vitis_prep_0_7/flash_prep/build/flash_prep.elf"], tools=["vitis"]),
     "sim": dict(cmd=[c for tb in (("tb_core_smoke", "core"), ("tb_flash_smoke", "flash"),
                                   ("tb_flash_spi_smoke", "flash"), ("tb_g0_smoke", "core", "flash"))
                      for c in sim(*tb)],
@@ -138,8 +144,8 @@ for m in ("25", "45", "75"):
 # id 는 g2 XSA 를 쓰므로 g2 뒤, prep 옆이다. --mode sweep 이 이 ELF 를 요구하므로 선택이 아니다 —
 # 빠뜨리면 "빌드는 8/8 PASS 인데 보드 앞에서 측정을 못 하는" 상태가 된다 (17초)
 # tb 는 11초. wear 는 id 옆 — 같은 g2 XSA 를 쓰고, 실칩 P/E 인수(워크플로 12)가 이 ELF 를 요구한다
-FULL = ["sim", "selftest", "tb", "g0", "g2", "prep", "id", "wear", "g3-25", "g3-45", "g3-75"]
-VITIS_ONLY = ["sim", "selftest", "tb", "g0e", "prep", "id", "wear", "g3e-25", "g3e-45", "g3e-75"]
+FULL = ["sim", "selftest", "tb", "g0", "g2", "prep", "prep-wear", "id", "wear", "g3-25", "g3-45", "g3-75"]
+VITIS_ONLY = ["sim", "selftest", "tb", "g0e", "prep", "prep-wear", "id", "wear", "g3e-25", "g3e-45", "g3e-75"]
 
 
 def backup(name, st):

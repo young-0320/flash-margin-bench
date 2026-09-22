@@ -326,10 +326,11 @@ def main():
     h.add_argument("--pl", type=int, choices=(4, 6), help="PAY_LEAD 보험 비트스트림 (pl4|pl6)")
     h.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
     h.add_argument("--baud", type=int, default=921600,
-                   help="전 앱이 925,925bps 로 맞춘다 (차이 +0.47%%). 구형 ELF 는 115200")
+                   help="호스트 포트 + 펌웨어 양쪽 (UART_BAUD 로 xsct 에 전달). 921600 을 못 받는 PC 는 115200")
     ap.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (봉인)")
 
     args = ap.parse_args()
+    os.environ["UART_BAUD"] = str(args.baud)        # program_*.tcl 이 ELF 의 g_uart_baud 를 이 값으로 덮어쓴다
     args.no_prep = args.mode == "sweep"             # 이하 본문은 이 값만 본다
     if args.mode == "newchip" and args.chip:
         ap.error("--mode newchip 은 UID 를 기계가 읽고 라벨은 프롬프트로 정한다 — --chip 을 주지 않는다")

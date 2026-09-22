@@ -22,7 +22,7 @@
 
 #define UID_LEN     8u              /* 4Bh 가 돌려주는 개체 식별자 길이 */
 
-/* UART 921600 — 전 앱 공통. 첫 출력보다 먼저 부를 것 */
+/* UART 921600 — 전 앱 공통. 첫 출력보다 먼저 부를 것. g_uart_baud 를 xsct 가 덮어쓸 수 있다 */
 void uart_set_baud(void);
 
 /* PS SPI0 초기화 + 프리스케일러(≈2.6MHz). 0=성공, 비영=실패 */

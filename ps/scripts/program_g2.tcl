@@ -50,5 +50,8 @@ ps7_init
 ps7_post_config
 
 dow $elf
+# UART 보 레이트 — 호스트가 UART_BAUD 환경변수로 주면 ELF 의 g_uart_baud 를 실행 전에 덮어쓴다
+# (run_wear.py --baud · run_sweep_chip.py --baud). 안 주면 ELF 초기값 921600 그대로
+if {[info exists env(UART_BAUD)]} { print -set g_uart_baud $env(UART_BAUD) }
 con
 puts "== running: [file tail $elf] 시작됨 — UART(miniterm /dev/ttyUSB1 921600)에서 출력 확인"

@@ -108,6 +108,11 @@ PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 �
 1,467B를 흘리는데 115200이면 UART 이용률이 98%라 여유가 0이고, 921600이면 12%로 떨어지며
 스윕 1회가 5.3분 → 약 1분이 된다. **`build/`의 ELF가 2026-09-15 이전 것이면 115200이므로
 재빌드하거나 `--baud 115200`을 줘야 한다** — 안 맞으면 `BEGIN` 자체가 안 뜬다.
+2026-09-22부터 보 레이트 옵션은 펌웨어에도 걸린다 — 호스트가 `UART_BAUD` 환경변수로 xsct 에 넘기고,
+`program_g2/g3.tcl` 이 ELF 를 올린 뒤 `print -set g_uart_baud` 로 덮어쓴다. `run_sweep_chip.py --baud`
+와 `run_wear.py --wear-baud`·`--sweep-baud` 가 그 손잡이다. 921600 스윕에서 CSV 행이 빠지는 PC
+(지민)는 `run_wear.py --sweep-baud 115200` 으로 체크포인트 스윕만 낮춘다. 측정값에는 영향이 없다
+(chip01 두 보 레이트 차이 +0.45ps, σ 안 — `docs/results/data/newchip_survey_2026-09.md`).
 
 | 호스트 OS    | 흔한 UART 포트            | 비고                                                                                                                               |
 | ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -450,7 +455,7 @@ G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← bui
 
 RTL이 바뀌었으면 지름길이 없다 — 해당 tcl을 처음부터 (§3).
 
-래퍼로는 `python3 reproduce.py --vitis-only` (g0·prep·id·wear·g3 ×3 ELF + §5 검증).
+래퍼로는 `python3 reproduce.py --vitis-only` (g0·prep·prep-wear·id·wear·g3 ×3 ELF + §5 검증).
 
 ## 7. 산출물 트리
 
@@ -463,7 +468,8 @@ build/
 ├── vitis_id/               flash_id/build/flash_id.elf   (sweep 모드 세션1이 요구)
 ├── vitis_wear/             flash_wear/build/flash_wear.elf   (P/E 인수 — 워크플로 12)
 ├── wear_gen/               wear_build.h (git_rev — build_flash_wear.py 가 생성)
-├── vitis_prep_<base>_<n>/  (선택) prep 체크포인트 모드 — PREP_BASE=<base> PREP_N=<n> vitis -s …build_flash_prep.py (로그 45 [U45-3], reproduce.py 범위 밖)
+├── vitis_prep_0_7/         prep 체크포인트 모드(마모 그룹 0~6) — reproduce.py `prep-wear` 단계. run_wear.py 체크포인트가 이 ELF 를 올린다 (2026-09-22 필수로 승격)
+├── vitis_prep_<base>_<n>/  (선택) 다른 범위 — PREP_BASE=<base> PREP_N=<n> vitis -s …build_flash_prep.py (대조군 스윕이 열리면 reproduce 에 넣는다, [U44-8])
 ├── sim/                    flash_wear_sim — TB 의 C 엔진 호스트 시뮬레이션 (gcc, §5.3이 매번 다시 만든다)
 ├── vitis_jedec/            (선택) flash_jedec/build/flash_jedec.elf
 ├── vitis_smoke/            (선택) core_smoke/build/core_smoke.elf
