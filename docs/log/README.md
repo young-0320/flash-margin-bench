@@ -83,6 +83,7 @@
 | 44 | [P/E 엔진 구현 전 검토](young/44.pe_engine_prebuild_review.md)  | **경계에 「이어 돌릴」 명령이 없다** · mux 의 전제(체크포인트 무리셋)는 스윕이 부팅 1회 1회라 성립하지 않는다 · 파일럿은 리셋 수용을 권고 |
 | 45 | [P/E 엔진 구현 — 실칩 앞에서 멈췄다](young/45.pe_engine_build_to_sim.md)  | **정본이 비워 둔 디테일 10건의 채택값** · 잔류 없는 섹터를 지우는 것은 마모다 · C 엔진은 리셋=프로세스 재시작인 호스트 시뮬레이션이 같은 TB 로 잰다 |
 | 46 | [실칩 전 마지막 두 자물쇠 — probe 와 tally 소거](young/46.probe_tally_erase_and_reproduce_wear.md)  | **0 은 「제대로 재고 0」과 「세는 경로가 죽어서 0」이 같아 보인다** · tally 를 지우는 열쇠는 UID 타이핑 + 장부 먼저 · reproduce 는 재현물만 덮으니 자유 실행 |
+| 49 | [보 레이트는 옵션 — xsct 가 실행 직전에 덮어쓴다](young/49.baud_rate_runtime_option.md)  | **ELF 를 갈지 않고 JTAG 로더가 변수를 덮어쓴다** · 보를 낮추면 이용률은 오른다 · 유실은 보가 아니라 안 읽는 시간 · 기계마다 다른 보는 통제 변인이 아니라 추적 조건 |
 | 48 | [파일럿 마모 실행기 — 승인은 계획 화면에서](young/48.pilot_wear_handler_and_plan_approval.md)  | **tally 는 영역을 세지 않는다 — 안 지우면 x축이 통째로 밀린다** · 플래그는 읽지 않고도 칠 수 있다 · 누적으로 채점하면 이어 돌리기가 영원히 FAIL · 계측기 교체는 칩 경계에서 |
 | 47 | [문서 3층 — 명령은 commands.md 한 곳](young/47.docs_three_tiers_commands_single_source.md)  | **같은 명령 문장이 세 곳에 있으면 하나를 고칠 때 둘이 낡는다** · 런북은 날짜순이라 정본이 될 수 없다 · README 는 본질과 포인터만 |
 
