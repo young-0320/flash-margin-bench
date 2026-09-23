@@ -179,7 +179,9 @@ module flash_spi_ctrl #(
             // R10 워치독 — 상태 무관 강제 종료 (case보다 우선)
             if (state != S_IDLE) begin
                 wd_cnt <= wd_cnt + 32'd1;
-                if (wd_cnt >= t_max) begin
+                // START 승인 다음 사이클을 1로 세므로 old wd_cnt=t_max-1인
+                // 에지에서 종료해야 계약 R10의 "T_max 사이클 안"을 만족한다.
+                if (wd_cnt >= t_max - 32'd1) begin
                     meas_done    <= 1'b1;
                     meas_timeout <= 1'b1;
                     meas_busy    <= 1'b0;
