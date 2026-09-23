@@ -21,6 +21,8 @@ SIM_BUILD_DIR = BUILD_DIR / "icarus"
 VENDOR_RUNTIME_DIR = BUILD_DIR / "vendor_model"
 RESULTS_XML = BUILD_DIR / "results.xml"
 WRAPPER = TB_DIR / "flash_spi_cocotb_top.v"
+CORE_WRAPPER = TB_DIR / "core_cocotb_top.v"
+INTEGRATION_WRAPPER = TB_DIR / "integration_cocotb_top.v"
 
 
 def _write_vendor_memory(path: Path, pages: int = 512) -> None:
@@ -94,6 +96,39 @@ def _prepare_vendor_model() -> tuple[Path | None, dict[str, int]]:
         + "\ninteger vendor_invalid_opcode_count = 0;",
         1,
     )
+
+    # Icarus accepts the model's specify block but does not expose this
+    # conditional $width notifier reliably. Add an equivalent monitor to the
+    # ignored runtime copy only, so W2 can still prove the vendor rule with
+    # the simulator used by this repository. The original licensed source is
+    # never modified.
+    timing_decl = "reg timing_error;"
+    if timing_decl not in source_text:
+        raise RuntimeError("Winbond model timing_error declaration was not found")
+    timing_monitor = (
+        timing_decl
+        + "\nbit vendor_tshsl_compat_active = 1'b0;"
+        + "\nrealtime vendor_tshsl_compat_start = 0.0;"
+        + "\nreg vendor_tshsl_compat_seen = 1'b0;"
+        + "\ninteger vendor_tshsl_compat_count = 0;"
+        + "\nalways @(posedge CSn) begin"
+        + "\n    vendor_tshsl_compat_active = flag_read_op;"
+        + "\n    vendor_tshsl_compat_start = $realtime;"
+        + "\nend"
+        + "\nalways @(negedge CSn) begin"
+        + "\n    if (vendor_tshsl_compat_active && "
+        + "(($realtime - vendor_tshsl_compat_start) < 10.0)) begin"
+        + "\n        timing_error = 1'b1;"
+        + "\n        vendor_tshsl_compat_seen = 1'b1;"
+        + "\n        vendor_tshsl_compat_count = vendor_tshsl_compat_count + 1;"
+        + "\n        timing_reason = $sformatf("
+        + '"tSHSL_R: measured=%0.3f ns, limit=10.000 ns", '
+        + "($realtime - vendor_tshsl_compat_start));"
+        + "\n    end"
+        + "\nend"
+    )
+    source_text = source_text.replace(timing_decl, timing_monitor, 1)
+
     invalid_stop = re.compile(
         r'(\$display\("Invalid Opcode\. \(%0h\)",cmd_byte\);\s*)\$stop;'
     )
@@ -126,10 +161,6 @@ def run() -> Path:
     simulator = os.getenv("SIM", "icarus")
     model_source, defines = _prepare_vendor_model()
     sources = [REPO_ROOT / "sim" / "smoke" / "unisim_stub.v"]
-    sources.extend(sorted((REPO_ROOT / "fpga" / "rtl" / "flash").glob("*.v")))
-    sources.append(WRAPPER)
-    if model_source is not None:
-        sources.append(model_source)
 
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -141,14 +172,6 @@ def run() -> Path:
         RESULTS_XML.unlink()
 
     runner = get_runner(simulator)
-    runner.build(
-        sources=sources,
-        hdl_toplevel="flash_spi_cocotb_top",
-        build_dir=SIM_BUILD_DIR,
-        build_args=["-g2012", "-gspecify"],
-        defines=defines,
-        always=True,
-    )
     old_cwd = Path.cwd()
     try:
         # W25Q64JV.v opens MEM/SECSI/SFDP/SREG by relative filename.
@@ -164,11 +187,41 @@ def run() -> Path:
             "F8_invalid_config_rejection,"
             "F9_no_flash_signature,"
             "F10_boundary_clean_runs,"
-            "W1_vendor_invalid_opcode_rejection"
+            "W1_vendor_invalid_opcode_rejection,"
+            "W2_vendor_tshsl_timing"
         )
         test_modules = os.getenv("G1_TEST_MODULES", default_test_modules)
+        is_core_run = any(
+            item.strip().startswith("C") for item in test_modules.split(",")
+        )
+        is_integration_run = any(
+            item.strip().startswith("I") for item in test_modules.split(",")
+        )
+        if is_core_run:
+            sources.extend(sorted((REPO_ROOT / "fpga" / "rtl" / "core").glob("*.v")))
+            sources.append(CORE_WRAPPER)
+            hdl_toplevel = "core_cocotb_top"
+        elif is_integration_run:
+            sources.extend(sorted((REPO_ROOT / "fpga" / "rtl" / "core").glob("*.v")))
+            sources.extend(sorted((REPO_ROOT / "fpga" / "rtl" / "flash").glob("*.v")))
+            sources.append(INTEGRATION_WRAPPER)
+            hdl_toplevel = "integration_cocotb_top"
+        else:
+            sources.extend(sorted((REPO_ROOT / "fpga" / "rtl" / "flash").glob("*.v")))
+            sources.append(WRAPPER)
+            if model_source is not None:
+                sources.append(model_source)
+            hdl_toplevel = "flash_spi_cocotb_top"
+        runner.build(
+            sources=sources,
+            hdl_toplevel=hdl_toplevel,
+            build_dir=SIM_BUILD_DIR,
+            build_args=["-g2012", "-gspecify"],
+            defines=defines,
+            always=True,
+        )
         result_path = runner.test(
-            hdl_toplevel="flash_spi_cocotb_top",
+            hdl_toplevel=hdl_toplevel,
             test_module=test_modules,
             test_dir=TB_DIR,
             build_dir=SIM_BUILD_DIR,

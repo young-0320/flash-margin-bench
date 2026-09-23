@@ -147,4 +147,10 @@ async def test_F2_vendor_timing_guard_detects_deliberate_short_clock(dut) -> Non
     )
     dut.timing_probe_cs_n.value = 1
     dut.use_timing_probe.value = 0
+    # The vendor model keeps timing_error sticky. Clear only this test's
+    # deliberate violation so the following F3 address test starts clean.
+    dut.vendor_timing_reset.value = 1
+    await Timer(1, unit="ns")
+    dut.vendor_timing_reset.value = 0
+    await Timer(1, unit="ns")
     dut._log.info("F2 negative control: deliberate 2ns SCLK high pulse detected")

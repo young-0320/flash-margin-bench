@@ -8,7 +8,7 @@
 알 수 없으므로(기준 문서 §4 경고), PASS 숫자를 코드 리뷰의 결론으로 삼지 말 것.
 
 사용:
-    check_coverage.py --results sim/build/results.xml
+    check_coverage.py --results sim/build/results_fw.xml sim/build/results_core.xml sim/build/results_i.xml
     cocotb 회귀 후 실행. 누락이 하나라도 있으면 비영 종료 → 회귀 전체가 FAIL.
 """
 import argparse
@@ -149,7 +149,12 @@ def write_markdown_report(path, results_path, amendment_state, excluded, items, 
 
 def main():
     ap = argparse.ArgumentParser(description="G1 회귀 커버리지 대조")
-    ap.add_argument("--results", required=True, help="cocotb JUnit XML (results.xml)")
+    ap.add_argument(
+        "--results",
+        required=True,
+        nargs="+",
+        help="one or more cocotb JUnit XML files (separate Flash/Core/Integration runs)",
+    )
     ap.add_argument(
         "--amendment1",
         action="store_true",
@@ -167,7 +172,9 @@ def main():
     excluded = set() if args.amendment1 else gated
     required = [i for i in items if i not in excluded]
 
-    cases = parse_results(Path(args.results))
+    cases = []
+    for result_file in args.results:
+        cases.extend(parse_results(Path(result_file)))
     by_id = defaultdict(list)
     unmapped = []
     for case in cases:
@@ -216,7 +223,7 @@ def main():
     report_path = Path(args.markdown)
     write_markdown_report(
         report_path,
-        Path(args.results),
+        ", ".join(args.results),
         state,
         excluded,
         items,

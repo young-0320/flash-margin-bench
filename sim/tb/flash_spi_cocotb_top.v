@@ -16,6 +16,7 @@ module flash_spi_cocotb_top;
     reg         timing_probe_cs_n = 1'b1;
     reg         timing_probe_clk = 1'b0;
     reg         timing_probe_dio = 1'b0;
+    reg         vendor_timing_reset = 1'b0;
     reg  [15:0] vendor_extra_delay_ns = 16'd0;
     reg         block_rx_done = 1'b0;
     reg  [7:0]  vendor_command_xor_mask = 8'd0;
@@ -90,6 +91,8 @@ module flash_spi_cocotb_top;
 
     wire vendor_model_present = 1'b1;
     wire vendor_timing_error = u_flash.timing_error;
+    wire vendor_tshsl_compat_seen = u_flash.vendor_tshsl_compat_seen;
+    wire [31:0] vendor_tshsl_compat_count = u_flash.vendor_tshsl_compat_count;
     wire [7:0] vendor_mem_page0_byte0 = u_flash.memory[0];
     wire [7:0] vendor_mem_page0_byte1 = u_flash.memory[1];
     wire [7:0] vendor_mem_page1_byte0 = u_flash.memory[256];
@@ -97,11 +100,24 @@ module flash_spi_cocotb_top;
     wire vendor_invalid_opcode_seen = u_flash.vendor_invalid_opcode_seen;
     wire [7:0] vendor_invalid_opcode = u_flash.vendor_invalid_opcode;
     wire [31:0] vendor_invalid_opcode_count = u_flash.vendor_invalid_opcode_count;
+    // Test-only isolation hook: the vendor timing notifier is sticky inside
+    // one simulator instance. This clears only that notifier between tests;
+    // it does not reset the DUT or issue a Flash command.
+    always @(posedge vendor_timing_reset)
+    begin
+        u_flash.timing_error = 1'b0;
+        u_flash.vendor_tshsl_compat_seen = 1'b0;
+        u_flash.vendor_tshsl_compat_count = 0;
+        u_flash.vendor_tshsl_compat_active = 1'b0;
+        u_flash.vendor_tshsl_compat_start = $realtime;
+    end
     assign dut_miso = force_vendor_miso_low ? 1'b0 :
                       (use_vendor_model ? delayed_model_do : spi_miso);
 `else
     wire vendor_model_present = 1'b0;
     wire vendor_timing_error = 1'b0;
+    wire vendor_tshsl_compat_seen = 1'b0;
+    wire [31:0] vendor_tshsl_compat_count = 32'd0;
     wire [7:0] vendor_mem_page0_byte0 = 8'd0;
     wire [7:0] vendor_mem_page0_byte1 = 8'd0;
     wire [7:0] vendor_mem_page1_byte0 = 8'd0;
