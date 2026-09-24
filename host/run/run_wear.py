@@ -593,6 +593,17 @@ def ledger_area_total(rows, base, n):
     return total, unknown
 
 
+def ledger_correction(cycle, tally, wear):
+    """START 전에 장부에 덧붙일 보정 증분. 장부가 tally 눈금 밖(A 로그·resume 채택값)까지 못 따라온 만큼만이다.
+
+    호스트가 먼저 죽어 마지막 구간 행이 안 적힌 경우(장부 300 · tally 300 · 채택값 337)에는 +37 이 맞다.
+    엔진이 error 로 서서 구간 행(+done)이 이미 적힌 경우(장부 122,164 · tally 122,100 · 채택값 122,164)에는
+    0 이어야 한다 — tally 와 비교하면 +64 를 이중으로 적는다 (2026-09-24 chip01 재개에서 발견).
+    장부를 못 읽었으면(wear=None) tally 가 유일한 기준이다."""
+    base = tally if wear is None else max(wear, tally)
+    return cycle - base if cycle > base else 0
+
+
 def start_cycle(run, link):
     """어디서부터 세나 — 그리고 칩과 장부가 같은 이야기를 하는지 본다.
 
@@ -614,11 +625,13 @@ def start_cycle(run, link):
     except OSError:
         rows = None
     total = unknown = None
+    wear = None
     if rows is not None:
         wear, areas, bad = ledger_wear(rows)
         total, unknown = ledger_area_total(rows, a.base_sector, WEAR_N)
         if bad:
             note.append(f"장부에 읽지 못한 마모 행 {bad}개 — 대조를 못 했다")
+            wear = None
         elif areas - {area}:
             raise Abort(
                 f"tally {ta:,} 에 **다른 영역**의 마모가 섞여 있다 (장부: {' · '.join(sorted(areas))}).\n"
@@ -638,8 +651,8 @@ def start_cycle(run, link):
     if a.cycle is not None:
         if a.cycle != ta:
             note.append(f"--cycle {a.cycle:,} 로 덮었다")
-        return a.cycle, ta, total, unknown, " · ".join(note) or None
-    return ta, ta, total, unknown, " · ".join(note) or None
+        return a.cycle, ta, wear, total, unknown, " · ".join(note) or None
+    return ta, ta, wear, total, unknown, " · ".join(note) or None
 
 
 def cmd_accept(run):
@@ -652,7 +665,7 @@ def cmd_accept(run):
     if status[1] == "running":
         raise Abort("엔진이 running 이다 — halt 로 세우거나 끝나기를 기다릴 것")
     uid = run.check_uid()
-    cycle, tally, total, unknown, note = start_cycle(run, link)
+    cycle, tally, wear, total, unknown, note = start_cycle(run, link)
     cycle_s, src = measured_cycle_s(a.logdir)
     cp_s = measured_cp_s(a.logdir)
 
@@ -687,11 +700,11 @@ def cmd_accept(run):
     (run.dir / "plan.txt").write_text(banner + "\n", encoding="utf-8")
     for ln in banner.splitlines():
         run.ses.log(ln)
-    if cycle > tally:                                        # 장부가 먼저 — tally 눈금 밖의 차이를 상쇄 행으로
-        #  (cycle < tally 는 적지 않는다 — 엔진이 E_DIRTY·E_CYCLE 로 막을 자리이고, 장부를 먼저 더럽히면 안 된다)
-        run.pe_row(wear_area(a.base_sector), f"+{cycle - tally}",
+    fix = ledger_correction(cycle, tally, wear)              # 장부가 못 따라온 만큼만 — 이미 적힌 구간 행은 다시 안 센다
+    if fix:                                                  # (cycle < tally 는 적지 않는다 — 엔진이 E_DIRTY·E_CYCLE 로 막을 자리이고, 장부를 먼저 더럽히면 안 된다)
+        run.pe_row(wear_area(a.base_sector), f"+{fix}",
                    f"run_wear accept (session {run.session})",
-                   f"cycle 보정: tally {tally} → 시작 {cycle} (A 로그·resume 채택값 기준)")
+                   f"cycle 보정: 장부 {cycle - fix} → 시작 {cycle} (A 로그·resume 채택값 기준)")
 
     left, acc, rc = sum(1 for g in segs if g[2]), new_acc(), 0
     for i, (start, delta, confirm, is_cp) in enumerate(segs, 1):

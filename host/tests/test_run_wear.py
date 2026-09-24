@@ -120,6 +120,14 @@ LEDGER = [("0~127", "미상(≥1)", "flash_prep", "소급 불가"),
           ("2", "±1", "run_wear resume (session 4)", "reerase · ±1")]
 
 
+def test_ledger_correction_only_covers_what_the_ledger_missed():
+    """호스트가 먼저 죽어 구간 행이 없으면 채택값까지 보정하고, 엔진이 error 로 서서 +done 이 이미 적혔으면 0 이다."""
+    assert rw.ledger_correction(337, 300, 300) == 37          # host_died — 장부 300 · tally 300 · 채택값 337
+    assert rw.ledger_correction(122_164, 122_100, 122_164) == 0   # error 정지 — 장부가 이미 122,164
+    assert rw.ledger_correction(122_164, 122_100, None) == 64     # 장부를 못 읽으면 tally 기준
+    assert rw.ledger_correction(122_100, 122_100, 122_164) == 0   # 장부가 앞서면 적지 않는다
+
+
 def test_ledger_wear_counts_only_after_the_last_tally_erase():
     """tally 와 맞댈 값 = 마지막 실험 개시 소거 이후의 run_wear accept 증분 합 (영역은 구분하지 않는다)."""
     wear, areas, bad = rw.ledger_wear(LEDGER)
