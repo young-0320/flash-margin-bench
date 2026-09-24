@@ -226,7 +226,7 @@ uv run python host/run/run_wear.py tally-erase --chip chip01 --i-approve-tally-e
 `build/logs/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
 동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요) · `verdict.txt` ·
 `A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` · `raw.txt` · `commands.txt` · `session.log`.
-구간마다 **덧붙는다** — 판정 9줄도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
+구간마다 **덧붙는다** — 판정(인수 시험 9줄 · 마모 런 8줄, A6 는 인수 시험에서만)도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
 흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `build/` 는 재빌드에 지워지지
 않지만 커밋도 안 되므로 필요하면 `docs/results/` 로 승격한다. 종료 코드 0 = 전부 PASS ·
 1 = FAIL 있음 · 2 = `resume` 이 사람을 부름 · 3 = 중단(거부·UID 불일치·타임아웃).

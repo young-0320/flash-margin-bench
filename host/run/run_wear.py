@@ -82,8 +82,12 @@ PROBE_TOTAL = WEAR_N * 4096 * 8                               # 7섹터 전 비�
 
 
 # ── 순수 함수 — pytest 가 잰다 ──────────────────────────────────────────────
-def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None, start=0):
+def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None, start=0, erase_check=True):
     """S-1 §13 A1~A7 + C + probe. [(항목, 통과, 설명)]. A6 는 실칩에서만 뜻이 있다 (mock·sim 은 시계가 가짜).
+
+    `erase_check` — A6(소거 < 400ms)는 **인수 시험(TB 영역)에서만** 채점한다. 신품이 데이터시트 최대를
+    넘기면 배선·전원을 의심하라는 시험대 검사이지 칩의 기준이 아니다. 마모 런에서는 소거가 길어지는
+    것이 잴 대상이라 채점하지 않는다 — 값은 A.txt·checkpoints.csv 에 그대로 남는다 (로그 48 §12).
 
     `start` 은 이 구간이 시작한 누적값이다. A2·A3·A5 의 행은 **이 세션이 본 것만** 세므로 기준도
     구간이어야 한다 — 그래야 이어 돌리기·무인 구간이 매번 FAIL 로 나오지 않는다. A1·A4 는 칩이
@@ -114,9 +118,9 @@ def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None
          f"{paths}" + (" tally 불일치" if mismatch else "")
          + (f" · tally 기대 {want['tally×100']}" if n % 100 else "")
          + ("" if b_cycle is not None else " · 이 구간엔 검사 사이클이 없다")),
-        ("A6", bool(erase) and max(erase) < ERASE_WARN_US,
-         f"t_erase_us max {max(erase) if erase else '-'} median {sorted(erase)[len(erase) // 2] if erase else '-'}"
-         " (실칩에서만 뜻이 있다)"),
+        *([("A6", bool(erase) and max(erase) < ERASE_WARN_US,
+            f"t_erase_us max {max(erase) if erase else '-'} median {sorted(erase)[len(erase) // 2] if erase else '-'}"
+            " (실칩에서만 뜻이 있다)")] if erase_check else []),
         ("A7", ids == {expected_uid} and uid == expected_uid,
          f"로그 chip_id {sorted(ids)} · 경계 7 {uid} · 등록부 {expected_uid}"),
         ("C", state == "checkpoint_due", f"state={state}"),
@@ -492,7 +496,7 @@ def checkpoint_confirm(run, n, csv, png, left):
 
 
 def run_segment(run, link, uid, start, delta, head, acc=None):
-    """구간 하나 — START → 완주 대기 → 장부 → 판정 9줄. 전부 통과했으면 True.
+    """구간 하나 — START → 완주 대기 → 장부 → 판정(인수 시험 9줄 · 마모 런 8줄). 전부 통과했으면 True.
     acc 를 주면 A 행의 소거·프로그램 시간과 사이클 실소요를 거기에 쌓는다 (체크포인트 요약용)."""
     base = run.args.base_sector
     cmd = start_command(start, delta, run.session, base)
@@ -515,7 +519,8 @@ def run_segment(run, link, uid, start, delta, head, acc=None):
     if acc is not None:
         collect(link.log.a, acc)                             # 행은 곧 버려진다 — 값만 남긴다
     verdict = judge_accept(link.log, status, tally, dumps, uid, run.expected_uid(),
-                           n=start + delta, start=start, probe=probe)
+                           n=start + delta, start=start, probe=probe,
+                           erase_check=(base == WEAR_BASE_TB))     # A6 는 인수 시험(TB 영역)에서만
     lines = [f"{'PASS' if ok else 'FAIL'}  {item:5s} {detail}" for item, ok, detail in verdict]
     if link.log.r:
         lines.append("R 행: " + " | ".join(f"{r['kind']}@{r['cycle']}" for r in link.log.r))

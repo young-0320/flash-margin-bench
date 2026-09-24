@@ -63,6 +63,15 @@ def test_judge_accept_A6_flags_slow_erase():
     assert v["A6"] is False and v["A1"] is True
 
 
+def test_judge_accept_A6_is_acceptance_only():
+    """마모 런(erase_check=False)에서는 A6 가 없고, 400ms 를 넘는 소거가 구간을 세우지 않는다 (로그 48 §12)."""
+    r, st, tally, dumps, uid = _mock_result()
+    r.log.a[3]["t_erase_us"] = 400_001
+    v = rw.judge_accept(r.log, st, tally, dumps, uid, CHIP01_UID, probe=_probe(r), erase_check=False)
+    assert [i for i, _, _ in v] == ["A1", "A2", "A3", "A4", "A5", "A7", "C", "probe"]
+    assert all(ok for _, ok, _ in v), v
+
+
 def test_plan_segments_confirms_the_first_checkpoints():
     """확인(enter)은 앞의 K **체크포인트**에만 붙는다 — 쪼갠 경계는 묻지 않는다."""
     segs = rw.plan_segments(0, 300_000, rw.SEG_CHUNK, 2, rw.CHECKPOINTS)

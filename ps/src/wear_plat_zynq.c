@@ -40,5 +40,8 @@ uint64_t plat_now_us(void)
 {
     const u64 cps = COUNTS_PER_SECOND;                      /* 대입으로 한 번 온전히 평가 */
     XTime t; XTime_GetTime(&t);
-    return (uint64_t)(((u64)t * 1000000ULL) / cps);
+    /* t × 10⁶ 은 부팅 후 15.37시간(2⁶⁴ ÷ 10⁶ ÷ 333,333,333)에 64비트를 넘친다 — 2026-09-24 파일럿
+       122,164사이클에서 실제로 넘쳐 시각이 43µs 로 돌아가고 wait_wip 이 가짜 wip_timeout 을 냈다
+       (로그 45 §17). 초 부분과 나머지를 나눠 곱하면 넘치지 않는다 (나머지 < cps 라 곱이 3.3e14) */
+    return (uint64_t)((t / cps) * 1000000ULL + ((t % cps) * 1000000ULL) / cps);
 }
