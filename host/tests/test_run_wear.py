@@ -74,8 +74,8 @@ def test_judge_accept_A6_is_acceptance_only():
 
 def test_plan_segments_confirms_the_first_checkpoints():
     """확인(enter)은 앞의 K **체크포인트**에만 붙는다 — 쪼갠 경계는 묻지 않는다."""
-    segs = rw.plan_segments(0, 300_000, rw.SEG_CHUNK, 2, rw.CHECKPOINTS)
-    assert [st + d for st, d, c, _ in segs if c] == [100, 300]     # 앞 두 체크포인트에서만 묻는다
+    segs = rw.plan_segments(0, 100_000, rw.SEG_CHUNK, 2, rw.CHECKPOINTS)
+    assert [st + d for st, d, c, _ in segs if c] == [100, 1_000]     # 앞 두 체크포인트에서만 묻는다
     assert all(cp for _, _, c, cp in segs if c)                    # 확인이 붙은 경계는 전부 체크포인트
     # 체크포인트가 없으면(TB) 앞 K 구간에 붙는다 — 예전 동작 그대로
     segs = rw.plan_segments(0, 300, 100, 2)
@@ -84,13 +84,16 @@ def test_plan_segments_confirms_the_first_checkpoints():
 
 def test_plan_segments_breaks_at_every_checkpoint():
     """체크포인트가 구간 경계다 — 그 사이가 --delta 보다 길면 더 쪼개고, 쪼갠 끝은 체크포인트가 아니다."""
-    segs = rw.plan_segments(0, 300_000, rw.SEG_CHUNK, 0, checkpoints=rw.CHECKPOINTS)
+    segs = rw.plan_segments(0, 100_000, rw.SEG_CHUNK, 0, checkpoints=rw.CHECKPOINTS)
     ends = [st + d for st, d, _, cp in segs if cp]
-    assert ends == list(rw.CHECKPOINTS)                        # 11점 전부가 구간 끝으로 선다
-    assert segs[0] == (0, 100, False, True) and segs[1] == (100, 200, False, True)
+    assert ends == list(rw.CHECKPOINTS)                        # 13점 전부가 구간 끝으로 선다
+    assert segs[0] == (0, 100, False, True) and segs[1] == (100, 900, False, True)
+    assert sum(d for _, d, _, _ in segs) == 100_000            # 총량은 그대로
+    # 체크포인트 사이가 SEG_CHUNK 보다 길면 쪼갠다 — 13점 격자에는 그런 간격이 없어 파일럿의 긴 간격으로 본다
+    segs = rw.plan_segments(0, 300_000, rw.SEG_CHUNK, 0, checkpoints=(137_000, 294_500, 300_000))
     mid = [(st, d, cp) for st, d, _, cp in segs if 137_000 <= st < 294_500]
     assert len(mid) > 1 and not any(cp for *_, cp in mid[:-1]) and mid[-1][2]   # 긴 구간은 쪼개진다
-    assert sum(d for _, d, _, _ in segs) == 300_000            # 총량은 그대로
+    assert sum(d for _, d, _, _ in segs) == 300_000
 
 
 def test_resolve_defaults_need_only_the_chip():
@@ -100,9 +103,9 @@ def test_resolve_defaults_need_only_the_chip():
     rw.resolve_accept(ap, args)
     assert args.checkpoint_list == rw.CHECKPOINTS and args.confirm_first == 1 and args.cycle is None
     to = rw.resolve_target(lambda m: pytest.fail(m), args, 0)
-    assert to == rw.CHECKPOINTS[-1] == 300_000
+    assert to == rw.CHECKPOINTS[-1] == 100_000               # 종단 종점 = 정격 내구 (S-1 §15)
     segs = rw.build_segments(args, 0, to)
-    assert sum(d for _, d, _, _ in segs) == 300_000 and [g[0] + g[1] for g in segs if g[3]] == list(rw.CHECKPOINTS)
+    assert sum(d for _, d, _, _ in segs) == 100_000 and [g[0] + g[1] for g in segs if g[3]] == list(rw.CHECKPOINTS)
     # TB(체크포인트 없음)는 100사이클 한 구간 — 인수 시험 모양
     args = ap.parse_args(["accept", "--base-sector", "1000"])
     rw.resolve_accept(ap, args)
@@ -281,22 +284,22 @@ def test_accept_runs_through_checkpoints_without_stopping_the_wear(sim_bin, tmp_
                  tmp_path, sim_bin)
     assert r.returncode == 0, r.stdout + r.stderr
     plan = (tmp_path / "logs" / "1758412830" / "plan.txt").read_text()
-    assert "마모 섹터  : 0~6" in plan and "체크포인트 : 4점 — 100 · 300 · 600 · 1,000" in plan
+    assert "마모 섹터  : 0~6" in plan and "체크포인트 : 2점 — 100 · 1,000" in plan
     assert "체크포인트 100 — 측정을 건너뛴다 (sim)" in r.stdout
-    assert "[구간 4/4] 누적 600 → 1,000 · 400 사이클" in r.stdout      # 체크포인트를 지나 끝까지 간다
+    assert "[구간 2/2] 누적 100 → 1,000 · 900 사이클" in r.stdout      # 체크포인트를 지나 끝까지 간다
     rows = [l for l in pe.read_text().splitlines() if "1758412830" in l]
-    assert [l.split("|")[5].strip() for l in rows] == ["+100", "+200", "+300", "+400"]
+    assert [l.split("|")[5].strip() for l in rows] == ["+100", "+900"]
     assert all("| 0~6 |" in l for l in rows)
 
 
 def test_accept_confirms_at_the_first_k_checkpoints(sim_bin, tmp_path):
     """--confirm-first 2 면 enter 를 두 번 친다 — 그 뒤로는 묻지 않고 무인으로 간다."""
-    r, _ = _run(["accept", "--session", "1758412831", "--to", "1000", "--confirm-first", "2"],
+    r, _ = _run(["accept", "--session", "1758412831", "--to", "3000", "--confirm-first", "2"],   # 100 · 1,000 · 3,000
                 tmp_path, sim_bin, stdin="\n\n")
     assert r.returncode == 0, r.stdout + r.stderr
     assert r.stdout.count("확인했으면 enter") == 2
     assert "체크포인트 100 확인 (남은 유인 2회)" in r.stdout
-    assert "유인 확인 종료 — 여기부터 1,000 까지 무인 실행" in r.stdout
+    assert "유인 확인 종료 — 여기부터 3,000 까지 무인 실행" in r.stdout
 
 
 def test_accept_refuses_a_target_off_the_tally_grid(tmp_path):
