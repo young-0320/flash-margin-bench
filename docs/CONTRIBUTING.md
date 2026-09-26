@@ -38,7 +38,7 @@ repo/flash-margin-bench/
 │   ├── workflow/       # [한영웅] 그날(국면)의 순서 — 게이트 지도·런북. 목록은 workflow/README.md, 명령 정본은 commands.md
 │   ├── log/young/      # 작업 일지 — 사람별 하위 폴더
 │   ├── ref/            # 외부 레퍼런스 PDF — 판번 기록 필수
-│   └── results/        # 게재 확정 산출물 승격처 — plots/ · data/ · captures/
+│   └── results/        # 게재 확정 산출물 승격처 — plots/ · data/(수치·표) · captures/ + 바로 아래에 해석 문서
 ├── build/          (.gitignore)   # 재현 가능한 생성물 전부 (Vivado 산출물, 분석 그림·표) — 커밋 금지
 └── data/           (.gitignore, 스키마·샘플만 커밋)   # 측정 데이터
 ```

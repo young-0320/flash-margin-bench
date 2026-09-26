@@ -275,7 +275,7 @@ git rev** 로 확보한다.
 | -- | --- | --- | --- |
 | 1 | `build/data/` · `build/logs/` | 기계 (캡처·래퍼·실행기) | 생성은 `open(path, "x")` — 덮어쓰기 경로 자체를 두지 않는다 |
 | 2 | `data/` | 사람이 옮긴다 | 원본 보관. `.gitignore` (스키마·README만 커밋) |
-| 3 | `docs/results/` | 사람이 승격한다 | `plots/` · `data/` · `captures/` (게이트별). **승격분은 동명 `.md` 로 유래·재현 방법을 짝지어 둔다** |
+| 3 | `docs/results/` | 사람이 승격한다 | `plots/` · `data/` · `captures/` (게이트별). **승격분은 동명 `.md` 로 유래·재현 방법을 짝지어 둔다.** `data/` 의 md 는 수치·표까지, 해석·판정은 `docs/results/` 바로 아래 문서로 (2026-09-26) |
 
 추적성의 못은 넷이다. ① 파일명에 박힌 `<uid16>` ② CSV·로그 행의 `uid`·`git_rev` 열
 ③ 등록부(`chip_registry.md`)와 P/E 이력(`chip_pe.md`) ④ C 행의 `sweep_csv`.
