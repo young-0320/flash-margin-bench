@@ -107,7 +107,7 @@ def test_resolve_defaults_need_only_the_chip():
     segs = rw.build_segments(args, 0, to)
     assert sum(d for _, d, _, _ in segs) == 100_000 and [g[0] + g[1] for g in segs if g[3]] == list(rw.CHECKPOINTS)
     # TB(체크포인트 없음)는 100사이클 한 구간 — 인수 시험 모양
-    args = ap.parse_args(["accept", "--base-sector", "1000"])
+    args = ap.parse_args(["accept", "--chip", "chip01", "--base-sector", "1000"])
     rw.resolve_accept(ap, args)
     assert args.checkpoint_list == ()
     assert rw.build_segments(args, 0, rw.resolve_target(lambda m: pytest.fail(m), args, 0)) == [(0, 100, True, False)]
@@ -192,10 +192,22 @@ def _run(args, tmp_path, sim_bin, extra_env=None, stdin=""):
     pe = tmp_path / "chip_pe.md"
     if not pe.exists():
         pe.write_text(CHIP_PE_DOC)
+    if "--chip" not in args and args[0] in ("accept", "resume", "tally-erase"):
+        args = [*args, "--chip", "chip01"]                         # 가짜 칩의 UID 가 chip01 이다
     cmd = [sys.executable, str(RUN_WEAR), *args, "--sim", str(sim_bin), "--no-program",
            "--logdir", str(tmp_path / "logs"), "--chip-pe", str(pe), "--sim-state", str(tmp_path / "chip.bin")]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, input=stdin)
     return r, pe
+
+
+def test_writing_commands_refuse_without_chip(tmp_path):
+    """P/E 를 내는 명령은 --chip 이 없으면 보드를 건드리기 전에 멈춘다 — 기본값 chip01 이 소켓의 chip01 과
+    우연히 맞아 고온 유지 시험 시료를 태울 수 있었다. 읽기 명령은 --chip 없이 된다."""
+    for cmd in (["accept"], ["resume", "--host-log-max", "0"], ["tally-erase"]):
+        with pytest.raises(SystemExit) as e:
+            rw.main([*cmd, "--sim", "x", "--chip-pe", str(tmp_path / "pe.md")])
+        assert e.value.code == 2
+    assert rw.build_parser().parse_args(["uid"]).chip is None
 
 
 def test_tally_erase_needs_typed_uid_and_writes_ledger_first(sim_bin, tmp_path):
@@ -223,7 +235,7 @@ def test_tally_erase_needs_typed_uid_and_writes_ledger_first(sim_bin, tmp_path):
 
 
 def test_tally_erase_refuses_real_chip_without_flag(tmp_path):
-    r = subprocess.run([sys.executable, str(RUN_WEAR), "tally-erase", "--no-program", "--port", "/dev/null",
+    r = subprocess.run([sys.executable, str(RUN_WEAR), "tally-erase", "--chip", "chip01", "--no-program", "--port", "/dev/null",
                         "--logdir", str(tmp_path)], capture_output=True, text=True)
     assert r.returncode == 3 and "--i-approve-tally-erase" in r.stderr
 
@@ -305,7 +317,7 @@ def test_accept_confirms_at_the_first_k_checkpoints(sim_bin, tmp_path):
 def test_accept_refuses_a_target_off_the_tally_grid(tmp_path):
     """구간은 tally 눈금(100)의 배수여야 한다 — 사람이 다시 친다. --cycle 은 예외(복구 채택값)."""
     for bad in (["--to", "1050"], ["--checkpoints", "300,650"]):
-        r = subprocess.run([sys.executable, str(RUN_WEAR), "accept", "--no-program", "--port", "/dev/null",
+        r = subprocess.run([sys.executable, str(RUN_WEAR), "accept", "--chip", "chip01", "--no-program", "--port", "/dev/null",
                             "--logdir", str(tmp_path), *bad], capture_output=True, text=True)
         assert r.returncode == 2 and "100 의 배수로 준다" in r.stderr, (bad, r.stderr)
 
@@ -333,7 +345,7 @@ def test_sim_refuses_to_touch_the_real_ledger(tmp_path):
 
 
 def test_accept_refuses_real_pe_without_flag(tmp_path):
-    r = subprocess.run([sys.executable, str(RUN_WEAR), "accept", "--no-program", "--port", "/dev/null",
+    r = subprocess.run([sys.executable, str(RUN_WEAR), "accept", "--chip", "chip01", "--no-program", "--port", "/dev/null",
                         "--logdir", str(tmp_path)], capture_output=True, text=True)
     assert r.returncode == 3 and "--i-approve-real-pe" in r.stderr
 
@@ -346,7 +358,7 @@ def test_resume_reerases_and_prints_adopted_value(sim_bin, tmp_path):
     out = r.stdout
     assert "판정 normal 채택값 36" in out and "reerase ok=1" in out and "재확인 잔류 0" in out
     assert "마모 섹터 1000~1006" in out                           # resume 도 어느 자리를 본 건지 남긴다
-    assert "accept --base-sector 1000 --cycle 36 --delta <n> --i-approve-real-pe" in out
+    assert "accept --chip chip01 --base-sector 1000 --cycle 36 --delta <n> --i-approve-real-pe" in out
     assert "| 1002 | ±1 | run_wear resume (session 1758412900) | reerase · ±1 |" in pe.read_text().splitlines()[-1]
     assert "WEAR START" not in (tmp_path / "logs" / "1758412900" / "commands.txt").read_text()   # START 는 안 보낸다
     assert (tmp_path / "logs" / "1758412900" / "R.txt").read_text().count("kind=reerase") == 1

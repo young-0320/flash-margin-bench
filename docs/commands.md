@@ -163,7 +163,7 @@ uv run python host/run/run_wear.py <명령> [옵션…]
 
 | 옵션                                          | 기본                        | 무엇 / 언제                                                                                                                                                                                                                       |
 | --------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--chip NN`                                 | `chip01`                  | 등록부 라벨. 소켓의 UID 와 다르면 아무것도 하지 않는다                                                                                                                                                                            |
+| `--chip NN`                                 | **accept·resume·tally-erase 필수** | 등록부 라벨. 소켓의 UID 와 다르면 아무것도 하지 않는다. 기본값을 두지 않는다 — chip01 이 꽂힌 채 빼먹으면 기본값과 UID 가 우연히 맞아 통과했다 (2026-09-26). 읽기 명령(`uid`·`tally`…)은 없어도 된다 |
 | `--to N`                                    | 마지막 체크포인트 (100,000) | **여기까지 누적으로 태운다.** 칩이 닳는 양은 이 값만이 정한다. 체크포인트가 없으면(TB) 기본 100                                                                                                                             |
 | `--confirm-first K`                         | 1                           | 앞의**K 체크포인트**에서 사람이 확인한다 — enter 로 계속, `q` 로 정지. K 번 치고 나면 그 뒤는 무인                                                                                                                       |
 | `--cycle N`                                 | **칩의 tally**        | 어디서부터인가. 안 주면 칩이 기억하는 누적(정본)을 읽어 쓴다. 복구 뒤에는`resume` 이 준 채택값을 명시한다                                                                                                                       |
@@ -194,8 +194,8 @@ uv run python host/run/run_wear.py <명령> [옵션…]
 ```bash
 # 보드 없이 연습 — 실칩과 같은 명령·같은 verdict.txt (조원 교육용)
 #   임시 장부를 반드시 준다 — 안 주면 연습이 docs/chip_pe.md 에 증분 행을 남긴다
-cp docs/chip_pe.md /tmp/practice_pe.md
-uv run python host/run/run_wear.py accept --sim build/sim/flash_wear_sim --no-program \
+grep -v '| chip01 |' docs/chip_pe.md > /tmp/practice_pe.md   # 임시 장부 · sim 칩은 chip01 UID 를 흉내 내고 0 에서 시작하므로 chip01 행은 뺀다
+uv run python host/run/run_wear.py accept --chip chip01 --sim build/sim/flash_wear_sim --no-program \
     --to 300 --chip-pe /tmp/practice_pe.md --logdir /tmp/practice_logs
 
 # 실칩, 읽기 전용 점검 (P/E 0) — 소켓의 칩·tally 상태
@@ -203,22 +203,22 @@ uv run python host/run/run_wear.py uid
 uv run python host/run/run_wear.py tally
 # 공짜 probe — START 없이 BLANK 만. 갓 소거된 7섹터면 program_fail 229376 이 나와야 한다
 #   --base-sector 를 accept 와 같은 값으로 줘야 한다 (기본 0 = 마모 그룹)
-uv run python host/run/run_wear.py resume --base-sector 1000 --host-log-max 0
+uv run python host/run/run_wear.py resume --chip chipNN --base-sector 1000 --host-log-max 0
 
 # 마모 — 이것만 친다. 계획을 띄우고 enter 를 기다린다
-uv run python host/run/run_wear.py accept --chip chip01
+uv run python host/run/run_wear.py accept --chip chipNN
 #   선행: 그 칩의 신품 25MHz 스윕(x=0)이 집계표에 있어야 한다 — 없으면 run_sweep_chip.py --mode newchip --mhz 25 먼저
 #   enter = 그대로 진행 · "--to 100000 --confirm-first 3" 처럼 쳐 넣으면 고쳐서 다시 띄운다 · q = 취소
 #   체크포인트마다 0~6 소거+PRBS(P/E +1) → 스윕 → 분석·plot 을 실행기가 하고, 앞 K 점에서만 사람에게 묻는다
 
 # 100사이클 인수 (A 시험) — 엔진을 고친 뒤에만. 본 마모의 첫 체크포인트(100)가 같은 판정을 돌린다 (런북 12)
-uv run python host/run/run_wear.py accept --chip chip01 --base-sector 1000 --cycle 0 --to 100
+uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --cycle 0 --to 100
 # 이어 돌리기 (halt 뒤) — --cycle 을 빼면 칩의 tally 에서 이어 간다
-uv run python host/run/run_wear.py accept --base-sector 1000 --to 200
+uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --to 200
 # 전원 차단 뒤 — 채택값만 출력한다. START 는 사람이 위 명령으로
-uv run python host/run/run_wear.py resume --from-session build/logs/wear/<세션>
+uv run python host/run/run_wear.py resume --chip chipNN --from-session build/logs/wear/<세션>
 # 같은 칩으로 처음부터 — UID 를 타이핑해야 지운다. 지운 값은 chip_pe.md 에 먼저 남는다
-uv run python host/run/run_wear.py tally-erase --chip chip01 --i-approve-tally-erase
+uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-erase
 ```
 
 ### 남는 것

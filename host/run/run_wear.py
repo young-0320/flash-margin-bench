@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """마모 엔진 호스트 실행기 — 실칩 인수 시험(S-4 §9)과 복구(S-1 §8.3)를 명령 한 줄로.
 
-    run_wear.py accept  --i-approve-real-pe [--cycle 0] [--delta 100]   ELF 프로그래밍 → START → 캡처 → A1~A7·C 판정
-    run_wear.py accept  --to 100000 --delta 30000 --first-delta 1000 --confirm-first 3
+    run_wear.py accept  --chip chipNN --i-approve-real-pe [--cycle 0] [--delta 100]   ELF 프로그래밍 → START → 캡처 → A1~A7·C 판정
+    run_wear.py accept  --chip chipNN --to 100000 --delta 30000 --first-delta 1000 --confirm-first 3
                                                                         구간을 이어 목표까지 — 앞 3구간만 사람이 보고 그 뒤 무인
     run_wear.py status | halt | tally | dump | uid                      읽기·정지 (halt 는 다음 사이클 경계)
-    run_wear.py resume  --host-log-max N | --from-session <dir>          RESUME → decide_resume → BLANK → (REERASE) → 채택값 출력
-    run_wear.py tally-erase --i-approve-tally-erase                      tally 두 벌 소거 — UID 를 직접 타이핑해야 하고, 장부에 먼저 적는다
+    run_wear.py resume  --chip chipNN --host-log-max N | --from-session <dir>          RESUME → decide_resume → BLANK → (REERASE) → 채택값 출력
+    run_wear.py tally-erase --chip chipNN --i-approve-tally-erase                 tally 두 벌 소거 — UID 를 직접 타이핑해야 하고, 장부에 먼저 적는다
 
     공통: --port /dev/ttyUSB1 | --sim build/sim/flash_wear_sim (호스트 시뮬레이션, P/E 없음)
           --wear-baud 921600 (마모 링크 · 체크포인트 prep) · --sweep-baud 921600 (체크포인트 스윕만) — 호스트 포트와
@@ -56,7 +56,6 @@ WEAR_BASE_GROUP = 0                                         # S-1 §2 마모 그
 AREA_NAME = {WEAR_BASE_GROUP: "마모 그룹 (S-1 §2)", WEAR_BASE_TB: "TB 전용 (S-4 §9)"}
 TALLY_STRIDE = 100                                          # tally 1바이트 = 100사이클 (S-1 §8.1) — 구간의 눈금
 PATTERN = 0x00                                              # 파일럿 고정값 (S-1 §1)
-DEFAULT_CHIP = "chip01"                                     # 등록부 라벨의 기본값 — --chip 으로 바꾼다
 ERASE_WARN_US = 400_000                                     # S-1 §10·§13 A6
 SEC_PER_CYCLE = 4.0                                         # 대기 상한 산정용 — 마모 런 사이클은 소거 시간과 함께 는다 (chip01 122k 에서 1.05s, 소거 115ms). 2.0 이면 소거 270ms 에서 호스트가 먼저 죽는다 (2026-09-24)
 CYCLE_TYP_S = 0.405                                         # S-1 §12 typ — 계획의 예상 시간 표시용
@@ -785,7 +784,7 @@ def cmd_resume(run):
                 out.append("재소거 뒤에도 잔류 — 사람을 부른다. START 를 보내지 않는다")
                 restored = None
         if restored is not None:
-            out.append(f"다음 명령 (사람이 친다): run_wear.py accept --base-sector {a.base_sector} "
+            out.append(f"다음 명령 (사람이 친다): run_wear.py accept --chip {a.chip} --base-sector {a.base_sector} "
                        f"--cycle {restored} --delta <n> --i-approve-real-pe")
     (run.dir / "resume.txt").write_text("\n".join(out) + "\n")
     for ln in out:
@@ -873,7 +872,9 @@ def build_parser():
     link.add_argument("--sim-state", help="fake NOR 상태 파일 (테스트용)")
     link.add_argument("--timeout", type=float, default=wl.CMD_TIMEOUT_S, help="명령 응답 대기 초")
     ap.add_argument("--no-program", action="store_true", help="accept/resume 에서 xsct 프로그래밍 생략")
-    ap.add_argument("--chip", default=DEFAULT_CHIP, help="등록부 라벨 — UID 대조 (기본 chip01)")
+    ap.add_argument("--chip", metavar="chipNN",
+                    help="등록부 라벨 — UID 대조. accept·resume·tally-erase 는 필수 (기본값을 두지 않는다 — "
+                         "소켓에 chip01 이 꽂힌 채 --chip 을 빼먹으면 기본값과 UID 가 우연히 맞아 통과했다)")
     ap.add_argument("--base-sector", type=int, default=WEAR_BASE_GROUP, metavar="N",
                     help=f"태울 자리(7섹터의 시작). {WEAR_BASE_GROUP} = 마모 그룹 0~6 (S-1 §2, 기본 — "
                          f"본 실험도 같은 자리) · {WEAR_BASE_TB} = TB 전용 (S-4 §9, 인수 시험). 대조군"
@@ -914,7 +915,7 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:                                             # 명령 없이 친 사람에게 usage 대신 길을 준다
         print("run_wear.py: 명령이 필요하다. 흔한 것:\n"
-              "  accept --chip chip01      마모 — 계획을 띄우고 enter 를 기다린다\n"
+              "  accept --chip chipNN      마모 — 계획을 띄우고 enter 를 기다린다\n"
               "  uid · tally · status      읽기 전용 — 소켓의 칩과 누적 확인 (P/E 0)\n"
               "  resume --from-session …   전원이 나갔다 온 뒤 채택값 계산\n"
               "전체 목록은 --help, 명령 정본은 docs/commands.md §3", file=sys.stderr)
@@ -929,6 +930,9 @@ def main(argv=None):
                  "--chip-pe /tmp/practice_pe.md 를 줄 것. 연습은 P/E 를 내지 않으므로 "
                  "진짜 이력에 행이 붙으면 그 행이 거짓이 되고, tally 대조가 그것을 세어 "
                  "다음 실칩 실행을 막는다")
+    if args.cmd in ("accept", "resume", "tally-erase") and not args.chip:
+        ap.error(f"{args.cmd} 는 --chip 이 필수다 — 어느 칩을 태울지는 사람이 선언하고 기계가 UID 로 검증한다. "
+                 "소켓의 칩은 run_wear.py uid 로 확인")
     if args.cmd == "accept":
         resolve_accept(ap, args)
         if not args.sim and not args.i_approve_real_pe and not sys.stdin.isatty():

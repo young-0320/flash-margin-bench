@@ -434,7 +434,9 @@ uv run pytest host/tests/ -q            # 또는 python3 reproduce.py --only tb
 시뮬레이션을 손으로 굴려 출력 모양을 익히려면 (P/E 없음, 결과는 `build/logs/wear/<session>/`):
 
 ```bash
-uv run python host/run/run_wear.py accept --sim build/sim/flash_wear_sim --no-program
+grep -v '| chip01 |' docs/chip_pe.md > /tmp/practice_pe.md   # 임시 장부 · sim 칩은 chip01 UID 를 흉내 내고 0 에서 시작하므로 chip01 행은 뺀다
+uv run python host/run/run_wear.py accept --chip chip01 --sim build/sim/flash_wear_sim --no-program \
+    --to 300 --chip-pe /tmp/practice_pe.md --logdir /tmp/practice_logs
 ```
 
 ## 6. 빠른 재빌드
