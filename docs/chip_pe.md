@@ -82,3 +82,30 @@ Updated: 2026-09-20
 | 2026-09-26 | chip01 | D1654CB09B352233 | 0~6 | +1 | run_wear checkpoint (session 1790212214) | 체크포인트 294500 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
 | 2026-09-26 | chip01 | D1654CB09B352233 | 0~6 | +5500 | run_wear accept (session 1790212214) | cycle 294500→300000 |
 | 2026-09-26 | chip01 | D1654CB09B352233 | 0~6 | +1 | run_wear checkpoint (session 1790212214) | 체크포인트 300000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +100 | run_wear accept (session 1790408609) | cycle 0→100 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 100 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +900 | run_wear accept (session 1790408609) | cycle 100→1000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +2000 | run_wear accept (session 1790408609) | cycle 1000→3000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 3000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +7000 | run_wear accept (session 1790408609) | cycle 3000→10000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 10000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 10000→20000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 20000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 20000→30000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 30000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 30000→40000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 40000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 40000→50000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 50000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 50000→60000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 60000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 60000→70000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 70000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 70000→80000 |
+| 2026-09-26 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 80000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-27 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 80000→90000 |
+| 2026-09-27 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 90000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-27 | chip03 | D1628C10C3433F33 | 0~6 | +10000 | run_wear accept (session 1790408609) | cycle 90000→100000 |
+| 2026-09-27 | chip03 | D1628C10C3433F33 | 0~6 | +1 | run_wear checkpoint (session 1790408609) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-27 | chip03 | D1628C10C3433F33 | 0~127 | +1 | flash_prep (batch 20260927T034035Z) |  |
