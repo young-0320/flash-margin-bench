@@ -17,3 +17,4 @@
 
 - [`newchip_survey.md`](newchip_survey.md) — 신품 전수 측정(S-2) n=9: 소거 시간 개체차, 재장착 σ 13.86ps, chip10 개체 특성, 앵커 chip02 고장
 - [`wear_pilot_chip01.md`](wear_pilot_chip01.md) — P/E 파일럿 chip01 0 → 300k: 폭 불변(H1), 소거 5.2배(H2), 섹터별 계단
+- [`wear_endurance_chip03.md`](wear_endurance_chip03.md) — 종단 chip03 0 → 100k: 폭 불변(H1′), 프로그램 20k 부터(H2′ 거짓), 계단 없음, 근접 대조군 128KB 교란
