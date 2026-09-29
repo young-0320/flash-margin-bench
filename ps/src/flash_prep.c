@@ -26,6 +26,10 @@
  * 시프트, MSB-first 바이트 패킹 — flash_prbs15.v와 비트 단위 동일 (시드·방출
  * 컨벤션이 어긋나면 스윕이 전부 에러로 보인다).
  *
+ * 프로그램 시간 (2026-09-29): 소거처럼 섹터마다 "#PREP PROGRAM <sector> <us>" 를 찍는다 — 16페이지
+ * WIP 합(전송 시간 제외)이라 마모 루프 A 행 t_program_us 와 같은 눈금이다. 요약은 "#PREP PROGRAM
+ * SUMMARY". "#PREP program done" 은 그대로 둔다 (호스트가 문구를 파싱한다).
+ *
  * 주의: 실칩 스윕에서 B는 2,048비트(=1페이지) 고정 — B>2,048은 읽기가 페이지
  * 경계를 넘어 시드가 어긋나므로 무의미한 설정이다 (버스트당 시드 = 페이지 단위).
  *
@@ -259,15 +263,31 @@ int main(void)
        "소거 잔여"로 세게 된다. 판정 없음 */
     if (blank_scan("post", PAGE0, N_PAGES, BLANK_ADDR_CAP)) return 1;
 
-    /* 2. 페이지 프로그램: 페이지 p ← PRBS15(시드 {1, p}) */
+    /* 2. 페이지 프로그램: 페이지 p ← PRBS15(시드 {1, p}). 섹터마다 16페이지의 WIP 시간 합을 재서
+       즉시 출력 — flash_wear.c 의 A 행 t_program_us 와 같은 정의(PP 전송 완료~WIP 해제, 전송 시간
+       제외, S-4 §9)다. 단 패턴이 PRBS(A 행은 0x00)라 프로그램할 비트 수가 달라 값이 다를 수 있다 — 맞대기 전에
+       확인 런으로 본다. PAGE0 이 섹터 정렬이라 (p+1)%16==0 이 섹터 끝 */
+    u32 pg_min = 0xFFFFFFFFu, pg_max = 0, pg_sum = 0, pg_acc = 0;
     for (u32 p = PAGE0; p < PAGE0 + N_PAGES; p++) {
         if (wren()) return 1;
         tx[0] = CMD_PP; addr3(&tx[1], p * PAGE_BYTES);
         prbs_load((u16)p);
         for (u32 i = 0; i < PAGE_BYTES; i++) tx[4 + i] = prbs_byte();
-        if (xfer(tx, rx, PAGE_BYTES + 4) || wait_wip_clear()) return 1;
+        if (xfer(tx, rx, PAGE_BYTES + 4)) return 1;
+        XTime t0; XTime_GetTime(&t0);
+        if (wait_wip_clear()) return 1;
+        pg_acc += us_since(t0);
+        if ((p + 1u) % SECTOR_PAGES == 0u) {
+            xil_printf("#PREP PROGRAM %u %u\r\n", p / SECTOR_PAGES, pg_acc);
+            if (pg_acc < pg_min) pg_min = pg_acc;
+            if (pg_acc > pg_max) pg_max = pg_acc;
+            pg_sum += pg_acc;
+            pg_acc = 0;
+        }
     }
     xil_printf("#PREP program done\r\n");
+    xil_printf("#PREP PROGRAM SUMMARY n=%u min=%u max=%u mean=%u\r\n",
+               (u32)PREP_N_SECTORS, pg_min, pg_max, pg_sum / (u32)PREP_N_SECTORS);
 
     /* 3. read-back 전수 비교 — 실패 페이지·바이트 수를 시끄럽게 보고 */
     u32 bad_pages = 0, bad_bytes = 0;
