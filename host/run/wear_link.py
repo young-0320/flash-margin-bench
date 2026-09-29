@@ -13,6 +13,11 @@
 재시도는 **전송에만 3회** (`[D41-18]`) — 응답이 시간 안에 안 오면 같은 `req` 로 다시 보낸다.
 그 재전송에 `E_DUP` 이 오면 첫 명령은 처리됐고 응답만 잃은 것이다 (`LostResponse`). 호스트는
 그때 `wear_status()` 로 확인한다 (S-4 §4). 플래시 동작은 재시도하지 않는다.
+
+링크가 닫히면(USB 재열거 — 로그 48 §17) `reconnect` 로 새 전송층을 받아 **하던 일을 잇는다**. 엔진은 호스트
+없이도 구간을 끝까지 돌므로 호스트만 버티면 체크포인트를 제때 잰다. 끊긴 사이의 행은 잃는다 —
+`reconnects` 가 그 사실을 판정에 넘긴다. 읽기 명령은 새 `req` 로 다시 묻고, 나머지는 같은 `req` 로
+보내 `E_DUP` 이면 `LostResponse` 다 (위와 같은 규칙).
 """
 
 import queue
@@ -29,10 +34,15 @@ TALLY_STRIDE = 100
 DUMP_ROWS = 64
 CMD_TIMEOUT_S = 5.0       # 명령 → 응답. running 중엔 사이클 경계(≈0.5s)까지 기다린다
 XFER_RETRY = 3
+READ_ONLY = ("STATUS", "TALLY", "UID", "BLANK")   # 두 번 물어도 칩이 안 변한다 — 재접속 뒤 새 req 로 다시 묻는다
 
 
 class LostResponse(hs.Reject):
     """재전송이 `E_DUP` 으로 돌아왔다 — 첫 명령은 처리됐고 응답만 잃었다. `wear_status()` 로 확인할 것."""
+
+
+class _LinkDown(Exception):
+    """전송층이 닫혔다 — `_send` 가 받아 다시 붙인다."""
 
 
 # ── 전송층 — 줄 단위 수신 스레드 + 큐. 시리얼과 파이프가 같은 모양 ────────
@@ -41,6 +51,7 @@ class _LineReader:
         self.q = queue.Queue()
         self._th = threading.Thread(target=self._loop, daemon=True)
         self.raw = []                     # 받은 원문 전부 (세션 로그용)
+        self.error = None                 # 수신 스레드를 끝낸 예외 — "링크가 닫혔다" 의 이유
         self._th.start()
 
     def _read_one(self):
@@ -55,8 +66,8 @@ class _LineReader:
                 if line:
                     self.raw.append(line)
                     self.q.put(line)
-        except Exception:
-            pass
+        except Exception as e:
+            self.error = f"{type(e).__name__}: {e}"
         self.q.put(None)
 
     def readline(self, timeout):
@@ -110,10 +121,23 @@ class SerialTransport(_LineReader):
 
 # ── 어댑터 ─────────────────────────────────────────────────────────────────
 class WearLink:
-    def __init__(self, transport, log=None, timeout=CMD_TIMEOUT_S):
+    def __init__(self, transport, log=None, timeout=CMD_TIMEOUT_S, reconnect=None):
         self.t, self.log, self.timeout = transport, log or hs.WearLog(), timeout
         self.req = 0
         self.responses = []               # (보낸 명령, 응답 원문) — 세션 로그용
+        self.reconnect = reconnect        # reconnect(이유) → 새 transport. 못 붙이면 ConnectionError. None 이면 바로 끝낸다
+        self.reconnects = 0               # 다시 붙은 횟수 — 그 사이의 행은 잃었다
+
+    def _closed(self):
+        """전송층이 닫혔다 — 다시 붙이거나 끝낸다. 옛 전송층이 받아 둔 원문은 새 쪽 앞에 옮긴다."""
+        why = getattr(self.t, "error", None)
+        if self.reconnect is None:
+            raise ConnectionError("링크가 닫혔다" + (f" ({why})" if why else ""))
+        old = self.t
+        self.t = self.reconnect(why)
+        if self.t is not old:
+            self.t.raw[0:0] = old.raw
+        self.reconnects += 1
 
     # 전송
     def _feed(self, raw: bytes):
@@ -131,7 +155,7 @@ class WearLink:
                 return None
             raw = self.t.readline(left)
             if raw is None:
-                raise ConnectionError("링크가 닫혔다")
+                raise _LinkDown
             if not raw or self._feed(raw):
                 continue
             r = hs.parse_response(raw.decode(errors="replace"))
@@ -144,8 +168,16 @@ class WearLink:
         line = hs.format_cmd(verb, self.req, **args)
         self.responses.append(line)
         for attempt in range(XFER_RETRY):
-            self.t.write((line + "\n").encode())
-            r = self._wait_response(self.req, timeout or self.timeout)
+            try:
+                self.t.write((line + "\n").encode())
+                r = self._wait_response(self.req, timeout or self.timeout)
+            except (_LinkDown, OSError):
+                self._closed()
+                if verb in READ_ONLY:                    # 같은 req 는 E_DUP 이다 — 새 번호로 다시 묻는다
+                    self.req += 1
+                    line = hs.format_cmd(verb, self.req, **args)
+                    self.responses.append(line)
+                continue
             if r is None:
                 continue
             if r.kind == "REJECT":
@@ -165,7 +197,8 @@ class WearLink:
                 return n
             raw = self.t.readline(left)
             if raw is None:
-                raise ConnectionError("링크가 닫혔다")
+                self._closed()
+                continue
             if raw and self._feed(raw):
                 n += 1
 

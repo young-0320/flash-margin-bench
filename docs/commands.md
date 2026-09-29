@@ -210,6 +210,8 @@ uv run python host/run/run_wear.py accept --chip chipNN
 #   선행: 그 칩의 신품 25MHz 스윕(x=0)이 집계표에 있어야 한다 — 없으면 run_sweep_chip.py --mode newchip --mhz 25 먼저
 #   enter = 그대로 진행 · "--to 100000 --confirm-first 3" 처럼 쳐 넣으면 고쳐서 다시 띄운다 · q = 취소
 #   체크포인트마다 0~6 소거+PRBS(P/E +1) → 스윕 → 분석·plot 을 실행기가 하고, 앞 K 점에서만 사람에게 묻는다
+#   시작 자리가 체크포인트인데 장부에 그 체크포인트 행이 없으면(호스트가 구간 끝을 놓쳤다) START 전에 먼저 잰다
+#   — 계획 화면에 「빠진 체크포인트 N」 으로 뜨고, C 행 measured 칸이 「휴지 뒤」 다
 
 # 100사이클 인수 (A 시험) — 엔진을 고친 뒤에만. 본 마모의 첫 체크포인트(100)가 같은 판정을 돌린다 (런북 12)
 uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --cycle 0 --to 100
@@ -224,7 +226,7 @@ uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-e
 ### 남는 것
 
 `build/logs/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
-동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요) · `verdict.txt` ·
+동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요 · `measured` 직후/휴지 뒤) · `verdict.txt` ·
 `A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` · `raw.txt` · `commands.txt` · `session.log`.
 구간마다 **덧붙는다** — 판정(인수 시험 9줄 · 마모 런 8줄, A6 는 인수 시험에서만)도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
 흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `build/` 는 재빌드에 지워지지
@@ -239,6 +241,8 @@ uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-e
 | `UID 불일치`                | 소켓의 칩이`--chip` 과 다르다               | 칩 확인. 아무것도 하지 않았다                              |
 | `엔진이 error 로 부팅했다`  | SPI/JEDEC/UID 실패                            | 배선·JP5·칩 장착. START 는 안 갔다                       |
 | `엔진이 running 이다`       | 이전 세션이 돌고 있다                         | `halt` 로 세우거나 끝나기를 기다린다                     |
+| `링크가 닫혔다 (…)` 로 중단  | USB 가 빠졌고 30초 안에 다시 안 열렸다. 엔진은 혼자 구간을 끝낸다 | `resume --from-session` → 장부 정정 행 → `accept --cycle <채택값>` (빠진 체크포인트는 accept 가 먼저 잰다) |
+| verdict `SKIP  A2`·`A3`     | 구간 도중 링크가 다시 붙었다 — 그 사이 행이 없다 | 칩이 든 값(A1·A4·A5)이 PASS 면 그대로 간다. `session.log` 에 재접속 기록 |
 | verdict`probe` FAIL         | 세는 경로가 죽었다                            | B 행의 0 을 믿지 않는다. 런북 12 §3.3                     |
 | `clean=0` (`tally-erase`) | 소거 뒤에도`0xFF` 가 아니다 — 엔진은 error | 쓰기 보호(BP)·배선                                        |
 

@@ -358,10 +358,135 @@ def test_resume_reerases_and_prints_adopted_value(sim_bin, tmp_path):
     out = r.stdout
     assert "판정 normal 채택값 36" in out and "reerase ok=1" in out and "재확인 잔류 0" in out
     assert "마모 섹터 1000~1006" in out                           # resume 도 어느 자리를 본 건지 남긴다
-    assert "accept --chip chip01 --base-sector 1000 --cycle 36 --delta <n> --i-approve-real-pe" in out
+    hint = next(l for l in out.splitlines() if l.startswith("다음 명령"))
+    assert hint.endswith("run_wear.py accept --chip chip01 --base-sector 1000 --cycle 36"), hint
+    rw.build_parser().parse_args(hint.split("run_wear.py ", 1)[1].split())   # 안내한 명령이 그대로 받아져야 한다
     assert "| 1002 | ±1 | run_wear resume (session 1758412900) | reerase · ±1 |" in pe.read_text().splitlines()[-1]
     assert "WEAR START" not in (tmp_path / "logs" / "1758412900" / "commands.txt").read_text()   # START 는 안 보낸다
     assert (tmp_path / "logs" / "1758412900" / "R.txt").read_text().count("kind=reerase") == 1
+
+
+# ── 링크 끊김 — 호스트가 버티고, 놓친 체크포인트는 재개 때 잰다 (로그 48 §17) ────────
+class _Flaky(rw.wl.PipeTransport):
+    """cut_at 번째 줄에서 drop 줄을 버리고 한 번 닫힌 척한다 — USB 재열거 1초 동안의 유실. 엔진(sim)은 계속 돈다."""
+
+    def __init__(self, *a, cut_at=300, drop=50, **k):
+        self.seen, self.cut_at, self.drop, self.cut = 0, cut_at, drop, False
+        super().__init__(*a, **k)
+
+    def readline(self, timeout):
+        raw = super().readline(timeout)
+        if raw and not self.cut:
+            self.seen += 1
+            if self.seen >= self.cut_at:
+                self.cut = True
+                for _ in range(self.drop):
+                    super().readline(1.0)
+                return None
+        return raw
+
+
+def _sim_link(sim_bin, tmp_path, **flaky):
+    t = _Flaky([str(sim_bin)], env={"WEAR_FAKE_STATE": str(tmp_path / "chip.bin")}, **flaky)
+    return rw.wl.WearLink(t), t
+
+
+def test_link_closed_without_reconnect_says_why(sim_bin, tmp_path):
+    link, t = _sim_link(sim_bin, tmp_path, cut_at=1)
+    t.error = "SerialException: device reports readiness to read but returned no data"
+    with pytest.raises(ConnectionError, match="링크가 닫혔다 \\(SerialException"):
+        link.wear_start(1000, 7, 0x00, 0, 100, 1758413000)
+    link.close()
+
+
+def test_link_reconnects_and_the_segment_finishes(sim_bin, tmp_path):
+    """닫힌 뒤 다시 붙으면 구간 끝까지 기다린다 — 끊긴 사이의 행만 빠진다."""
+    link, t = _sim_link(sim_bin, tmp_path)
+    why = []
+    link.reconnect = lambda w: why.append(w) or t
+    link.wear_start(1000, 7, 0x00, 0, 100, 1758413001)
+    cycle, state, _, _ = link.wait_stopped()
+    assert (cycle, state) == (100, "checkpoint_due") and link.reconnects == 1 and why == [None]
+    assert len(link.log.a) < 700
+    assert link.tally_read()[0] == 100                          # 칩이 든 값은 그대로다
+    link.close()
+
+
+def test_judge_skips_row_counts_after_a_reconnect():
+    r, status, tally, dumps, uid = _mock_result()
+    r.log.a = r.log.a[:-35]                                     # 끊긴 사이 5사이클치
+    lossy = {i: ok for i, ok, _ in rw.judge_accept(r.log, status, tally, dumps, uid, CHIP01_UID,
+                                                     probe=_probe(r), lossy=True)}
+    assert lossy["A2"] is None and lossy["A3"] is None and lossy["A5"] and lossy["A1"]
+    strict = {i: ok for i, ok, _ in rw.judge_accept(r.log, status, tally, dumps, uid, CHIP01_UID, probe=_probe(r))}
+    assert strict["A2"] is False                                # 재접속이 없었으면 FAIL 이 맞다
+
+
+def test_accept_survives_a_link_drop_and_reaches_the_checkpoints(sim_bin, tmp_path, monkeypatch, capsys):
+    """끝에서 끝까지 — 첫 구간 도중에 끊기고, 다시 붙고, 두 체크포인트를 다 지난다. 판정은 SKIP 이지 FAIL 이 아니다."""
+    monkeypatch.setattr(rw.wl, "PipeTransport", _Flaky)
+    monkeypatch.setattr(rw.Run, "reopen", lambda self, why: self.link.t)
+    pe = tmp_path / "chip_pe.md"
+    pe.write_text(CHIP_PE_DOC)
+    rc = rw.main(["accept", "--chip", "chip01", "--session", "1758413002", "--to", "1000", "--confirm-first", "0",
+                  "--sim", str(sim_bin), "--no-program", "--logdir", str(tmp_path / "logs"), "--chip-pe", str(pe),
+                  "--sim-state", str(tmp_path / "chip.bin")])
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "SKIP  A2" in out and not any(l.startswith("FAIL") for l in out.splitlines())
+    assert "체크포인트 100 — 측정을 건너뛴다 (sim)" in out and "[구간 2/2] 누적 100 → 1,000" in out
+    d = tmp_path / "logs" / "1758413002"
+    assert "이 구간 재접속 1회" in (d / "session.log").read_text()
+    assert [l.split(",")[0] for l in (d / "checkpoints.csv").read_text().splitlines()[1:]] == ["100", "1000"]
+
+
+def test_stable_port_and_reopen_gives_up(tmp_path, monkeypatch):
+    """ttyUSBn 은 재열거로 바뀔 수 있다 — by-id 이름을 쓴다. 정해진 시간 안에 안 열리면 끝낸다."""
+    dev, by_id = tmp_path / "ttyUSB1", tmp_path / "by-id"
+    dev.touch()
+    by_id.mkdir()
+    (by_id / "usb-Digilent_X-if01-port0").symlink_to(dev)
+    monkeypatch.setattr(rw, "SERIAL_BY_ID", by_id)
+    assert rw.stable_port(str(dev)) == str(by_id / "usb-Digilent_X-if01-port0")
+    assert rw.stable_port("COM3") == "COM3"
+    monkeypatch.setattr(rw, "RECONNECT_S", 0.5)
+    run = rw.Run(rw.build_parser().parse_args(["status", "--port", str(tmp_path / "gone"), "--logdir", str(tmp_path)]))
+    with pytest.raises(ConnectionError, match="다시 열리지 않았다"):
+        run.reopen("SerialException: x")
+    assert "재접속 시도" in (run.dir / "session.log").read_text()
+
+
+def test_missed_checkpoint_reads_the_ledger():
+    cp = rw.CHECKPOINTS
+    acc = ("0~6", "+10000", "run_wear accept (session 1)", "cycle 70000→80000")
+    done = ("0~6", "+1", "run_wear checkpoint (session 1)", "체크포인트 80000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다)")
+    erased = ("512", "+1", "run_wear tally-erase (session 2)", "tally erase · 지운 값 a=800 b=800")
+    assert rw.missed_checkpoint(80000, cp, [acc]) == 80000
+    assert rw.missed_checkpoint(80000, cp, [acc, done]) is None
+    assert rw.missed_checkpoint(80000, cp, [done, erased, acc]) == 80000       # 이전 실험의 행은 안 친다
+    assert rw.missed_checkpoint(75000, cp, [acc]) is None                     # 체크포인트 자리가 아니다
+    assert rw.missed_checkpoint(80000, (), [acc]) is None                     # TB 영역 — 체크포인트가 없다
+    assert rw.missed_checkpoint(80000, cp, None) is None                      # 장부를 못 읽었다
+
+
+def test_accept_measures_a_missed_checkpoint_before_start(sim_bin, tmp_path):
+    """sim 은 체크포인트 prep 행을 안 남긴다 — 그래서 100 에서 이으면 100 이 「빠진 점」 으로 잡힌다."""
+    r, pe = _run(["accept", "--session", "1758413010", "--to", "100"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr
+    r, _ = _run(["accept", "--session", "1758413011", "--to", "1000"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr
+    d = tmp_path / "logs" / "1758413011"
+    assert "빠진 체크포인트 100 을 START 전에 먼저 잰다 (휴지 뒤 · P/E +1)" in (d / "plan.txt").read_text()
+    assert r.stdout.index("빠진 체크포인트 100 — 측정을 건너뛴다 (sim)") < r.stdout.index("[구간 1/1] 누적 100 → 1,000")
+    rows = (d / "checkpoints.csv").read_text().splitlines()
+    assert rows[0].endswith(",measured") and rows[1].startswith("100,") and rows[1].endswith(",휴지 뒤")
+    assert rows[2].startswith("1000,") and rows[2].endswith(",직후")
+    # 장부에 그 체크포인트 행이 있으면 다시 재지 않는다
+    with pe.open("a") as f:
+        f.write("| 2026-09-29 | chip01 | D1654CB09B352233 | 0~6 | +1 | run_wear checkpoint (session 1758413011) | "
+                "체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |\n")
+    r, _ = _run(["accept", "--session", "1758413012", "--to", "3000"], tmp_path, sim_bin)
+    assert r.returncode == 0 and "빠진 체크포인트" not in r.stdout, r.stdout + r.stderr
 
 
 def test_status_halt_tally_uid_on_sim(sim_bin, tmp_path):

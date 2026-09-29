@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """마모 엔진 호스트 실행기 — 실칩 인수 시험(S-4 §9)과 복구(S-1 §8.3)를 명령 한 줄로.
 
-    run_wear.py accept  --chip chipNN --i-approve-real-pe [--cycle 0] [--delta 100]   ELF 프로그래밍 → START → 캡처 → A1~A7·C 판정
-    run_wear.py accept  --chip chipNN --to 100000 --delta 30000 --first-delta 1000 --confirm-first 3
+    run_wear.py accept  --chip chipNN --i-approve-real-pe [--cycle 0] [--to 100]      ELF 프로그래밍 → START → 캡처 → A1~A7·C 판정
+    run_wear.py accept  --chip chipNN --to 100000 --confirm-first 3
                                                                         구간을 이어 목표까지 — 앞 3구간만 사람이 보고 그 뒤 무인
     run_wear.py status | halt | tally | dump | uid                      읽기·정지 (halt 는 다음 사이클 경계)
     run_wear.py resume  --chip chipNN --host-log-max N | --from-session <dir>          RESUME → decide_resume → BLANK → (REERASE) → 채택값 출력
@@ -15,7 +15,7 @@
 
 **P/E 는 비가역이다.** `accept` 는 `--i-approve-real-pe` 없이는 실칩에 START 를 보내지 않는다 (`--sim` 은 예외).
 `resume` 은 START 를 자동으로 보내지 않는다 — 채택값을 출력하고 사람이
-`accept --cycle <채택값> --delta <n>` 으로 잇는다. 태울 자리는 `--base-sector` 이고 기본값은 인수 시험의
+`accept --chip chipNN --cycle <채택값>` 으로 잇는다. 태울 자리는 `--base-sector` 이고 기본값은 인수 시험의
 TB 전용 1,000~1,006 이다 (S-4 §9) — 파일럿 마모 그룹은 `--base-sector 0` (S-1 §2.1). 대조군(7~13 ·
 2,041~2,047)과 tally(512 · 1,536)는 엔진이 거부한다 (E_CTRL_OVERLAP · E_TALLY_OVERLAP).
 체크포인트 편성(prep → 스윕 → ELF 교체 → START)은 근접·원격 스윕이 막혀 있어 (로그 44 [U44-8])
@@ -76,12 +76,14 @@ SEG_CHUNK = 30_000                                          # 체크포인트 �
 CP_COST_S = 120.0                                           # 체크포인트 1점의 기본 비용 (prep + 스윕 59초 + ELF 교체) — 실측되면 갈아탄다
 CP_HEADER = ("cycle,area,sweep_csv,chip_id,base_sector,n_reads,mhz,session,"
              "t_erase_p50,t_erase_p99,t_erase_max,t_program_p50,t_program_p99,t_program_max,"
-             "cycle_s_p50,cp_s\n")
+             "cycle_s_p50,cp_s,measured\n")
 PROBE_TOTAL = WEAR_N * 4096 * 8                               # 7섹터 전 비트 = 229,376 — probe 의 정답 (pattern 0x00)
+RECONNECT_S = 30.0                                          # 링크가 닫힌 뒤 포트가 다시 열리길 기다리는 시간 — 실측 재열거는 1초 (로그 48 §17)
+SERIAL_BY_ID = Path("/dev/serial/by-id")
 
 
 # ── 순수 함수 — pytest 가 잰다 ──────────────────────────────────────────────
-def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None, start=0, erase_check=True):
+def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None, start=0, erase_check=True, lossy=False):
     """S-1 §13 A1~A7 + C + probe. [(항목, 통과, 설명)]. A6 는 실칩에서만 뜻이 있다 (mock·sim 은 시계가 가짜).
 
     `erase_check` — A6(소거 < 400ms)는 **인수 시험(TB 영역)에서만** 채점한다. 신품이 데이터시트 최대를
@@ -95,7 +97,10 @@ def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None
 
     probe 는 멈춘 뒤 BLANK 를 부른 결과다 — 마지막 동작이 소거였으니 0xFF 를 0x00 과 대조하면
     전량(PROBE_TOTAL)이 나와야 한다. 0 이면 세는 경로가 죽은 것이고, 그때는 B 행의 0 도 못 믿는다
-    (harness.check_probe 와 같은 검사, 워크플로 12 §3.3). None 은 BLANK 자체가 거부된 것."""
+    (harness.check_probe 와 같은 검사, 워크플로 12 §3.3). None 은 BLANK 자체가 거부된 것.
+
+    `lossy` — 이 구간에 링크가 다시 붙었다. 끊긴 사이의 행은 호스트에 없으므로 **행을 세는 항목**(A2·A3 과
+    A5 의 행 경로)은 채점하지 않는다(통과 칸 None → SKIP). 칩이 들고 있는 값(카운터·tally)은 그대로 본다."""
     cycle, state, defect_seen, _ = status
     ta, tb, mismatch = tally
     b_cycle = log.b[-1]["cycle"] if log.b else None
@@ -106,15 +111,20 @@ def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None
     want = {"카운터": n, "A행수÷7": n, "tally×100": n - n % 100}   # tally 는 100마다 1바이트라 눈금이 굵다
     if b_cycle is not None:
         paths["B의 cycle"], want["B의 cycle"] = b_cycle, n
+    if lossy:                                                    # 행에서 나온 경로는 빠진 행만큼 모자란다
+        for k in ("A행수÷7", "B의 cycle"):
+            paths.pop(k, None)
     out = [
         ("A1", cycle == n, f"카운터 {cycle} (기대 {n})"),
-        ("A2", len(log.a) == seg * 7, f"A 행 {len(log.a)} (기대 {seg * 7}), 깨진 행 {len(log.rejected)}"),
-        ("A3", len(log.b) >= b_want if defect_seen else len(log.b) == b_want,
-         f"B 행 {len(log.b)} (기대 {b_want}" + (" 이상 — 결함 뒤 조밀화)" if defect_seen else ")")),
+        ("A2", None if lossy else len(log.a) == seg * 7,
+         f"A 행 {len(log.a)} (기대 {seg * 7}), 깨진 행 {len(log.rejected)}" + (" — 재접속, 채점 안 함" if lossy else "")),
+        ("A3", None if lossy else (len(log.b) >= b_want if defect_seen else len(log.b) == b_want),
+         f"B 행 {len(log.b)} (기대 {b_want}" + (" 이상 — 결함 뒤 조밀화)" if defect_seen else ")")
+         + (" — 재접속, 채점 안 함" if lossy else "")),
         ("A4", all(d.count(0) == n // 100 for d in dumps),
          "tally 0x00 " + "/".join(str(d.count(0)) for d in dumps) + f" (기대 각 {n // 100})"),
         ("A5", not mismatch and all(paths[k] == want[k] for k in paths),
-         f"{paths}" + (" tally 불일치" if mismatch else "")
+         f"{paths}" + (" tally 불일치" if mismatch else "") + (" · 재접속 — 행 경로 제외" if lossy else "")
          + (f" · tally 기대 {want['tally×100']}" if n % 100 else "")
          + ("" if b_cycle is not None else " · 이 구간엔 검사 사이클이 없다")),
         *([("A6", bool(erase) and max(erase) < ERASE_WARN_US,
@@ -129,6 +139,19 @@ def judge_accept(log, status, tally, dumps, uid, expected_uid, n=100, probe=None
          + ("" if probe.program_fail_bits else " — 세는 경로가 죽었다, B 행의 0 을 믿지 말 것")),
     ]
     return out
+
+
+def stable_port(port):
+    """`/dev/ttyUSB1` → 같은 장치의 `/dev/serial/by-id/…` 이름. USB 가 다시 잡히면 번호는 바뀔 수 있어도 이 이름은
+    같다. 못 찾으면(Windows COM · 장치 없음) 그대로."""
+    try:
+        real = os.path.realpath(port)
+        for p in sorted(SERIAL_BY_ID.iterdir()):
+            if os.path.realpath(p) == real:
+                return str(p)
+    except OSError:
+        pass
+    return port
 
 
 def wear_area(base, n=WEAR_N):
@@ -242,7 +265,7 @@ def plan_segments(cycle, to, step, confirm_first, checkpoints=()):
         while cur < stop:
             size = min(step, stop - cur)
             if size <= 0:
-                raise Abort("구간 크기가 0 이하다 — --delta 를 확인할 것")
+                raise Abort("구간 크기가 0 이하다 — --to·--checkpoints 를 확인할 것")
             cur += size
             last = cur == stop
             mark = (last and is_cp) or not checkpoints       # 확인이 붙을 수 있는 경계
@@ -354,6 +377,10 @@ class Run:
             transport = wl.PipeTransport([a.sim], env=env)
         else:
             import serial
+            port = stable_port(a.port)
+            if port != a.port:                               # 체크포인트 prep·스윕도 이 이름을 쓴다
+                self.ses.log(f"포트: {a.port} → {port}")
+                a.port = port
             self.ser = serial.Serial(a.port, a.wear_baud, timeout=0.5)
             reader = self.ser
             if program:
@@ -363,8 +390,32 @@ class Run:
                 pre = run_xsct([PROGRAM_G2, WEAR_ELF], self.ses, "엔진 프로그래밍 (g2_jedec + flash_wear)", ser=self.ser)
                 reader = Drained(self.ser, pre)
             transport = wl.SerialTransport(self.ser, reader=reader)
-        self.link = wl.WearLink(transport, timeout=a.timeout)
+        self.link = wl.WearLink(transport, timeout=a.timeout, reconnect=self.reopen)
         return self.link
+
+    def reopen(self, why):
+        """링크가 닫혔다 — 포트를 다시 연다. 프로그래밍하지 않는다: 엔진은 호스트 없이도 구간을 돌고 있다
+        (로그 48 §17, 두 번 다 1초 안에 다시 잡혔다). RECONNECT_S 안에 안 열리면 끝낸다."""
+        a = self.args
+        self.ses.log(f"링크가 닫혔다 ({why or '이유 모름'}) — {a.port} 재접속 시도")
+        if a.sim:
+            raise ConnectionError("링크가 닫혔다 — sim 은 다시 붙일 수 없다")
+        import serial
+        try:
+            self.ser.close()
+        except Exception:
+            pass
+        deadline = time.monotonic() + RECONNECT_S
+        while True:
+            try:
+                self.ser = serial.Serial(a.port, a.wear_baud, timeout=0.5)
+                break
+            except OSError as e:
+                if time.monotonic() > deadline:
+                    raise ConnectionError(f"링크가 닫혔고 {RECONNECT_S:.0f}초 안에 다시 열리지 않았다 ({e})")
+                time.sleep(1)
+        self.ses.log(f"재접속: {a.port}")
+        return wl.SerialTransport(self.ser)
 
     def close(self):
         if self.link:
@@ -401,8 +452,9 @@ class Run:
             self.ser.close()
         self.ser = self.link = None
 
-    def write_checkpoint(self, n, csv, summary, cp_s):
-        """C 행 (S-1 §9) — 마모 경로와 측정 경로를 잇는 못. 요약까지 한 행에 둔다."""
+    def write_checkpoint(self, n, csv, summary, cp_s, rested=False):
+        """C 행 (S-1 §9) — 마모 경로와 측정 경로를 잇는 못. 요약까지 한 행에 둔다.
+        `measured` 칸은 구간 직후에 쟀나(직후), 호스트가 놓쳐 재개 때 쟀나(휴지 뒤) — 곡선에 넣을지는 분석이 정한다."""
         a = self.args
         f = self.dir / "checkpoints.csv"
         if not f.exists():
@@ -412,7 +464,7 @@ class Run:
             a.base_sector, 112, a.sweep_mhz, self.session,
             summary.get("t_erase_p50"), summary.get("t_erase_p99"), summary.get("t_erase_max"),
             summary.get("t_program_p50"), summary.get("t_program_p99"), summary.get("t_program_max"),
-            summary.get("cycle_s_p50"), cp_s])
+            summary.get("cycle_s_p50"), cp_s, "휴지 뒤" if rested else "직후"])
         with f.open("a", encoding="utf-8") as fh:
             fh.write(row + "\n")
         self.ses.log(f"체크포인트 {n}: {row}")
@@ -440,7 +492,7 @@ class Run:
 
 
 # ── 서브커맨드 ────────────────────────────────────────────────────────────
-def checkpoint_measure(run, n, acc):
+def checkpoint_measure(run, n, acc, rested=False):
     """체크포인트 — 마모를 멈춘 자리를 잰다. 소거+PRBS 기록(P/E +1, 장부는 기계가) → 스윕 → 분석·plot.
 
     prep 은 범위 전용 ELF(`build/vitis_prep_<base>_<n>`)를 쓰고, 스윕·분석·plot 은 `run_sweep_chip.py
@@ -470,8 +522,17 @@ def checkpoint_measure(run, n, acc):
         raise Abort(f"체크포인트 {n} 스윕 실패 — 마모를 잇지 않는다. 사람이 본다")
     csv = max((REPO / "build" / "data").glob("sweep_*.csv"), key=lambda q: q.stat().st_mtime, default=None)
     png = PLOT_DIR / f"bathtub_{csv.stem}.png" if csv else None
-    run.write_checkpoint(n, csv, summarize(acc), round(time.monotonic() - t0, 1))
+    run.write_checkpoint(n, csv, summarize(acc), round(time.monotonic() - t0, 1), rested)
     return csv, png
+
+
+def reattach(run):
+    """체크포인트 측정이 보드를 가져갔다 — 마모 엔진을 다시 올리고 같은 칩인지 본다."""
+    link = run.open(program=True)
+    if link.wear_status()[1] == "error":
+        raise Abort("측정 뒤 엔진이 error 로 부팅했다 — 배선·칩 확인")
+    run.check_uid()
+    return link
 
 
 def checkpoint_confirm(run, n, csv, png, left):
@@ -502,6 +563,7 @@ def run_segment(run, link, uid, start, delta, head, acc=None):
     run.ses.log(f"START: {cmd}")
     print(f"START → {cmd}", file=sys.stderr)
     link.wear_start(base, WEAR_N, PATTERN, start, delta, run.session)
+    before = link.reconnects
     status = link.wait_stopped(timeout=delta * SEC_PER_CYCLE + 60)
     run.ses.log(f"stopped: {status}")
     done = status[0] - start
@@ -517,10 +579,13 @@ def run_segment(run, link, uid, start, delta, head, acc=None):
         probe = None
     if acc is not None:
         collect(link.log.a, acc)                             # 행은 곧 버려진다 — 값만 남긴다
+    lossy = link.reconnects > before                         # 이 구간에 다시 붙었다 — 그 사이 행은 없다
+    if lossy:
+        run.ses.log(f"이 구간 재접속 {link.reconnects - before}회 — 행 수 채점 제외")
     verdict = judge_accept(link.log, status, tally, dumps, uid, run.expected_uid(),
                            n=start + delta, start=start, probe=probe,
-                           erase_check=(base == WEAR_BASE_TB))     # A6 는 인수 시험(TB 영역)에서만
-    lines = [f"{'PASS' if ok else 'FAIL'}  {item:5s} {detail}" for item, ok, detail in verdict]
+                           erase_check=(base == WEAR_BASE_TB), lossy=lossy)     # A6 는 인수 시험(TB 영역)에서만
+    lines = [f"{'SKIP' if ok is None else 'PASS' if ok else 'FAIL'}  {item:5s} {detail}" for item, ok, detail in verdict]
     if link.log.r:
         lines.append("R 행: " + " | ".join(f"{r['kind']}@{r['cycle']}" for r in link.log.r))
     with (run.dir / "verdict.txt").open("a", encoding="utf-8") as f:
@@ -528,7 +593,7 @@ def run_segment(run, link, uid, start, delta, head, acc=None):
     for ln in lines:
         run.ses.log(ln)
     print("\n".join(lines))
-    return all(ok for _, ok, _ in verdict)
+    return all(ok is not False for _, ok, _ in verdict)
 
 
 def parse_area(text):
@@ -555,18 +620,39 @@ def ledger_rows(path, chip):
     return out
 
 
+def since_tally_erase(rows):
+    """마지막 tally-erase(실험 개시 소거) 뒤의 행 — 그 앞은 이전 실험이다."""
+    start = 0
+    for i, (_, _, src, note) in enumerate(rows):
+        if "tally-erase" in src or "tally erase" in note:
+            start = i + 1
+    return rows[start:]
+
+
+def missed_checkpoint(cycle, checkpoints, rows):
+    """시작 자리가 체크포인트인데 장부에 그 체크포인트의 prep 행이 없으면 그 누적값, 아니면 None.
+
+    호스트가 구간 도중에 죽으면 엔진은 혼자 구간을 끝내지만 끝에서 잴 주체가 없다. `plan_segments` 는
+    시작점보다 큰 체크포인트만 넣으므로 그대로 이으면 그 점은 영영 빠진다 (chip07 60k·80k, 로그 48 §17).
+    「잰 적 있나」 는 세션이 바뀌어도 남는 장부로 본다 — 사람이 체크포인트에서 q 로 멈춘 경우는 이미 잰 뒤라
+    행이 있다. 장부를 못 읽었으면(rows=None) 묻지 않는다."""
+    if rows is None or cycle not in checkpoints:
+        return None
+    mark = f"체크포인트 {cycle} "
+    for _, _, src, note in since_tally_erase(rows):
+        if src.startswith("run_wear checkpoint") and note.startswith(mark):
+            return None
+    return cycle
+
+
 def ledger_wear(rows):
     """**마지막 tally-erase 이후**의 마모 증분 합계와 그 영역들 — tally 와 맞대볼 값.
 
     tally 는 영역을 구분하지 않고 마모 루프만 센다(S-1 §8.1). 그래서 대조 상대는 「그 칩의,
     마지막 실험 개시 소거 이후의, run_wear accept 증분 합계」다 — 체크포인트 prep(+1)과 재소거(±1)는
     tally 에 들어가지 않으므로 뺀다. 반환: (합계, 영역 집합, 읽지 못한 행 수)."""
-    start = 0
-    for i, (_, _, src, note) in enumerate(rows):
-        if "tally-erase" in src or "tally erase" in note:
-            start = i + 1
     total, areas, unknown = 0, set(), 0
-    for area, delta, src, _ in rows[start:]:
+    for area, delta, src, _ in since_tally_erase(rows):
         if not src.startswith("run_wear accept"):
             continue
         try:
@@ -667,13 +753,20 @@ def cmd_accept(run):
     cycle, tally, wear, total, unknown, note = start_cycle(run, link)
     cycle_s, src = measured_cycle_s(a.logdir)
     cp_s = measured_cp_s(a.logdir)
+    try:
+        rows = ledger_rows(a.chip_pe, a.chip)
+    except OSError:
+        rows = None
 
     ap = build_parser()                                      # 계획 화면에서 옵션을 고쳐 다시 파싱한다
     while True:
         to = resolve_target(lambda m: print(f"  ⚠ {m}", file=sys.stderr), a, cycle)
         segs = build_segments(a, cycle, to)
+        missed = missed_checkpoint(cycle, a.checkpoint_list, rows)
+        extra = f"빠진 체크포인트 {missed:,} 을 START 전에 먼저 잰다 (휴지 뒤 · P/E +1)" if missed is not None else None
         banner = plan_banner(a.chip, uid, segs, to, a.base_sector, a.sweep_mhz,
-                             a.measure and not a.sim, tally, note, cycle_s, src, cp_s, total, unknown,
+                             a.measure and not a.sim, tally, " · ".join(x for x in (note, extra) if x) or None,
+                             cycle_s, src, cp_s, total, unknown,
                              a.wear_baud, a.sweep_baud)
         print(banner)
         if a.sim or a.i_approve_real_pe:                     # 비대화형·연습은 확인 화면을 건너뛴다
@@ -705,6 +798,16 @@ def cmd_accept(run):
                    f"run_wear accept (session {run.session})",
                    f"cycle 보정: 장부 {cycle - fix} → 시작 {cycle} (A 로그·resume 채택값 기준)")
 
+    if missed is not None:                                   # 호스트가 놓친 구간 끝 — 마모를 잇기 전에 그 자리를 잰다
+        run.ses.log(f"빠진 체크포인트 {missed}: 장부에 prep 행이 없다 — START 전에 잰다 (휴지 뒤)")
+        if a.measure and not a.sim:
+            checkpoint_measure(run, missed, new_acc(), rested=True)
+            link = reattach(run)
+        else:
+            why = "sim" if a.sim else "--no-measure"
+            print(f"빠진 체크포인트 {missed:,} — 측정을 건너뛴다 ({why})")
+            run.write_checkpoint(missed, None, {}, "", rested=True)
+
     left, acc, rc = sum(1 for g in segs if g[2]), new_acc(), 0
     for i, (start, delta, confirm, is_cp) in enumerate(segs, 1):
         n = start + delta
@@ -721,10 +824,7 @@ def cmd_accept(run):
         csv = png = None
         if is_cp and a.measure and not a.sim:
             csv, png = checkpoint_measure(run, n, acc)        # 보드를 가져갔다 돌려준다
-            link = run.open(program=True)
-            if link.wear_status()[1] == "error":
-                raise Abort("측정 뒤 엔진이 error 로 부팅했다 — 배선·칩 확인")
-            run.check_uid()
+            link = reattach(run)
         elif is_cp:
             why = "sim" if a.sim else "--no-measure"
             print(f"체크포인트 {n:,} — 측정을 건너뛴다 ({why})")
@@ -785,7 +885,7 @@ def cmd_resume(run):
                 restored = None
         if restored is not None:
             out.append(f"다음 명령 (사람이 친다): run_wear.py accept --chip {a.chip} --base-sector {a.base_sector} "
-                       f"--cycle {restored} --delta <n> --i-approve-real-pe")
+                       f"--cycle {restored}")
     (run.dir / "resume.txt").write_text("\n".join(out) + "\n")
     for ln in out:
         run.ses.log(ln)
@@ -840,7 +940,7 @@ def cmd_simple(run):
     elif a.cmd == "halt":
         link.halt()                                                       # OK 는 다음 사이클 경계에서 온다
         c, s, _, _ = link.wait_stopped(timeout=60)
-        print(f"halted: cycle={c} state={s}  → 이어 가려면 accept --cycle {c} --delta <n>")
+        print(f"halted: cycle={c} state={s}  → 이어 가려면 accept --chip <chipNN> --cycle {c}")
     elif a.cmd == "tally":
         ta, tb, m = link.tally_read()
         print(f"tally_a={ta // 100} tally_b={tb // 100} (바이트) mismatch={int(m)} → 사이클 {ta}/{tb}")
