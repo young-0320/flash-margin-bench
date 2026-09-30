@@ -2,7 +2,7 @@
 """docs/chip_pe.md 에 P/E 증분 행을 덧붙인다 — append-only.
 
 행 하나 = 작업 하나. 기존 행은 읽지도 고치지도 않는다 (누적은 읽는 쪽이 계산).
---blind 면 증분 대신 "(봉인)" 을 적는다 — 행은 남고 값만 가린다.
+--blind 면 증분 대신 "(MASK)" 을 적는다 — 행은 남고 값만 가린다.
 표가 없으면 SystemExit (파서 고장을 정상으로 받지 않는다).
 
 --selftest: 임시 사본에 두 번 append 해 기존 행이 그대로인지 확인한다.
@@ -22,7 +22,7 @@ def _cells(line):
 
 
 def append_pe(date, label, uid, sectors, delta, source, note="", *, blind=False, path=CHIP_PE):
-    """이력 표 끝에 한 줄 추가. delta 는 "+1" 같은 문자열; blind 면 "(봉인)" 으로 대체."""
+    """이력 표 끝에 한 줄 추가. delta 는 "+1" 같은 문자열; blind 면 "(MASK)" 으로 대체."""
     path = Path(path)
     before = path.read_text(encoding="utf-8")
     lines = before.splitlines(keepends=True)
@@ -34,7 +34,7 @@ def append_pe(date, label, uid, sectors, delta, source, note="", *, blind=False,
         end += 1
     if not lines[end - 1].endswith("\n"):
         lines[end - 1] += "\n"
-    row = [date, label, uid, sectors, "(봉인)" if blind else delta, source, note]
+    row = [date, label, uid, sectors, "(MASK)" if blind else delta, source, note]
     if any("|" in c or "\n" in c for c in row):
         raise SystemExit("chip_pe: 셀에 '|' 또는 줄바꿈 불가")
     lines.insert(end, "| " + " | ".join(row) + " |\n")
@@ -61,9 +61,9 @@ def _selftest():
         tail = txt[len(doc):].splitlines()
         assert tail == [
             "| 2026-09-07 | chip01 | 0123456789ABCDEF | 0~127 | +1 | flash_prep (batch 20260907T131500Z) |  |",
-            "| 2026-09-07 | chip02 | FEDCBA9876543210 | 0~127 | (봉인) | flash_prep (batch 20260907T140000Z) |  |",
+            "| 2026-09-07 | chip02 | FEDCBA9876543210 | 0~127 | (MASK) | flash_prep (batch 20260907T140000Z) |  |",
         ], tail
-        print("  ok  두 번 append — 기존 행·산문 그대로, blind 는 (봉인)")
+        print("  ok  두 번 append — 기존 행·산문 그대로, blind 는 (MASK)")
 
         # 표 뒤에 산문이 있어도 표 끝에 붙는다
         p.write_text(doc + "\n산문 뒤.\n", encoding="utf-8")
