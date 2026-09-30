@@ -93,3 +93,51 @@ def test_answers_stop_at_100k(tmp_path):
     r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
     assert r["map"][1] <= 100_000
     assert all(z <= 100_000 for _, z in r["hpd95"])
+
+
+# ---------- 부속 연구 (--loco-obs single · --dx) ----------
+
+def _linear_arows(slope_us=0.5, base=50_000, n_cycles=20_000, gap=None):
+    import numpy as np
+    e = np.full((7, n_cycles + 1), np.nan)
+    c = np.arange(1, n_cycles + 1)
+    for s in range(7):
+        e[s, 1:] = base + slope_us * c + 100 * s
+    if gap:
+        e[:, gap[0]:gap[1] + 1] = np.nan
+    return wi.ARows(e)
+
+
+def test_window_slope_recovers_line():
+    a = _linear_arows(slope_us=0.5)
+    slope, sigma, fill = a.window_slope(1001, 5000)
+    assert abs(slope - 0.5) < 1e-9 and fill == 1.0
+    assert sigma <= 0.02 * 0.5 + 1e-12                       # 직선이면 폭은 2% 하한
+    assert a.window_slope(18_000, 5000) is None              # 데이터 끝을 넘는 창
+
+
+def test_long_gap_and_partial_window():
+    a = _linear_arows(gap=(8_000, 9_499))                    # 1,500 사이클 결측
+    assert a.has_long_gap(7_001, 12_000)
+    assert not a.has_long_gap(1, 7_000)
+    assert a.window_slope(7_001, 5000) is not None           # 70% 채움 — 교정 쪽은 쓴다
+    assert a.window_slope(8_001, 2000) is None               # 25% 채움
+
+
+def test_sample_obs_is_seeded_and_in_bin():
+    import random
+    a = _linear_arows()
+    o1 = a.sample_obs(3001, 3, random.Random("0:x"))
+    o2 = a.sample_obs(3001, 3, random.Random("0:x"))
+    assert o1 == o2 and len(o1) == 7
+    assert all(50_000 + 0.5 * 3001 + 100 * s <= v <= 50_000 + 0.5 * 4000 + 100 * s for s, v in enumerate(o1))
+
+
+def test_study_p50_matches_registered_loco(tmp_path):
+    curves = wi.load_curves(synth_curves(tmp_path))
+    cyc = (10_000, 50_000, 90_000)
+    ref = wi.loco(curves, FRESH, "ratio", 40_000, cycles=cyc, rate_range=2.0)
+    rows, skipped = wi.loco_study(curves, FRESH, "ratio", 40_000, 2.0, cycles=cyc)
+    assert not skipped
+    assert [(r["chip"], r["x"], (r["map"], r["map"] + 999), r["h68"], r["h95"]) for r in rows] == \
+           [(c, x, m, h68, h95) for c, x, m, h68, h95, _, _ in ref]

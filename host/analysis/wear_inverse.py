@@ -234,6 +234,245 @@ def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
     return rows
 
 
+# ---------- 부속 연구 (옵션으로만 켠다 — 등록된 모델·기본 --loco 는 위 경로 그대로) ----------
+#
+# --loco-obs single : 빠진 칩의 관측을 구간 p50 대신 그 1k 구간 A 행에서 섹터마다 사이클 k 개(--prep-k)를 뽑은 중앙값으로 —
+#                     실전 prep k 회와 같은 흔들림. seed 고정(--seed), --reps 회 반복
+# --dx 5000|10000   : 두 번째 dose(로그 51 §6). 정답 x 뒤 x+1..x+Δx 의 A 행(7섹터 × Δx)에 직선을 맞춘 기울기를 관측에 더한다.
+#                     교정 칩은 같은 방법의 구간별 기울기 곡선이 구성원이다. 속도 배율 r 인 칩의 Δx 실제 사이클은 곡선 위 r·Δx 이므로
+#                     관측 기울기는 r × (곡선 지점 x·r 에서 창 r·Δx 의 기울기) 와 맞댄다 — 기울기가 r 을 좁히는 정보가 된다
+# A 행 세션은 docs/results/data/wear_curves/wear_curves_2026-09.md 의 재현 명령과 같다
+
+A_SESSIONS = {
+    "chip01": (("1790091548", "1790212214"), ()),
+    "chip03": (("1790408609",), ()),
+    "chip04": (("1790423530", "1790482991", "1790491294"), ((66654, 66671),)),
+    "chip07": (("1790494073", "1790562456", "1790643103"), ()),
+}
+LONG_GAP = 1000                            # Δx 창 안에 이만큼 이어진 결측(모든 섹터 행 없음)이 있으면 그 점은 판정에서 뺀다
+SLOPE_MIN_FILL = 0.5                       # 교정 쪽 기울기 창에 행이 이 비율 아래면 그 지점의 구성원은 없는 것으로 친다
+BUCKETS = ((0, 3_000, "≤3k"), (3_000, 20_000, "3-20k"), (20_000, 50_000, "20-50k"), (50_000, 100_000, "50-100k"))
+
+
+class ARows:
+    """칩 하나의 A 행 소거 시간 (섹터 × 사이클, µs, 결측 NaN) 과 창 기울기용 누적합."""
+
+    @classmethod
+    def load(cls, chip):
+        import numpy as np
+        import wear_curves as wc
+        if chip not in A_SESSIONS:
+            raise SystemExit(f"{chip} 의 A 행 세션이 A_SESSIONS 에 없다")
+        dirs, drop = A_SESSIONS[chip]
+        paths = [REPO / "data" / "wear" / d for d in dirs]
+        missing = [str(p) for p in paths if not (p / "A.txt").exists()]
+        if missing:
+            raise SystemExit(f"{chip} 의 A 행이 없다: {', '.join(missing)}")
+        rows, _ = wc.load_sessions(paths, drop)
+        e = np.full((7, max(c for c, _ in rows) + 1), np.nan)
+        for (c, s), (te, _tp) in rows.items():
+            if s in WORN:
+                e[s, c] = te
+        return cls(e)
+
+    def __init__(self, e):
+        """e: (7, 최대 사이클 + 1) 소거 시간 µs, 결측 NaN. 열 0 은 쓰지 않는다."""
+        import numpy as np
+        self.max_cycle = e.shape[1] - 1
+        self.e = e
+        ok = ~np.isnan(e)
+        x = np.arange(self.max_cycle + 1, dtype=float)
+        z = np.zeros((7, 1))
+        v = np.where(ok, e, 0.0)
+        self.cs = {k: np.concatenate([z, np.cumsum(a, axis=1)], axis=1) for k, a in
+                   (("n", ok * 1.0), ("x", ok * x), ("xx", ok * x * x), ("e", v), ("xe", v * x), ("ee", v * v))}
+        allmiss = (~ok).all(axis=0)
+        allmiss[0] = False
+        self.miss_run = self._runs(allmiss)
+
+    @staticmethod
+    def _runs(mask):
+        out, start = [], None
+        for i, m in enumerate(mask):
+            if m and start is None:
+                start = i
+            elif not m and start is not None:
+                out.append((start, i - 1))
+                start = None
+        if start is not None:
+            out.append((start, len(mask) - 1))
+        return out
+
+    def has_long_gap(self, a, b):
+        return any(min(b, z) - max(a, s) + 1 >= LONG_GAP for s, z in self.miss_run if s <= b and z >= a)
+
+    def window_slope(self, a, length):
+        """사이클 a..a+length-1 의 7섹터 행에 직선 하나 — (기울기 µs/사이클, σ, 채운 비율) 또는 None.
+
+        σ = max(섹터별 기울기 표준편차/√7, 회귀 표준오차, 2%·|기울기|). µs/사이클은 수치로 ms/1k 와 같다."""
+        import numpy as np
+        b = a + length
+        if a < 1 or b - 1 > self.max_cycle or length < 2:
+            return None
+        w = {k: v[:, b] - v[:, a] for k, v in self.cs.items()}
+        n = w["n"].sum()
+        if n < SLOPE_MIN_FILL * 7 * length:
+            return None
+        sx, sxx, se, sxe, see = (w[k].sum() for k in ("x", "xx", "e", "xe", "ee"))
+        vx = sxx - sx * sx / n
+        slope = (sxe - sx * se / n) / vx
+        ssr = max(see - se * se / n - slope * (sxe - sx * se / n), 0.0)
+        se_reg = math.sqrt(ssr / max(n - 2, 1) / vx)
+        dx = w["n"] * w["xx"] - w["x"] ** 2
+        good = (w["n"] >= 2) & (dx > 0)
+        per = (w["n"][good] * w["xe"][good] - w["x"][good] * w["e"][good]) / dx[good]
+        spread = float(np.std(per, ddof=1)) / math.sqrt(len(per)) if len(per) > 1 else 0.0
+        sigma = max(spread, se_reg, SIGMA_FLOOR * abs(slope), 1e-9)
+        return slope, sigma, n / (7 * length)
+
+    def sample_obs(self, b, k, rng):
+        """1k 구간 b 에서 섹터마다 사이클 k 개를 뽑은 소거 시간 중앙값 7개 (µs)."""
+        import numpy as np
+        out = []
+        for s in WORN:
+            seg = self.e[s, b:b + 1000]
+            vals = seg[~np.isnan(seg)].tolist()
+            out.append(statistics.median(rng.sample(vals, min(k, len(vals)))))
+        return out
+
+
+def posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx):
+    """posterior 에 기울기 우도를 곱한 것. slope_obs = (기울기, σ) 는 눈금 적용 뒤, slope_members = [(ARows, 분모)]."""
+    ll = curve_loglik(obs, mem)
+    rs = [1.0] if rate_range <= 1 else [rate_range ** (-1 + 2 * i / (N_RATE - 1)) for i in range(N_RATE)]
+    cache = {}
+    logt = {}
+    for xb in range(1, MAX_CYCLE + 1, 1000):
+        c = xb + 499
+        terms = []
+        for r in rs:
+            mb = int((c * r - 1) // 1000) * 1000 + 1
+            if mb not in ll:
+                continue
+            key = (round(c * r), round(dx * r))
+            if key not in cache:
+                vals = []
+                for arows, div in slope_members:
+                    w = arows.window_slope(*key)
+                    if w is not None:
+                        vals.append((w[0] / div, w[1] / div))
+                cache[key] = vals
+            vals = cache[key]
+            if not vals:
+                continue
+            ls = _logmeanexp([_logpdf(slope_obs[0], r * mu, r * s) for mu, s in vals])
+            terms.append(ll[mb] + ls)
+        if terms:
+            logt[xb] = _logmeanexp(terms) + math.log(len(terms) / len(rs))
+    m = max(logt.values())
+    post = {b: math.exp(v - m) for b, v in logt.items()}
+    z = sum(post.values())
+    return {b: v / z for b, v in post.items()}
+
+
+def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_k=3, seed=0, reps=20, dx=0,
+               arows=None, cycles=LOCO_CYCLES):
+    """부속 연구의 모의 블라인드. 행 = dict(칩, 무리, 정답, 반복, MAP, 68%, 95%, 포함 여부) · 뺀 점 = [(칩, 정답, 이유)]."""
+    import random
+    rows, skipped = [], []
+    for chip in sorted(curves):
+        rest = {c: v for c, v in curves.items() if c != chip}
+        grp = group_of(fresh[chip], split_us)
+        cal = [c for c in rest if group_of(fresh[c], split_us) == grp]
+        if not cal:
+            continue
+        for cyc in cycles:
+            b = (cyc - 1) // 1000 * 1000 + 1
+            if b not in curves[chip]:
+                continue
+            slope_obs, slope_members = None, None
+            if dx:
+                if cyc + dx > MAX_CYCLE:
+                    skipped.append((chip, cyc, f"x+Δx = {cyc + dx:,} > 100k"))
+                    continue
+                if arows[chip].has_long_gap(cyc + 1, cyc + dx):
+                    skipped.append((chip, cyc, f"창 {cyc + 1:,}-{cyc + dx:,} 이 A 행 결측 구간에 걸림"))
+                    continue
+                w = arows[chip].window_slope(cyc + 1, dx)
+                div = fresh[chip] if scale == "ratio" else 1.0
+                slope_obs = (w[0] / div, w[1] / div)
+                slope_members = [(arows[c], fresh[c] if scale == "ratio" else 1.0) for c in cal]
+            n_rep = reps if obs_mode == "single" else 1
+            rng = random.Random(f"{seed}:{chip}:{cyc}")
+            for rep in range(n_rep):
+                if obs_mode == "single":
+                    worn = arows[chip].sample_obs(b, prep_k, rng)
+                else:
+                    worn = [p50 for _, p50, _ in curves[chip][b].values()]
+                if dx:
+                    obs = [v / fresh[chip] for v in worn] if scale == "ratio" else list(worn)
+                    mem = members(rest, fresh, cal, scale)
+                    post = posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx)
+                    top = max(post, key=post.get)
+                    h68, h95 = ranges(hpd(post, 0.68)), ranges(hpd(post, 0.95))
+                else:
+                    r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range)
+                    top, h68, h95 = r["map"][0], r["hpd68"], r["hpd95"]
+                rows.append({"chip": chip, "group": grp, "x": cyc, "rep": rep, "map": top, "h68": h68, "h95": h95,
+                             "in68": any(a <= cyc <= z for a, z in h68), "in95": any(a <= cyc <= z for a, z in h95),
+                             "slope": slope_obs[0] if slope_obs else None})
+    return rows, skipped
+
+
+def study_metrics(rows):
+    """포함률(반복 평균) · 68% 바깥 폭 중앙값 · 바깥 폭/MAP 중앙값·90분위 · MAP/정답 중앙값."""
+    if not rows:
+        return None
+    outer = [r["h68"][-1][1] - r["h68"][0][0] + 1 for r in rows]
+    mapc = [r["map"] + 499.5 for r in rows]
+    rel = sorted(o / m for o, m in zip(outer, mapc))
+    return {"n_pts": len({(r["chip"], r["x"]) for r in rows}), "n": len(rows),
+            "in68": sum(r["in68"] for r in rows) / len(rows), "in95": sum(r["in95"] for r in rows) / len(rows),
+            "outer": statistics.median(outer), "rel50": statistics.median(rel), "rel90": rel[min(len(rel) - 1, int(0.9 * len(rel)))],
+            "map_ratio": statistics.median(m / r["x"] for m, r in zip(mapc, rows))}
+
+
+def print_study(rows, skipped, label):
+    def line(name, sub):
+        m = study_metrics(sub)
+        if m is None:
+            print(f"| {label} | {name} | 0 | — | — | — | — | — | — |")
+            return
+        print(f"| {label} | {name} | {m['n_pts']} | {m['in68']:.1%} | {m['in95']:.1%} | {m['outer']:,.0f} | "
+              f"{m['rel50']:.2f} | {m['rel90']:.2f} | {m['map_ratio']:.2f} |")
+    print("| 조건 | 부분 | 점 | 정답∈68 | 정답∈95 | 68% 바깥 폭 중앙값 | 바깥 폭/MAP 중앙값 | 90분위 | MAP/정답 중앙값 |")
+    print("|---|---|---|---|---|---|---|---|---|")
+    line("전체", rows)
+    for g, name in (("fast", "빠른 무리"), ("slow", "느린 무리")):
+        line(name, [r for r in rows if r["group"] == g])
+    for lo, hi, name in BUCKETS:
+        line(f"x {name}", [r for r in rows if lo < r["x"] <= hi])
+    for g, name in (("fast", "빠른"), ("slow", "느린")):
+        line(f"{name} · x 50-100k", [r for r in rows if r["group"] == g and 50_000 < r["x"] <= 100_000])
+    for chip, cyc, why in skipped:
+        print(f"  판정에서 뺀 점: {chip} x={cyc:,} — {why}")
+
+
+def step_slope_counts(arows, fresh, split_us, dx):
+    """칩별로 1k 구간 시작점마다 창 [b, b+Δx) 기울기 ≤ 0 인 구간 수 / 전체 (0-100k 안, 창이 서는 곳만)."""
+    out = []
+    for chip in sorted(arows):
+        n = neg = 0
+        for b in range(1, MAX_CYCLE - dx + 2, 1000):
+            w = arows[chip].window_slope(b, dx)
+            if w is None:
+                continue
+            n += 1
+            neg += w[0] <= 0
+        out.append((chip, group_of(fresh[chip], split_us), neg, n))
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="수명 역산 1차 모델 — prep 소거 시간 → 누적 P/E 구간")
     ap.add_argument("logs", nargs="*", help="개봉 prep 세션 로그 (여러 개면 같은 칩의 반복 prep)")
@@ -242,10 +481,32 @@ def main(argv=None):
     ap.add_argument("--rate-range", type=float, default=RATE_RANGE, help=f"속도 배율 r 의 범위 R (기본 {RATE_RANGE}). 1 이면 끔")
     ap.add_argument("--split-ms", type=float, default=40.0, help="빠른/느린 무리 경계, 신품 소거 ms (기본 40)")
     ap.add_argument("--curves", default=CURVES_GLOB, help="교정 표 glob")
+    ap.add_argument("--loco-obs", choices=("p50", "single"), default="p50", help="부속 연구: 모의 블라인드 관측 (기본 p50 = 등록된 방식)")
+    ap.add_argument("--prep-k", type=int, default=3, help="부속 연구: single 관측의 섹터당 사이클 수 (기본 3)")
+    ap.add_argument("--seed", type=int, default=0, help="부속 연구: 난수 seed (기본 0)")
+    ap.add_argument("--reps", type=int, default=20, help="부속 연구: single 관측 반복 횟수 (기본 20)")
+    ap.add_argument("--dx", type=int, choices=(0, 5000, 10000), default=0, help="부속 연구: 두 번째 dose Δx (기본 0 = 등록된 방식)")
+    ap.add_argument("--study", action="store_true", help="부속 연구: 모의 블라인드를 무리·x 구간별 요약표로 (옵션을 안 켜도 요약만 낸다)")
     args = ap.parse_args(argv)
 
     curves, fresh = load_curves(args.curves), load_fresh()
     split = args.split_ms * 1000
+
+    if args.loco and (args.study or args.loco_obs != "p50" or args.dx):
+        arows = {c: ARows.load(c) for c in sorted(curves)} if (args.loco_obs == "single" or args.dx) else None
+        label = f"{args.loco_obs}" + (f" k={args.prep_k}" if args.loco_obs == "single" else "") + f" · Δx {args.dx:,}"
+        rows, skipped = loco_study(curves, fresh, args.scale, split, args.rate_range, args.loco_obs, args.prep_k,
+                                   args.seed, args.reps, args.dx, arows)
+        print(f"부속 연구 · 모의 블라인드 · 눈금 {args.scale} · R {args.rate_range:g} · 관측 {label}"
+              + (f" · seed {args.seed} · 반복 {args.reps}" if args.loco_obs == "single" else ""))
+        print_study(rows, skipped, label)
+        if args.dx:
+            print(f"창 기울기 ≤ 0 인 1k 구간 (Δx {args.dx:,}, 0-100k):")
+            for chip, grp, neg, n in step_slope_counts(arows, fresh, split, args.dx):
+                print(f"  {chip} ({grp}) {neg}/{n}")
+            fast = [r for r in rows if r["group"] == "fast" and r["rep"] == 0]
+            print(f"  빠른 무리 LOCO 점의 관측 기울기 ≤ 0: {sum(r['slope'] <= 0 for r in fast)}/{len(fast)}")
+        return
 
     if args.loco:
         rows = loco(curves, fresh, args.scale, split, rate_range=args.rate_range)
