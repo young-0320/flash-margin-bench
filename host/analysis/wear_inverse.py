@@ -1,4 +1,4 @@
-# wear_inverse.py — 수명 역산 1차(현장) 모델: 개봉 prep 의 섹터별 소거 시간 → 마모 섹터 0-6 의 누적 P/E 구간
+# wear_inverse.py — 수명 역산 1차(현장) 모델: 개봉 prep 의 섹터별 소거 시간 → 마모 섹터 0-6 의 누적 P/E 사이클 x 의 구간
 #
 # 사용:
 #   uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [prep 로그 더]   # 블라인드 개봉
@@ -13,10 +13,10 @@
 #           구성원마다 p50 을 중심, (p90-p10)/2.56 을 폭으로 하는 정규분포를 놓는다
 #   계산    곡선 지점 M 마다 관측 B 가 나올 우도 = 관측별 (구성원 평균 밀도) 의 기하 평균 — 7개 관측은 같은 칩이라 독립으로 곱하지 않는다.
 #   속도 r  같은 무리 안에서도 사이클당 손상량이 칩마다 다르다 — 곡선 모양은 같고 가로축만 r 배 늘어난다(chip01 대 chip04 약 1.4,
-#           chip03 대 chip07 약 1.25). 진짜 사이클 N 인 칩은 교정 곡선의 M = N·r 지점처럼 보인다. r 은 [1/R, R] 에서 로그 균등으로
+#           chip03 대 chip07 약 1.25). 누적 사이클 x 인 칩은 교정 곡선의 M = x·r 지점처럼 보인다. r 은 [1/R, R] 에서 로그 균등으로
 #           적분한다. R 의 규칙: 두 쌍의 로그 차이 평균 ÷ 1.13 = 개체 표준편차(약 0.25), 새 칩 하나 대 교정 칩 하나의 95% 범위
 #           = √2 × 1.96 × 표준편차 → R ≈ 2.0. LOCO 결과에 맞춰 조정하지 않는다 (--rate-range 2.0 · 1 이면 끔)
-#           N 의 사전은 1-100k 에 평평. → N 구간별 확률
+#           x 의 사전은 1-100k 에 평평. → x 구간별 확률. 기호: 누적 P/E 사이클 = x (N 은 위상당 읽기 112 에만 쓴다, 로그 51 [D51-1])
 #   출력    확률이 가장 큰 구간(MAP) · 68% · 95% 최고밀도 집합(사이클 범위로 합쳐서). 100k 너머는 교정이 없어 답하지 않는다
 #           MAP 구간의 밴드(구성원 p10 최소 ~ p90 최대) 밖에 있는 관측 수를 같이 찍는다 — 전부 밖이면 교정 범위 밖이다
 #
@@ -40,8 +40,8 @@ REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 �
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
 RATE_RANGE = 2.0                           # 속도 배율 r 의 범위 [1/R, R] — 규칙은 머리말
 N_RATE = 41                                # r 격자 (로그 등간격, 홀수라 r=1 이 포함된다)
-MAX_CYCLE = 100_000                        # 답하는 범위(N)의 끝 — 교정 4칩이 모두 닿는 곳. 곡선 지점 M = N·r 은 그 너머(chip01 의
-                                           # 100k-300k)도 쓴다 — r > 1 인(교정 칩보다 빨리 늙는) 칩의 N ≤ 100k 를 설명하려면 필요하다
+MAX_CYCLE = 100_000                        # 답하는 범위(x)의 끝 — 교정 4칩이 모두 닿는 곳. 곡선 지점 M = x·r 은 그 너머(chip01 의
+                                           # 100k-300k)도 쓴다 — r > 1 인(교정 칩보다 빨리 늙는) 칩의 x ≤ 100k 를 설명하려면 필요하다
 LOCO_CYCLES = (1_000, 3_000, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000)
 
 PREP_ERASE = re.compile(r"#PREP ERASE (\d+) (\d+)\s*$", re.M)
@@ -131,10 +131,10 @@ def curve_loglik(obs, mem):
 
 
 def posterior(obs, mem, rate_range=1.0):
-    """관측 목록(선택한 눈금) → {N 구간 bin_start: 확률}. N 은 1-MAX_CYCLE 에 평평한 사전.
+    """관측 목록(선택한 눈금) → {x 구간 bin_start: 확률}. x(누적 사이클)는 1-MAX_CYCLE 에 평평한 사전.
 
-    속도 배율 r 을 [1/R, R] 로그 균등으로 적분한다: P(N) ∝ Σ_r L(곡선 지점 N·r). 곡선에 없는 지점(교정 범위 밖)은 0 —
-    그래서 큰 N 은 r 이 작은 쪽만 기여하고, 그것이 교정 범위가 주는 자연스러운 제약이다. rate_range ≤ 1 이면 r = 1 하나."""
+    속도 배율 r 을 [1/R, R] 로그 균등으로 적분한다: P(x) ∝ Σ_r L(곡선 지점 x·r). 곡선에 없는 지점(교정 범위 밖)은 0 —
+    그래서 큰 x 는 r 이 작은 쪽만 기여하고, 그것이 교정 범위가 주는 자연스러운 제약이다. rate_range ≤ 1 이면 r = 1 하나."""
     ll = curve_loglik(obs, mem)
     m = max(ll.values())
     if rate_range <= 1:
@@ -142,17 +142,17 @@ def posterior(obs, mem, rate_range=1.0):
     else:
         rs = [rate_range ** (-1 + 2 * i / (N_RATE - 1)) for i in range(N_RATE)]
     post = {}
-    for n in range(1, MAX_CYCLE + 1, 1000):
-        c = n + 499                                            # N 구간 중앙
+    for xb in range(1, MAX_CYCLE + 1, 1000):
+        c = xb + 499                                           # x 구간 중앙
         tot = 0.0
         for r in rs:
-            mb = int((c * r - 1) // 1000) * 1000 + 1           # 곡선 지점 M = N·r 이 든 구간
+            mb = int((c * r - 1) // 1000) * 1000 + 1           # 곡선 지점 M = x·r 이 든 구간
             if mb in ll:
                 tot += math.exp(ll[mb] - m)
         if tot > 0:
-            post[n] = tot / len(rs)
+            post[xb] = tot / len(rs)
     z = sum(post.values())
-    return {n: v / z for n, v in post.items()}
+    return {b: v / z for b, v in post.items()}
 
 
 def hpd(post, mass):
