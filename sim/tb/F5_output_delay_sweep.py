@@ -1,5 +1,7 @@
 """F5: sweep the official model's effective MISO output-path delay."""
 
+import os
+
 import cocotb
 from cocotb.triggers import FallingEdge
 
@@ -17,9 +19,14 @@ UI_NS = 40
 PHASE_POINTS_NS = [0.1] + [0.5 * index for index in range(1, 80)] + [39.9]
 
 
+# cocotb 2.x has no cocotb.skip(); skipping is decided at collection time (see W2).
+VENDOR_MODEL_ENABLED = os.getenv("WINBOND_MODEL_ENABLED") == "1"
+
+
 def _require_vendor_model(dut) -> None:
-    if not int(dut.vendor_model_present.value):
-        cocotb.skip("F5 requires WINBOND_MODEL_DIR and the official W25Q64JV model")
+    assert int(dut.vendor_model_present.value), (
+        "WINBOND_MODEL_ENABLED=1 but the wrapper reports no vendor model"
+    )
 
 
 async def _run_vendor_measurement(
@@ -44,7 +51,7 @@ async def _run_vendor_measurement(
     return [await read_error_log(dut, index) for index in range(n_reads)]
 
 
-@cocotb.test()
+@cocotb.test(skip=not VENDOR_MODEL_ENABLED)
 @cocotb.parametrize(extra_delay_ns=[0, 4, 8, 12, 16, 20, 24, 28, 32])
 async def test_F5_vendor_effective_delay_below_one_UI_stays_error_free(
     dut, extra_delay_ns: int
@@ -71,7 +78,7 @@ async def test_F5_vendor_effective_delay_below_one_UI_stays_error_free(
     )
 
 
-@cocotb.test()
+@cocotb.test(skip=not VENDOR_MODEL_ENABLED)
 async def test_F5_just_over_one_UI_exposes_the_shifted_error_wall(dut):
     """F5: 50ns is no longer universally clean at the original phase."""
     burst_bits = 512
@@ -99,7 +106,7 @@ async def test_F5_just_over_one_UI_exposes_the_shifted_error_wall(dut):
     )
 
 
-@cocotb.test()
+@cocotb.test(skip=not VENDOR_MODEL_ENABLED)
 @cocotb.parametrize(sample_phase_ns=PHASE_POINTS_NS)
 async def test_F5_beyond_three_candidate_span_has_no_false_zero_error_floor(
     dut, sample_phase_ns: float

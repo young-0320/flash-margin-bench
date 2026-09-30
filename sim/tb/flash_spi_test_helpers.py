@@ -131,37 +131,48 @@ async def count_sclk_rising_edges_until_cs_release(dut) -> int:
         edge_count += 1
 
 
+def _now_ps() -> int:
+    """Simulation time as an exact integer in ps.
+
+    Differences are formed in ps and divided once, so an edge-to-edge span of
+    40 ns is exactly 40.0 regardless of the absolute time at which the frame
+    starts. Reading ``get_sim_time(unit="ns")`` and subtracting floats gave
+    39.99999999999636 when earlier tests had advanced the clock far enough.
+    """
+    return int(round(get_sim_time(unit="ps")))
+
+
 async def monitor_mode0_timing(
     dut, n_frames: int, expected_sclk_edges: int | None = None
 ) -> list[dict[str, float]]:
     """Measure CS/SCLK mode-0 timing directly at the DUT pins."""
     observations = []
-    previous_cs_release_ns = None
+    previous_cs_release_ps = None
 
     for frame_index in range(n_frames):
         await FallingEdge(dut.spi_cs_n)
-        cs_assert_ns = float(get_sim_time(unit="ns"))
+        cs_assert_ps = _now_ps()
         await ReadOnly()
         assert int(dut.spi_sclk.value) == 0, (
             f"frame {frame_index}: SCLK was not low when CS asserted"
         )
 
         cs_high_gap_ns = None
-        if previous_cs_release_ns is not None:
-            cs_high_gap_ns = cs_assert_ns - previous_cs_release_ns
+        if previous_cs_release_ps is not None:
+            cs_high_gap_ns = (cs_assert_ps - previous_cs_release_ps) / 1000
             assert cs_high_gap_ns >= 10.0, (
                 f"frame {frame_index}: CS high gap={cs_high_gap_ns}ns, expected >=10ns"
             )
 
         await RisingEdge(dut.spi_sclk)
-        first_sclk_rise_ns = float(get_sim_time(unit="ns"))
-        cs_to_first_sclk_ns = first_sclk_rise_ns - cs_assert_ns
+        first_sclk_rise_ps = _now_ps()
+        cs_to_first_sclk_ns = (first_sclk_rise_ps - cs_assert_ps) / 1000
         assert cs_to_first_sclk_ns >= 5.0, (
             f"frame {frame_index}: CS-to-first-SCLK={cs_to_first_sclk_ns}ns, "
             "expected >=5ns"
         )
 
-        last_sclk_rise_ns = first_sclk_rise_ns
+        last_sclk_rise_ps = first_sclk_rise_ps
         min_sclk_high_ns = None
         min_sclk_low_ns = None
         min_sclk_period_ns = None
@@ -169,8 +180,8 @@ async def monitor_mode0_timing(
         if expected_sclk_edges is not None:
             for edge_index in range(expected_sclk_edges):
                 await FallingEdge(dut.spi_sclk)
-                falling_ns = float(get_sim_time(unit="ns"))
-                high_ns = falling_ns - last_sclk_rise_ns
+                falling_ps = _now_ps()
+                high_ns = (falling_ps - last_sclk_rise_ps) / 1000
                 min_sclk_high_ns = (
                     high_ns
                     if min_sclk_high_ns is None
@@ -184,9 +195,9 @@ async def monitor_mode0_timing(
                     break
 
                 await RisingEdge(dut.spi_sclk)
-                rising_ns = float(get_sim_time(unit="ns"))
-                low_ns = rising_ns - falling_ns
-                period_ns = rising_ns - last_sclk_rise_ns
+                rising_ps = _now_ps()
+                low_ns = (rising_ps - falling_ps) / 1000
+                period_ns = (rising_ps - last_sclk_rise_ps) / 1000
                 min_sclk_low_ns = (
                     low_ns
                     if min_sclk_low_ns is None
@@ -203,15 +214,15 @@ async def monitor_mode0_timing(
                 assert period_ns >= 40.0, (
                     f"frame {frame_index}: SCLK period={period_ns}ns, expected >=40ns"
                 )
-                last_sclk_rise_ns = rising_ns
+                last_sclk_rise_ps = rising_ps
 
         await RisingEdge(dut.spi_cs_n)
-        cs_release_ns = float(get_sim_time(unit="ns"))
+        cs_release_ps = _now_ps()
         await ReadOnly()
         assert int(dut.spi_sclk.value) == 0, (
             f"frame {frame_index}: SCLK was not low when CS released"
         )
-        last_sclk_to_cs_ns = cs_release_ns - last_sclk_rise_ns
+        last_sclk_to_cs_ns = (cs_release_ps - last_sclk_rise_ps) / 1000
         assert last_sclk_to_cs_ns >= 3.0, (
             f"frame {frame_index}: last-SCLK-to-CS={last_sclk_to_cs_ns}ns, "
             "expected >=3ns"
@@ -228,7 +239,7 @@ async def monitor_mode0_timing(
                 "last_sclk_to_cs_ns": last_sclk_to_cs_ns,
             }
         )
-        previous_cs_release_ns = cs_release_ns
+        previous_cs_release_ps = cs_release_ps
 
     return observations
 

@@ -73,12 +73,12 @@ async def run_rejected_opcode(dut, target_opcode: int) -> None:
     )
 
 
-@cocotb.test()
+VENDOR_MODEL_ENABLED = os.getenv("WINBOND_MODEL_ENABLED") == "1"
+
+
+@cocotb.test(skip=not VENDOR_MODEL_ENABLED)
 async def test_W1_vendor_rejects_0x0A_and_0x1B_without_silent_pass(dut) -> None:
     """Both one-bit corruptions must hit the vendor invalid-opcode path."""
-    if os.getenv("WINBOND_MODEL_ENABLED") != "1":
-        cocotb.skip("W1 requires WINBOND_MODEL_DIR and the official W25Q64JV model")
-
     start_clocks(dut)
     # Let elaborated continuous assignments settle before reading wrapper
     # presence wires. At time 0 Icarus can still expose their initial Z value.

@@ -163,6 +163,7 @@ def run() -> Path:
     sources = [REPO_ROOT / "sim" / "smoke" / "unisim_stub.v"]
 
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    SIM_BUILD_DIR.mkdir(parents=True, exist_ok=True)  # os.chdir below runs before build()
 
     # Some development machines source ROS globally. Its pytest entry points are
     # unrelated to this regression and can pull unavailable ROS dependencies into
