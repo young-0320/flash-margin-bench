@@ -34,6 +34,7 @@ SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_20
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
+MAX_CYCLE = 100_000                        # 답하는 범위의 끝 — 교정 4칩이 모두 닿는 곳. chip01 의 100k 너머는 쓰지 않는다
 LOCO_CYCLES = (1_000, 3_000, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000)
 
 PREP_ERASE = re.compile(r"#PREP ERASE (\d+) (\d+)\s*$", re.M)
@@ -96,6 +97,8 @@ def members(curves, fresh, chips, scale):
     for chip in chips:
         div = fresh[chip] if scale == "ratio" else 1.0
         for b, sectors in curves[chip].items():
+            if b > MAX_CYCLE:
+                continue
             for p10, p50, p90 in sectors.values():
                 mu = p50 / div
                 sigma = max((p90 - p10) / 2.5631 / div, SIGMA_FLOOR * mu)

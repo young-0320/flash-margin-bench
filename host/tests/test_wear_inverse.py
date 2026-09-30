@@ -76,3 +76,20 @@ def test_parse_prep_log_and_observation(tmp_path):
     assert ref == 34_000 and worn == [110_000] * 7
     assert "빠른 무리" in wi.program_check(program, "fast")
     assert "어긋난다" in wi.program_check(program, "slow")
+
+
+def test_answers_stop_at_100k(tmp_path):
+    pattern = synth_curves(tmp_path)
+    # fastA 만 150k 까지 늘린다 (chip01 300k 처럼) — 관측이 그 너머 값이어도 답은 100k 안에 머문다
+    with (tmp_path / "wear_curves_fastA_2026-09.csv").open("a", newline="") as fh:
+        w = csv.writer(fh)
+        for k in range(100, 150):
+            for s in range(7):
+                mid = (30_000 + 0.6 * (k * 1000 + 500) + 20_000) * (1 + 0.004 * s)
+                w.writerow(["fastA", k * 1000 + 1, (k + 1) * 1000, s, 1000,
+                            int(mid * 0.97), int(mid), int(mid * 1.03), 6900, 6950, 7000])
+    curves = wi.load_curves(pattern)
+    worn = [int((30_000 + 0.6 * 130_500 + 20_000) * (1 + 0.004 * s)) for s in range(7)]
+    r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
+    assert r["map"][1] <= 100_000
+    assert all(z <= 100_000 for _, z in r["hpd95"])
