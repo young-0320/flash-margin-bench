@@ -92,7 +92,7 @@ def check_target(label, uid):
             raise SystemExit("loopback 은 UID 를 갖지 않는다")
         return ""
     if label not in chip_registry.LABELS:
-        raise SystemExit(f"target {label!r}: loopback | chip01..chip10 만 허용 (§6)")
+        raise SystemExit(f"target {label!r}: loopback | chip01..chip20 만 허용 (§6)")
     if not uid:
         raise SystemExit(f"{label}: UID 없이 chip CSV 를 만들 수 없다 (수정안 #3 R13)")
     return chip_registry.normalize_uid(uid)

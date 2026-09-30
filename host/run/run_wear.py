@@ -665,7 +665,7 @@ def ledger_wear(rows):
 
 def ledger_area_total(rows, base, n):
     """그 **영역이 실제로 받은 P/E 합**(마모 + prep + 체크포인트) — 범위가 겹치는 행을 다 센다.
-    곡선 x축의 진짜 값이다. `미상`·`(봉인)`·`±1` 처럼 값을 모르는 행은 세지 않고 개수만 돌려준다."""
+    곡선 x축의 진짜 값이다. `미상`·`(MASK)`·`±1` 처럼 값을 모르는 행은 세지 않고 개수만 돌려준다."""
     total, unknown = 0, 0
     for area, delta, _, _ in rows:
         rng = parse_area(area)

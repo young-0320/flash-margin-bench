@@ -88,7 +88,7 @@ e_i 버퍼: flash 소유 BRAM 1개 (2,048 × 16b). 읽기 하나가 끝날 때�
 
 ## 6. 스윕 CSV 스키마
 
-- 파일: 스윕 1회 = 1개, `build/data/sweep_<target>_<YYYYmmddTHHMMSSZ>.csv`, target = `loopback` | `chip01`~`chip10`. 게재분만 `docs/results/` 수동 승격. <!-- 표기 정정 7/9 (구 docs/reports — 승격처 개명 반영, 의미 변경 없음): 3인 동의, Young 반영 -->
+- 파일: 스윕 1회 = 1개, `build/data/sweep_<target>_<YYYYmmddTHHMMSSZ>.csv`, target = `loopback` | `chip01`~`chip20`. <!-- 2026-09-30 상한 10→20: 칩 추가 구매. 표기 범위만 확장, 의미 변경 없음 (Young 반영) --> 게재분만 `docs/results/` 수동 승격. <!-- 표기 정정 7/9 (구 docs/reports — 승격처 개명 반영, 의미 변경 없음): 3인 동의, Young 반영 -->
 - 열 (행 = 위상 스텝 1개, `phase_step` 0부터 연속, 결측 금지):
 
 | 열                                        | 타입       | 출처                                                |

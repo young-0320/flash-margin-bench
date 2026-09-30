@@ -288,7 +288,8 @@ def resolve_label(uid, ses, today):
         ses.log(f"등록부: {uid} → {label}")
         return label
     require_tty(f"UID {uid} 는 등록부에 없다 (신규 칩). 라벨 입력 필요")
-    free = [l for l, u in chip_registry.parse().items() if u is None]
+    rows = chip_registry.parse()
+    free = [l for l in chip_registry.LABELS if rows.get(l) is None]   # UID 공란 행 + 아직 행이 없는 라벨
     print(f"\n신규 UID {uid}. 등록부의 UID 공란 라벨: {' '.join(free) or '(없음)'}", file=sys.stderr)
     while True:                                    # 오타로 죽지 않는다 — prep 은 이미 끝났다
         label = input("이 칩의 라벨 (chipNN): ").strip()
@@ -327,7 +328,7 @@ def main():
     h.add_argument("--port", default="/dev/ttyUSB1", help="Windows 는 COM<N>")
     h.add_argument("--baud", type=int, default=921600,
                    help="호스트 포트 + 펌웨어 양쪽 (UART_BAUD 로 xsct 에 전달). 921600 을 못 받는 PC 는 115200")
-    ap.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (봉인)")
+    ap.add_argument("--blind", action="store_true", help="chip_pe.md 에 증분 대신 (MASK)")
 
     args = ap.parse_args()
     os.environ["UART_BAUD"] = str(args.baud)        # program_*.tcl 이 ELF 의 g_uart_baud 를 이 값으로 덮어쓴다
@@ -404,7 +405,7 @@ def main():
                 ses.rename(f"{label}_{uid}")
                 chip_pe.append_pe(today, label, uid, PREP_SECTORS, "+1",
                                   f"flash_prep (batch {batch_id})", blind=args.blind)
-                ses.log(f"chip_pe.md: {label} {PREP_SECTORS} {'(봉인)' if args.blind else '+1'}")
+                ses.log(f"chip_pe.md: {label} {PREP_SECTORS} {'(MASK)' if args.blind else '+1'}")
 
             g3_args = [PROGRAM_G3, args.mhz] + ([f"pl{args.pl}"] if args.pl else [])
             for k in range(1, args.repeat + 1):

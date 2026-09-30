@@ -105,7 +105,7 @@ uv run python host/run/run_sweep_chip.py --mode <newchip|sweep> --mhz <25|45|75>
 | `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                                                        |
 | `--baud`        | 921600           | 호스트 포트 + 펌웨어 양쪽 (xsct 가 ELF 의 `g_uart_baud` 를 덮어쓴다). 921600 을 못 받는 PC 는 `115200`                    |
 | `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                                                                |
-| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(봉인)`. `newchip` 에서만                                                                  |
+| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(MASK)`. `newchip` 에서만                                                                  |
 
 N(위상 스텝당 읽기 횟수)은 옵션이 아니다 — 실칩은 **112 고정**. `BEGIN` 의 `n=` 이 다르면 첫 줄에서 중단한다.
 
