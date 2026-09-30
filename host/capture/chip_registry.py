@@ -3,7 +3,7 @@
 
 정본은 md 표 자체다. 별도 CSV/JSON을 두지 않는다 (로그 20 §4 H5 — 문서와 목록이
 어긋나는 실패를 기각). 대신 파서를 빡빡하게 한다:
-  UID 정확히 16 hex · 라벨 chip01~chip10 · UID 중복 없음 · 라벨 중복 없음
+  UID 정확히 16 hex · 라벨 chip01~chip20 · UID 중복 없음 · 라벨 중복 없음
   0행 파싱 → "등록 칩 없음"이 아니라 파서 고장 (비어 있음을 정상으로 받지 않는다)
 하나라도 어기면 SystemExit (비영 종료).
 
@@ -23,7 +23,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / "docs" / "chip_registry.md"
 
-LABELS = tuple(f"chip{i:02d}" for i in range(1, 11))
+LABELS = tuple(f"chip{i:02d}" for i in range(1, 21))   # 2026-09-30 상한 10 → 20 (칩 추가 구매)
 UID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 PLACEHOLDER_RE = re.compile(r"^\*\(.*\)\*$")   # *(D 트랙에서 확보)* 류 = 공란 취급
 
@@ -60,7 +60,7 @@ def _parse_lines(lines):
             raise RegistryError(f"열 부족: {ln.strip()!r}")
         label, cell = c[0], c[1]
         if label not in LABELS:
-            raise RegistryError(f"라벨 {label!r} 은 chip01~chip10 이 아님")
+            raise RegistryError(f"라벨 {label!r} 은 chip01~chip20 이 아님")
         if label in rows:
             raise RegistryError(f"라벨 중복: {label}")
         if cell == "" or PLACEHOLDER_RE.match(cell):
@@ -171,7 +171,7 @@ def _selftest():
                      "| chip02 | A1B2C3D4E5F60718 | | | |\n" + _TAIL, "UID 중복")
         expect_error(_HEAD + "표 없음\n" + _TAIL, "표 삭제")
         expect_error(_HEAD + _TBL_HDR + _TAIL, "0행")
-        expect_error(_HEAD + _TBL_HDR + "| chip11 | | | | |\n" + _TAIL, "라벨 범위 밖")
+        expect_error(_HEAD + _TBL_HDR + "| chip21 | | | | |\n" + _TAIL, "라벨 범위 밖")
         expect_error(_HEAD + _TBL_HDR + "| chip01 | | | | |\n| chip01 | | | | |\n" + _TAIL,
                      "라벨 중복")
 

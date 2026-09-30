@@ -288,7 +288,8 @@ def resolve_label(uid, ses, today):
         ses.log(f"등록부: {uid} → {label}")
         return label
     require_tty(f"UID {uid} 는 등록부에 없다 (신규 칩). 라벨 입력 필요")
-    free = [l for l, u in chip_registry.parse().items() if u is None]
+    rows = chip_registry.parse()
+    free = [l for l in chip_registry.LABELS if rows.get(l) is None]   # UID 공란 행 + 아직 행이 없는 라벨
     print(f"\n신규 UID {uid}. 등록부의 UID 공란 라벨: {' '.join(free) or '(없음)'}", file=sys.stderr)
     while True:                                    # 오타로 죽지 않는다 — prep 은 이미 끝났다
         label = input("이 칩의 라벨 (chipNN): ").strip()
