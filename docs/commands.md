@@ -292,6 +292,10 @@ BER 이 0.001 → 0.25 로 뛰는 것은 물리적으로 불가능하고, 캡처
 관련: 신품 조사 수치를 세션 로그에서 뽑는 파서 —
 `uv run python host/analysis/prep_survey_parse.py data/session_chip04_*.log [--csv]`
 
+관련: 마모 세션의 A.txt 를 1k 구간·섹터 분위수 표로 — 수명 역산 교정 곡선의 입력. 칩별 세션·뺀 사이클은
+`docs/results/data/wear_curves_2026-09.md` —
+`uv run python host/analysis/wear_curves.py --chip chip04 data/wear/<세션> ... [--drop-cycles A-B]`
+
 ---
 
 ## 5. 하지 않는 것
