@@ -9,6 +9,8 @@
   읽었다. 그 집계는 일회성 코드였고, 이 표가 그 정본이다. 분위수 p10·p90 을 더한 것은 블라인드 개봉 prep 이 섹터당
   **한 번의 소거**라 중앙값이 아니라 한 표본이기 때문이다 — 구간 안 산포가 곧 한 표본의 기대 흔들림이다
 - **생산**: `host/analysis/wear_curves.py` → `build/data/wear_curves_<chip>.csv`. 사람이 이 폴더(`docs/results/data/wear_curves/`)로 옮기며 이름에 `_2026-09` 를 붙인다
+- **짝 그림**: `../../plots/wear_curves_2026-09.png` — 칩별 칸(윗줄 빠른 무리 chip01·04 · 아랫줄 느린 무리 chip03·07), 섹터 0-6 의 소거 p50 선과
+  p10-p90 띠. y 는 네 칸 공유(ms), x 는 칩별(chip01 만 300k). 표에 없는 구간은 선을 끊었다
 
 ## 열
 
@@ -40,6 +42,7 @@ uv run python host/analysis/wear_curves.py --chip chip01 data/wear/1790091548 da
 uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
+uv run python host/analysis/plot_wear_curves.py   # 승격한 CSV 4장 → build/plots/wear_curves_2026-09.png
 ```
 
 각 명령이 stdout 에 읽은 행 수 · 깨진 행 수 · `n<1000` 구간을 찍는다. 그 줄을 아래 표에 옮긴다.

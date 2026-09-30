@@ -40,7 +40,8 @@ REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 �
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
 RATE_RANGE = 2.0                           # 속도 배율 r 의 범위 [1/R, R] — 규칙은 머리말
 N_RATE = 41                                # r 격자 (로그 등간격, 홀수라 r=1 이 포함된다)
-N_MAX = 100_000                            # 답의 범위 — 교정 100k 까지
+MAX_CYCLE = 100_000                        # 답하는 범위(N)의 끝 — 교정 4칩이 모두 닿는 곳. 곡선 지점 M = N·r 은 그 너머(chip01 의
+                                           # 100k-300k)도 쓴다 — r > 1 인(교정 칩보다 빨리 늙는) 칩의 N ≤ 100k 를 설명하려면 필요하다
 LOCO_CYCLES = (1_000, 3_000, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000)
 
 PREP_ERASE = re.compile(r"#PREP ERASE (\d+) (\d+)\s*$", re.M)
@@ -130,7 +131,7 @@ def curve_loglik(obs, mem):
 
 
 def posterior(obs, mem, rate_range=1.0):
-    """관측 목록(선택한 눈금) → {N 구간 bin_start: 확률}. N 은 1-N_MAX 에 평평한 사전.
+    """관측 목록(선택한 눈금) → {N 구간 bin_start: 확률}. N 은 1-MAX_CYCLE 에 평평한 사전.
 
     속도 배율 r 을 [1/R, R] 로그 균등으로 적분한다: P(N) ∝ Σ_r L(곡선 지점 N·r). 곡선에 없는 지점(교정 범위 밖)은 0 —
     그래서 큰 N 은 r 이 작은 쪽만 기여하고, 그것이 교정 범위가 주는 자연스러운 제약이다. rate_range ≤ 1 이면 r = 1 하나."""
@@ -141,7 +142,7 @@ def posterior(obs, mem, rate_range=1.0):
     else:
         rs = [rate_range ** (-1 + 2 * i / (N_RATE - 1)) for i in range(N_RATE)]
     post = {}
-    for n in range(1, N_MAX + 1, 1000):
+    for n in range(1, MAX_CYCLE + 1, 1000):
         c = n + 499                                            # N 구간 중앙
         tot = 0.0
         for r in rs:
