@@ -1,6 +1,6 @@
 # wear_endurance_chip07_2026-09 — 종단 마모 chip07 · 0 → 100,000 사이클 수치
 
-> 수치와 표만 둔다. 해석·판정은 [`../wear_endurance_chip07.md`](../wear_endurance_chip07.md).
+> 수치와 표만 둔다. 해석·판정은 [`../../wear_endurance_chip07.md`](../../wear_endurance_chip07.md).
 
 - **무엇**: chip07(`D1629835DB334534`, W25Q64) 섹터 0-6 을 100,000 사이클 마모시키며 체크포인트에서 25MHz 스윕,
   마모 전후에 45·75MHz 스윕, 끝에 선 복구 뒤 사다리와 newchip 1회를 더한 요약. CSV 한 행 = 측정 1개. `erase_*`·`program_*` 은 **그 체크포인트 직전 구간**의
@@ -10,8 +10,8 @@
 - **세션**: `1790494073` (0 → 52,670, 호스트 종료) · `1790562456` (60,000 → 76,169, 호스트 종료) · `1790643103` (80,000 → 100,000,
   정상 종료). 재개 판정 세션 `1790562292`·`1790643034` 는 둘 다 `host_died`, 채택값 60,000 · 80,000. 판정이 남은 구간(100 · 1k · 3k ·
   10k-50k · 70k · 90k · 100k)은 verdict 8줄 전부 PASS. 엔진 git_rev 45a51ec.
-- **짝 그림**: 계측 사건 직전·직후 한 쌍만 승격 — [`../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png`](../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png)
-  (50k) · [`../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png`](../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png) (70k).
+- **짝 그림**: 계측 사건 직전·직후 한 쌍만 승격 — [`../../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png`](../../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png)
+  (50k) · [`../../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png`](../../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png) (70k).
   나머지는 `build/plots/bathtub_sweep_chip07_D1629835DB334534_<batch>.png`
 - **원본**: `data/sweep_chip07_D1629835DB334534_<batch>.csv`(+`_reads`, `.analysis.json`, 세션 로그) · 마모 루프
   `data/wear/{1790494073,1790562456,1790643103}/A.txt` · 재개 판정 `data/wear/{1790562292,1790643034}/resume.txt` · newchip prep 로그
@@ -46,7 +46,7 @@
 - 60k·80k 결측은 USB 재열거(2026-09-27 16:20:56Z · 09-28 16:18:21Z)로 호스트가 구간 도중 종료됐기 때문이다. 엔진은 두 번 다 혼자
   구간을 끝냈고(tally 두 벌 일치), 체크포인트를 잴 주체가 없었다 — §6
 - 70k 행의 소거·프로그램은 60,001-70,000, 90k 행은 80,001-90,000 구간만의 분포다 (세션이 구간 중간에서 시작)
-- x=0 은 9/20 newchip(집계표 `newchip_survey_2026-09.md` §1) — 7일 전, 같은 보드 A 지만 다른 장착. BER 바닥은 전 점 0.
+- x=0 은 9/20 newchip(집계표 `../newchip/newchip_survey_2026-09.md` §1) — 7일 전, 같은 보드 A 지만 다른 장착. BER 바닥은 전 점 0.
   θ=10⁻³·10⁻⁴ 폭은 CSV 에 있다
 - 잣대: 재장착 σ 13.86ps(chip10 n=3) · 재장착 없는 반복 σ 0.61ps(7월 chip01 n=5)
 

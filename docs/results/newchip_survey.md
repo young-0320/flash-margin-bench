@@ -1,6 +1,6 @@
 # 신품 전수 측정 해석 (S-2) — 2026-09
 
-- **수치**: [`data/newchip_survey_2026-09.md`](data/newchip_survey_2026-09.md) (+ 동명 CSV) — 절 번호가 같다. 표는 다시 싣지 않는다
+- **수치**: [`data/newchip/newchip_survey_2026-09.md`](data/newchip/newchip_survey_2026-09.md) (+ 동명 CSV) — 절 번호가 같다. 표는 다시 싣지 않는다
 - **절차의 원전**: `docs/spec/s2.newchip_protocol.md` · **경위**: [로그 28](../log/young/28.realchip_day_chip02_chip03.md) ·
   [로그 43](../log/young/43.newchip_survey_anchor_failure.md) · [로그 48](../log/young/48.pilot_wear_handler_and_plan_approval.md) §8-§10
 - 2026-09-26 에 집계표에서 해석을 떼어 이 문서로 옮겼다. 문장은 당시 그대로이고, 이후 바뀐 자리에는 추기를 달았다

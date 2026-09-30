@@ -21,17 +21,17 @@
 | ----------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `sweep_chip01_20260708T*`                       | 7월 실칩 (2024.2 세대)                  | 게재 4번의 원본. `164931Z`가 게재분                                                       |
 | `sweep_chip01_20260823T130847Z`                 | 8/23 W5-D 드리프트 1차                  | 판정 보류분                                                                                |
-| `sweep_chip0N_<UID>_2026091*`·`2026092*`      | 9월 신품 전수 측정 (S-2, 2025.2 세대)   | 집계는 `docs/results/data/newchip_survey_2026-09.md`. chip05는 측정 불가라 파일이 없고, chip10은 재장착 3회분 |
-| `sweep_chip01_<UID>_2026092[2-6]*`             | 9/22-26 P/E 파일럿 (체크포인트 12점 + x=0 newchip 2런 + 300k 의 45·75MHz) | 집계는 `docs/results/data/wear_pilot_chip01_2026-09.md`. `build/data/` 에서 복사 |
-| `sweep_chip04_<UID>_2026092[67]*`             | 9/26-27 종단 chip04 (보드 B · 박지민 — 체크포인트 13점 + 복구 점 + 마모 전·100k 의 45·75MHz + newchip) | 집계는 `docs/results/data/wear_endurance_chip04_2026-09.md`. 박지민이 보낸 묶음에서 복사 (9/29 · 9/30) |
+| `sweep_chip0N_<UID>_2026091*`·`2026092*`      | 9월 신품 전수 측정 (S-2, 2025.2 세대)   | 집계는 `docs/results/data/newchip/newchip_survey_2026-09.md`. chip05는 측정 불가라 파일이 없고, chip10은 재장착 3회분 |
+| `sweep_chip01_<UID>_2026092[2-6]*`             | 9/22-26 P/E 파일럿 (체크포인트 12점 + x=0 newchip 2런 + 300k 의 45·75MHz) | 집계는 `docs/results/data/wear/wear_pilot_chip01_2026-09.md`. `build/data/` 에서 복사 |
+| `sweep_chip04_<UID>_2026092[67]*`             | 9/26-27 종단 chip04 (보드 B · 박지민 — 체크포인트 13점 + 복구 점 + 마모 전·100k 의 45·75MHz + newchip) | 집계는 `docs/results/data/wear/wear_endurance_chip04_2026-09.md`. 박지민이 보낸 묶음에서 복사 (9/29 · 9/30) |
 | `sweep_chip01_<UID>_20260916T1{10148,13611}Z` | 9/16 chip01 스윕 2런 (박지민 리그 · 115200) | 박지민이 9/30 보낸 묶음. 집계하지 않았다 |
-| `sweep_chip07_<UID>_2026092[7-9]*`             | 9/27-30 종단 chip07 (체크포인트 11점 + 마모 전·100k 의 45·75MHz + 100k 25MHz 반복 + 9/30 선 복구 뒤 사다리·newchip) | 집계는 `docs/results/data/wear_endurance_chip07_2026-09.md`. `build/data/` 에서 복사 |
+| `sweep_chip07_<UID>_2026092[7-9]*`             | 9/27-30 종단 chip07 (체크포인트 11점 + 마모 전·100k 의 45·75MHz + 100k 25MHz 반복 + 9/30 선 복구 뒤 사다리·newchip) | 집계는 `docs/results/data/wear/wear_endurance_chip07_2026-09.md`. `build/data/` 에서 복사 |
 | `wear/<세션>/`                                  | `run_wear.py` 세션 폴더 (`1790091548`·`1790212214` = 파일럿 0→300k · `1790494073`·`1790562456`·`1790643103` = chip07 0→100k, 재개 판정 `1790562292`·`1790643034` · `1790423530`·`1790482991`·`1790491294` = chip04 0→100k) | A.txt(사이클×섹터 소거·프로그램 시간)가 섹터 곡선의 원본. `build/logs/wear/` 에서 복사(chip04 는 박지민 묶음), 666MB (2026-09-30) |
 | `sweep_*_invalid*`                              | 완주하지 못한 런                        | 고장 서명 자료로 남긴다 (런북 3 표 E)                                                     |
 | `*.analysis.json`                               | `bathtub_analysis --json` 수치          | 같은 CSV에서 재생성 가능                                                                   |
 | `session_*.log`                                 | `run_sweep_chip` 세션 로그              | 라벨 확정 전에 끝난 것은 `session_<stamp>`·`idfail`·`prepfail` 이름으로 남는다          |
 | `sweep_loopback_2026070*`·`20260823T125659Z`  | G0 루프백 (2024.2 세대)                 | 2026-09-16에 `build_2024.2/data/`에서 복사. **원본은 9/21 삭제 — 이제 여기가 유일본**     |
-| `monte_carlo_sweep_params.csv`                  | 로그 13 — 실측 σⱼ로 N=100 재확인       | 〃. 승격 사본이 `docs/results/data/monte_carlo_n112_20260823.csv`에 있다 (내용 동일)        |
+| `monte_carlo_sweep_params.csv`                  | 로그 13 — 실측 σⱼ로 N=100 재확인       | 〃. 승격 사본이 `docs/results/data/monte_carlo/monte_carlo_n112_20260823.csv`에 있다 (내용 동일)        |
 
 `_reads.csv`(읽기별 e_i 원본)는 계약 §6이 보존을 **필수**로 규정한다. 게재분 메인 CSV는
 `docs/results/data/`에 승격돼 있으나 `_reads`는 용량상 커밋하지 않으므로, **이 폴더가 유일한

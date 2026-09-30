@@ -1,13 +1,13 @@
 # wear_endurance_chip03_2026-09 — 종단 마모 chip03 · 0 → 100,000 사이클 수치
 
-> 수치와 표만 둔다. 해석·판정은 [`../wear_endurance_chip03.md`](../wear_endurance_chip03.md).
+> 수치와 표만 둔다. 해석·판정은 [`../../wear_endurance_chip03.md`](../../wear_endurance_chip03.md).
 
 - **무엇**: chip03(`D1628C10C3433F33`, W25Q64) 섹터 0-6 을 100,000 사이클 마모시키며 13 체크포인트에서 25MHz 스윕,
   마모 전후에 45·75MHz 스윕, 끝에 newchip 1회를 더한 요약. CSV 한 행 = 측정 1개. `erase_*`·`program_*` 은 **그
   체크포인트 직전 구간**의 마모 루프 A 행 분포(섹터 7개 합산, µs)다.
 - **기간**: 2026-09-26 07:32Z (마모 전 75MHz) → 2026-09-27 03:42Z (newchip). 보드 A(한영웅). 마모 중 재장착 없음 — newchip 직전의 재장착 여부는 기록이 없고, newchip 은 `--chip` 없이 돌아 라벨은 UID 로 붙었다.
 - **세션**: `1790408609` (0 → 100,000, 실행기 정상 종료). 체크포인트 13점 전부 verdict 8줄 PASS. 엔진 git_rev 45a51ec.
-- **짝 그림**: `../plots/bathtub_sweep_chip03_D1628C10C3433F33_<batch>.png` (batch 는 CSV 의 `sweep_batch` 열)
+- **짝 그림**: `../../plots/bathtub_sweep_chip03_D1628C10C3433F33_<batch>.png` (batch 는 CSV 의 `sweep_batch` 열)
 - **원본**: `data/sweep_chip03_D1628C10C3433F33_<batch>.csv`(+`_reads`, `.analysis.json`, 세션 로그) ·
   마모 루프 `data/wear/1790408609/A.txt`(700,000행 = 100,000 × 7) · newchip prep 로그
   `data/session_chip03_D1628C10C3433F33_20260927T034035Z.log` · 신품 prep 로그 `…_20260915T155433Z.log`
@@ -31,7 +31,7 @@
 | 90,000 | 39,679.9 | 85.0 / 94.8 / 109.1 | 8.23 / 8.66 / 9.03 | 0.750 |
 | 100,000 | 39,684.8 | 88.9 / 100.0 / 111.8 | 8.60 / 9.12 / 9.43 | 0.779 |
 
-- x=0 은 9/15 newchip(집계표 `newchip_survey_2026-09.md` §1) — 11일 전, 같은 보드 A 지만 다른 장착. 100 부터는 한 장착
+- x=0 은 9/15 newchip(집계표 `../newchip/newchip_survey_2026-09.md` §1) — 11일 전, 같은 보드 A 지만 다른 장착. 100 부터는 한 장착
 - BER 바닥은 전 점 0. θ=10⁻³·10⁻⁴ 폭은 CSV 에 있다
 - 잣대: 재장착 σ 13.86ps(chip10 n=3) · 재장착 없는 반복 σ 0.61ps(7월 chip01 n=5)
 

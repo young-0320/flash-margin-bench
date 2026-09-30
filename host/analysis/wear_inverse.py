@@ -29,8 +29,8 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves_*_2026-09.csv")
-SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
+CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_*_2026-09.csv")
+SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_2026-09.csv"
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
@@ -51,7 +51,7 @@ def load_curves(pattern=CURVES_GLOB):
                 curves[r["chip"]][int(r["bin_start"])][int(r["sector"])] = (
                     int(r["erase_us_p10"]), int(r["erase_us_p50"]), int(r["erase_us_p90"]))
     if not curves:
-        raise SystemExit(f"교정 표가 없다: {pattern} — docs/results/data/wear_curves_2026-09.md 의 재현 명령으로 만든다")
+        raise SystemExit(f"교정 표가 없다: {pattern} — docs/results/data/wear_curves/wear_curves_2026-09.md 의 재현 명령으로 만든다")
     return curves
 
 

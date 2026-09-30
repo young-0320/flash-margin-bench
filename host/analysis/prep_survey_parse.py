@@ -5,7 +5,7 @@
        uv run python host/analysis/prep_survey_parse.py --csv build/data/session_*.log
 
 뽑는 것: 라벨·UID·일자 + 소거 median/min/max(µs) + blank_pre/post(bits).
-`docs/results/data/newchip_survey_2026-09.md` 의 표와 짝 CSV 에 그대로 옮겨 붙이는 용도다.
+`docs/results/data/newchip/newchip_survey_2026-09.md` 의 표와 짝 CSV 에 그대로 옮겨 붙이는 용도다.
 폭(width)은 여기서 안 나온다 — 그건 스윕 CSV 에서 bathtub_analysis.py 가 낸다.
 
 한 세션에 prep 이 없으면(--no-prep 런) 조용히 건너뛴다 — 그런 로그도 같은 디렉터리에 섞인다.
