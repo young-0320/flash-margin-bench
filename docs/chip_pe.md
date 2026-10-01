@@ -198,3 +198,17 @@ Updated: 2026-09-20
 | 2026-10-01 | chip14 | DF678C14CF384F30 | 0~127 | +1 | flash_prep (batch 20261001T061625Z) |  |
 | 2026-10-01 | chip14 | DF678C14CF384F30 | 0~127 | +1 | flash_prep (batch 20261001T062828Z) |  |
 | 2026-10-01 | chip16 | D165906063442A33 | 0~127 | +1 | flash_prep (batch 20261001T063724Z) |  |
+| 2026-10-01 | chip06 | D16428231B4E182B | 0~6 | +100 | run_wear accept (수기 복구, 호스트 로그 유실) | cycle 0→100 — 칩 내부 tally 확인 후 장부 보정 |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +900 | run_wear accept (session 1790788847) | cycle 100→1000 |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +1 | run_wear checkpoint (session 1790788847) | 체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +2000 | run_wear accept (session 1790788847) | cycle 1000→3000 |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +1 | run_wear checkpoint (session 1790788847) | 체크포인트 3000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +7000 | run_wear accept (session 1790788847) | cycle 3000→10000 |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +1 | run_wear checkpoint (session 1790788847) | 체크포인트 10000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +2000 | run_wear accept (session 1790788847) | cycle 10000→12000 |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~6 | +1 | run_wear checkpoint (session 1790788847) | 체크포인트 12000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~127 | +1 | flash_prep (batch 20260930T210515Z) |  |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~127 | +1 | flash_prep (batch 20260930T211318Z) |  |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~127 | +1 | flash_prep (batch 20260930T224142Z) |  |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~127 | +1 | flash_prep (batch 20260930T224956Z) |  |
+| 2026-09-30 | chip06 | D16428231B4E182B | 0~127 | +1 | flash_prep (batch 20260930T225928Z) |  |
