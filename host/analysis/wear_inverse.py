@@ -40,7 +40,7 @@ SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_20
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
-RATE_RANGE = 3.8                           # 속도 배율 r 의 범위 [1/R, R] — 규칙은 rate_rule() (2026-10-01 교정 5칩 3.84 · 그 전 4칩 2.0, 로그 48 [D48-53])
+RATE_RANGE = 2.0                           # 속도 배율 r 의 범위 [1/R, R]. 교정 5칩 LOCO 가 명목에 가장 가까운 값 (로그 48 [D48-60]) — rate_rule() 의 3.84 는 곡선 혼합과 r 이 칩 산포를 두 번 세어 버렸다
 N_RATE = 41                                # r 격자 (로그 등간격, 홀수라 r=1 이 포함된다)
 MAX_CYCLE = 100_000                        # 답하는 범위(x)의 끝 — 교정 4칩이 모두 닿는 곳. 곡선 지점 M = x·r 은 그 너머(chip01 의
                                            # 100k-300k)도 쓴다 — r > 1 인(교정 칩보다 빨리 늙는) 칩의 x ≤ 100k 를 설명하려면 필요하다
@@ -500,7 +500,8 @@ def pair_speed(curves, fresh, a, b, lo=1_000, hi=MAX_CYCLE):
 
 
 def rate_rule(curves, fresh, split_us):
-    """R 의 규칙 (로그 48 [D48-42]·[D48-53]): 무리 안 모든 쌍(r 은 a→b · b→a 양방향 로그 평균)의 |ln r| 평균 ÷ 1.13 = 개체 표준편차 σ, R = exp(√2 · 1.96 · σ).
+    """(참고용 — 2026-10-01 [D48-60] 에서 기본 R 로 쓰지 않기로 했다: 교정 곡선 혼합이 이미 칩 산포를 품으므로 이 값은 두 번 센다)
+    R 의 규칙 (로그 48 [D48-42]·[D48-53]): 무리 안 모든 쌍(r 은 a→b · b→a 양방향 로그 평균)의 |ln r| 평균 ÷ 1.13 = 개체 표준편차 σ, R = exp(√2 · 1.96 · σ).
     → (R, σ, [(a, b, r, rmse, n)])."""
     groups = defaultdict(list)
     for c in sorted(curves):
