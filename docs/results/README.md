@@ -19,6 +19,8 @@
 | `data/newchip/` | 신품 전수 측정 집계표 (S-2) |
 | `data/wear/` | 마모 체크포인트 요약 — 파일럿 chip01 · 종단 chip03·04·07 |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출) |
+| `data/blind/` | 블라인드 추정 결과 — `wear_inverse.py --out` 산출(머리말에 코드·입력 sha256). 개봉 전 커밋한 것 그대로 |
+| `data/inverse/` | 수명 역산 모델 검증 — 합성 복원 (`wear_inverse.py --synthetic`) |
 
 이 구분은 2026-09-26 부터다. 그 전에 올린 `data/` 의 md 중 `newchip_survey_2026-09.md` 는 같은 날 나눴고, 나머지(7월·8월분)는
 짧은 유래 문서라 그대로 둔다.

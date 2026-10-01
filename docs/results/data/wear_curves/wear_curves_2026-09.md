@@ -42,6 +42,7 @@ uv run python host/analysis/wear_curves.py --chip chip01 data/wear/1790091548 da
 uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
+uv run python host/analysis/wear_curves.py --chip chip09 data/wear/1790786787 -o docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
 uv run python host/analysis/plot_wear_curves.py   # 승격한 CSV 4장 → build/plots/wear_curves_2026-09.png
 ```
 
@@ -55,3 +56,4 @@ uv run python host/analysis/plot_wear_curves.py   # 승격한 CSV 4장 → build
 | chip03 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-09-30 |
 | chip04 | 699,874 (cycle 1-100,000) | 0 | 1개: 66,001-67,000 (섹터당 n 982) | 2026-09-30 |
 | chip07 | 621,872 (cycle 1-100,000) | 0 | 2개: 52,001-53,000 (n 670, 섹터 6 669) · 76,001-77,000 (n 169). 53,001-60,000 · 77,001-80,000 구간 10개는 표에 없음 | 2026-09-30 |
+| chip09 | 700,000 (cycle 1-100,000) | 0 | 없음. 파일 이름의 2026-09 는 교정 묶음 이름(마모는 2026-09-30 - 10-01) | 2026-10-01 |
