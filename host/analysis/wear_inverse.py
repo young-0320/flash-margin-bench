@@ -4,6 +4,7 @@
 #   uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [prep 로그 더]   # 블라인드 개봉
 #   uv run python host/analysis/wear_inverse.py --loco                                                   # 모의 블라인드
 #   옵션: --scale ms|ratio (기본 ratio — 규칙은 S-1 §15 2026-09-30 추기, 4칩 LOCO 로 확정) · --rate-range 2.0 · --split-ms 40 · --curves <glob>
+#         --out <경로>  추정 결과를 파일로도 — 머리말에 git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)
 #
 # 모델 (S-1 §15 2026-09-30 추기):
 #   입력 A  섹터 32-127 소거 시간의 중앙값  = 이 칩의 신품값. 40ms 아래면 빠른 무리(chip01·chip04 곡선), 위면 느린 무리(chip03·chip07)
@@ -487,6 +488,7 @@ def main(argv=None):
     ap.add_argument("--reps", type=int, default=20, help="부속 연구: single 관측 반복 횟수 (기본 20)")
     ap.add_argument("--dx", type=int, choices=(0, 5000, 10000), default=0, help="부속 연구: 두 번째 dose Δx (기본 0 = 등록된 방식)")
     ap.add_argument("--study", action="store_true", help="부속 연구: 모의 블라인드를 무리·x 구간별 요약표로 (옵션을 안 켜도 요약만 낸다)")
+    ap.add_argument("--out", metavar="경로", help="추정 결과를 파일로도 쓴다 — 머리말에 git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)")
     args = ap.parse_args(argv)
 
     curves, fresh = load_curves(args.curves), load_fresh()
@@ -527,13 +529,32 @@ def main(argv=None):
     erase, program = parse_prep_logs(args.logs)
     ref, worn = observation(erase)
     r = invert(ref, worn, curves, fresh, args.scale, split, args.rate_range)
-    print(f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R {args.rate_range:g}")
-    print(f"입력 B  마모 섹터 소거 {len(worn)}개: " + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms")
-    print(f"입력 C  {program_check(program, r['group'])}")
-    print(f"답      MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}")
+    out = [f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R {args.rate_range:g}",
+           f"입력 B  마모 섹터 소거 {len(worn)}개: " + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
+           f"입력 C  {program_check(program, r['group'])}",
+           f"답      MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
     if r["outside_at_map"]:
-        print(f"주의    MAP 구간 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
-              (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else ""))
+        out.append(f"주의    MAP 구간 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
+                   (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else ""))
+    print("\n".join(out))
+    if args.out:
+        write_record(args.out, argv, args.logs, args.curves, out)
+
+
+def write_record(path, argv, logs, curves_glob, out):
+    """추정 결과 + 재현에 필요한 것(코드 · 인자 · 입력 · 교정 표)을 한 파일에. 블라인드에서 결과 커밋이 곧 기록이다."""
+    import datetime, hashlib, subprocess, sys
+    def git(*a):
+        return subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()
+    dirty = git("status", "--porcelain", "--", "host/analysis/wear_inverse.py")
+    head = [f"# 생성   {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
+            f"# 코드   git_rev {git('rev-parse', '--short', 'HEAD')}" + (" (wear_inverse.py 커밋 안 된 수정 있음)" if dirty else ""),
+            "# 인자   " + " ".join(sys.argv[1:] if argv is None else argv),
+            "# 입력"]
+    head += [f"#   {hashlib.sha256(Path(p).read_bytes()).hexdigest()}  {p}" for p in logs]
+    head += ["# 교정 표"] + [f"#   {Path(c).resolve().relative_to(REPO)}" for c in sorted(glob.glob(curves_glob))]
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text("\n".join(head + [""] + out) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
