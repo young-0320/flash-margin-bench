@@ -1,0 +1,20 @@
+# 생성   2026-10-01T09:08:31+00:00
+# 코드   git_rev 318dee7
+# 인자   data/session_chip06_D16428231B4E182B_20260930T210515Z.log data/session_chip06_D16428231B4E182B_20260930T211318Z.log data/session_chip06_D16428231B4E182B_20260930T224142Z.log data/session_chip06_D16428231B4E182B_20260930T224956Z.log data/session_chip06_D16428231B4E182B_20260930T225928Z.log --out docs/results/data/blind/chip06_estimate_v2.txt
+# 입력
+#   d1888885e3804f83cb1514e10f59ad3305fa130ab21053d12f73fdfbfce87823  data/session_chip06_D16428231B4E182B_20260930T210515Z.log
+#   f8c5df9aa55dd4e7562591fec3ffaa15511b70f2be708fac9401e29698b8e58f  data/session_chip06_D16428231B4E182B_20260930T211318Z.log
+#   1d734fec40663466c51228151c732326e8a670e1eb96830dfec46636b556d5f6  data/session_chip06_D16428231B4E182B_20260930T224142Z.log
+#   19af6b9d5a7625f443c38a8525b2e46ad7d1a933c412f94e5049b2ab84d88c80  data/session_chip06_D16428231B4E182B_20260930T224956Z.log
+#   381bc59dc98d18c5ff70c42c83e691079d078a0eda45cccbec561ff07dc88f6a  data/session_chip06_D16428231B4E182B_20260930T225928Z.log
+# 교정 표
+#   docs/results/data/wear_curves/wear_curves_chip01_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip03_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip04_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip07_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
+
+입력 A  기준(32-127) 소거 중앙값 25.3ms → fast 무리 (교정 ['chip01', 'chip04', 'chip09']) · 눈금 ratio · R 2
+입력 B  마모 섹터 소거 35개 (prep 5회): 41.4, 40.5, 42.8, 44.2, 40.4, 44.7, 41.8, 40.8, 40.9, 39.4, 43.0, 43.6, 39.3, 46.0, 41.7, 42.1, 39.7, 39.7, 39.2, 39.7, 38.3, 39.7, 39.7, 38.3, 39.3, 44.9, 48.8, 47.9, 47.6, 48.9, 40.6, 40.7, 42.6, 41.3, 41.2 ms
+입력 C  프로그램 시간 없음 (구 prep) — 교차 확인 생략
+답      MAP 7,001-8,000 · 68% 3,001-19,000 · 95% 1,001-34,000
