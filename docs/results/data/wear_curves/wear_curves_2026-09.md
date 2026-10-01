@@ -11,6 +11,8 @@
 - **생산**: `host/analysis/wear_curves.py` → `build/data/wear_curves_<chip>.csv`. 사람이 이 폴더(`docs/results/data/wear_curves/`)로 옮기며 이름에 `_2026-09` 를 붙인다
 - **짝 그림**: `../../plots/wear_curves_2026-09.png` — 칩별 칸(윗줄 빠른 무리 chip01·04 · 아랫줄 느린 무리 chip03·07), 섹터 0-6 의 소거 p50 선과
   p10-p90 띠. y 는 네 칸 공유(ms), x 는 칩별(chip01 만 300k). 표에 없는 구간은 선을 끊었다
+- **짝 그림 2**: `../../plots/wear_ratio_curves_2026-10.png` — 교정 5칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸, 0-100k. 빠른 칸의 점선은
+  chip06 블라인드 관측 배율 1.63. `plot_wear_curves.py --ratio --mark 1.63 --mark-label '…'`
 
 ## 열
 

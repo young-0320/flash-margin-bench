@@ -252,6 +252,7 @@ A_SESSIONS = {
     "chip03": (("1790408609",), ()),
     "chip04": (("1790423530", "1790482991", "1790491294"), ((66654, 66671),)),
     "chip07": (("1790494073", "1790562456", "1790643103"), ()),
+    "chip09": (("1790786787",), ()),
 }
 LONG_GAP = 1000                            # Δx 창 안에 이만큼 이어진 결측(모든 섹터 행 없음)이 있으면 그 점은 판정에서 뺀다
 SLOPE_MIN_FILL = 0.5                       # 교정 쪽 기울기 창에 행이 이 비율 아래면 그 지점의 구성원은 없는 것으로 친다
@@ -610,7 +611,7 @@ def main(argv=None):
     ap.add_argument("--prep-k", type=int, default=3, help="부속 연구: single 관측의 섹터당 사이클 수 (기본 3)")
     ap.add_argument("--seed", type=int, default=0, help="부속 연구: 난수 seed (기본 0)")
     ap.add_argument("--reps", type=int, default=20, help="부속 연구: single 관측 반복 횟수 (기본 20)")
-    ap.add_argument("--dx", type=int, choices=(0, 5000, 10000), default=0, help="부속 연구: 두 번째 dose Δx (기본 0 = 등록된 방식)")
+    ap.add_argument("--dx", type=int, choices=(0, 1000, 2000, 3000, 5000, 10000), default=0, help="부속 연구: 두 번째 dose Δx (기본 0 = 등록된 방식)")
     ap.add_argument("--study", action="store_true", help="부속 연구: 모의 블라인드를 무리·x 구간별 요약표로 (옵션을 안 켜도 요약만 낸다)")
     ap.add_argument("--rate-rule", action="store_true", help="교정 표의 무리 안 모든 쌍에서 R 을 규칙대로 계산해 찍는다")
     ap.add_argument("--synthetic", type=int, metavar="N", help="합성 복원 — 가정대로 만든 가짜 칩 N 개로 포함률을 잰다 (prep 1·5회, 수정 전후, 교정 포함·제외)")

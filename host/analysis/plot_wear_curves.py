@@ -1,6 +1,7 @@
 # plot_wear_curves.py — 수명 역산 교정 표 4장 → 칩별 소거 시간 곡선 그림 (2×2)
 #
 # 사용: uv run python host/analysis/plot_wear_curves.py [-o build/plots/wear_curves_2026-09.png]
+#       uv run python host/analysis/plot_wear_curves.py --ratio [--mark 1.63 --mark-label '...'] -o <png>   # 칩별 배율 곡선 한 장
 #
 # 입력: docs/results/data/wear_curves/wear_curves_<chip>_2026-09.csv (wear_curves.py 산출을 승격한 것)
 # 그림: 윗줄 빠른 무리(chip01 · chip04) · 아랫줄 느린 무리(chip03 · chip07). 칸마다 섹터 0-6 의 1k 구간 소거 p50 선과
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt                              # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_*_2026-09.csv")
-LAYOUT = (("chip01", "chip04"), ("chip03", "chip07"))
+LAYOUT = (("chip01", "chip04"), ("chip03", "chip07"))      # 기본 그림(2×2)은 9월 4칩 그대로. chip09 는 --ratio 그림에
 GROUP = {"chip01": "fast", "chip04": "fast", "chip03": "slow", "chip07": "slow"}
 BIN = 1000
 
@@ -93,12 +94,73 @@ def plot(curves, out_png):
     print(f"→ {out_png}")
 
 
+SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_2026-09.csv"
+RATIO_PANELS = (("빠른 무리 (신품 40ms 미만)", ("chip04", "chip01", "chip09")), ("느린 무리 (신품 40ms 이상)", ("chip03", "chip07")))
+CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4"}
+
+
+def plot_ratio(curves, out_png, xmax=100, mark=None):
+    """칩마다 섹터 0-6 p50 의 중앙값 ÷ 신품값(집계표) — 같은 무리 안 노화 속도 차이를 한 장에. 띠는 섹터 p50 의 최소-최대.
+    mark=(배율, 라벨) 이면 빠른 무리 칸에 가로 점선 — 관측 하나가 칩마다 다른 사이클에 닿는 것을 보인다."""
+    fresh = {}
+    with open(SURVEY_CSV, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r["erase_us_median"]:
+                fresh[r["label"]] = float(r["erase_us_median"]) / 1e3
+    plt.rcParams["font.family"] = "Noto Sans CJK JP"
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True, dpi=160)
+    fig.set_facecolor(SURFACE)
+    for ax, (title, chips) in zip(axes, RATIO_PANELS):
+        ax.set_facecolor(SURFACE)
+        ax.grid(True, color=GRID, lw=0.7)
+        ax.set_axisbelow(True)
+        for side in ("left", "bottom"):
+            ax.spines[side].set_color(BASELINE)
+        for side in ("right", "top"):
+            ax.spines[side].set_visible(False)
+        ax.tick_params(colors=INK2, labelsize=8.5)
+        ax.axhline(1.0, color=BASELINE, lw=1)
+        for chip in chips:
+            bins = sorted({b for pts in curves[chip].values() for b, *_ in pts if b <= xmax * 1000})
+            by = {b: [] for b in bins}
+            for pts in curves[chip].values():
+                for b, _lo, mid, _hi in pts:
+                    if b in by:
+                        by[b].append(mid / fresh[chip])
+            x = [(b + BIN / 2) / 1e3 for b in bins]
+            med = [sorted(by[b])[len(by[b]) // 2] for b in bins]
+            ax.fill_between(x, [min(by[b]) for b in bins], [max(by[b]) for b in bins], color=CHIP_COLORS[chip], alpha=0.12, lw=0)
+            ax.plot(x, med, color=CHIP_COLORS[chip], lw=2, label=f"{chip} (신품 {fresh[chip]:.1f}ms)")
+            ax.annotate(chip, (x[-1], med[-1]), xytext=(4, 0), textcoords="offset points", va="center", fontsize=8.5, color=INK2)
+        if mark and "빠른" in title:
+            ax.axhline(mark[0], color=MUTED, lw=1.2, ls=(0, (4, 3)))
+            ax.annotate(mark[1], (xmax * 0.42, mark[0]), xytext=(0, -12), textcoords="offset points", fontsize=8.5, color=INK2)
+        ax.set_xlim(0, xmax + 9)
+        ax.set_title(title, color=INK, fontsize=10.5, loc="left")
+        ax.set_xlabel("누적 P/E 사이클 (천 회)", color=INK2, fontsize=9)
+        ax.legend(frameon=False, fontsize=8.5, labelcolor=INK2, loc="upper left")
+    axes[0].set_ylabel("소거 시간 ÷ 신품값 (섹터 0-6 중앙값)", color=INK2, fontsize=9)
+    axes[0].set_ylim(bottom=0.9)
+    fig.suptitle("같은 무리 안에서도 늙는 속도가 다르다 — 1천 사이클 구간, 선은 섹터 중앙값, 띠는 섹터 최소-최대",
+                 color=INK, fontsize=11, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    Path(out_png).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, facecolor=SURFACE)
+    print(f"→ {out_png}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="수명 역산 교정 표 → 칩별 소거 시간 곡선 그림")
     ap.add_argument("-o", "--out", default=str(REPO / "build" / "plots" / "wear_curves_2026-09.png"))
     ap.add_argument("--curves", default=CURVES_GLOB, help="교정 표 glob")
+    ap.add_argument("--ratio", action="store_true", help="칩별 신품 대비 배율 곡선 한 장 (무리별 두 칸, x 는 100k 까지)")
+    ap.add_argument("--mark", type=float, help="--ratio 의 빠른 무리 칸에 가로 점선 (배율)")
+    ap.add_argument("--mark-label", default="", help="그 점선의 글씨")
     args = ap.parse_args(argv)
-    plot(load(args.curves), args.out)
+    if args.ratio:
+        plot_ratio(load(args.curves), args.out, mark=(args.mark, args.mark_label) if args.mark else None)
+    else:
+        plot(load(args.curves), args.out)
 
 
 if __name__ == "__main__":
