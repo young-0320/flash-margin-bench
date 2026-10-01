@@ -204,7 +204,7 @@ def measured_cycle_s(logdir, fallback=CYCLE_TYP_S):
         rows = [ln.split(",") for ln in d.read_text(encoding="utf-8").splitlines()[1:] if ln.strip()]
         vals = [(float(r[14]), r[7]) for r in rows if len(r) > 14 and r[14]]
         if vals:
-            return vals[-1][0], f"실측 {vals[-1][0]:.3f}s/사이클 · 세션 {vals[-1][1]}"
+            return vals[-1][0], f"실측 {vals[-1][0]:.3f}s/사이클 (단가 출처: 이전 세션 {vals[-1][1]})"
     return fallback, f"typ {fallback}s/사이클 — 실측 없음"
 
 
