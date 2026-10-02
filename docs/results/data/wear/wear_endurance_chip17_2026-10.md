@@ -3,19 +3,22 @@
 > 수치와 표만 둔다. 해석·판정은 [`../../wear/wear_temperature_chip17.md`](../../wear/wear_temperature_chip17.md).
 
 - **무엇**: chip17(`D1642C325331242E`, W25Q64, 빠른 무리 · 새 로트) 섹터 0-6 을 **칩 위 약 65°C** 에서 100,000 사이클 마모시키며
-  체크포인트마다 25MHz 스윕을 한 요약. CSV 한 행 = 체크포인트 1개. `erase_*`·`program_*` 은 **그 체크포인트 직전 구간**의 마모
+  체크포인트마다 25MHz 스윕을 하고, 끝난 뒤 25°C 로 식혀 클럭 사다리(25·45·75MHz)를 한 번 잰 요약(§3). CSV 한 행 = 측정 1개
+  (마지막 3행이 25°C 사다리). `erase_*`·`program_*` 은 **그 체크포인트 직전 구간**의 마모
   루프 A 행 분포(섹터 7개 합산, µs)다. 상온 칩 표(`wear_endurance_chip04_2026-09.csv` 등)와 같은 열에 `cycle_s_p50` ·
   `recenter_steps`(스윕 창을 가운데로 돌린 스텝 — 창 위치) · `temp_wear_c`(직전 마모 구간 평균) · `temp_prep_c` · `temp_sweep_c`
   (그 체크포인트의 prep·스윕 중 평균)를 더했다. 온도는 1초 로그의 시간 평균이다
 - **기간**: 2026-10-01 10:51Z (0 → 100 START) → 2026-10-02 03:32Z (100k 스윕 끝). **보드 B(박지민)**, 마모·스윕 보 레이트 115200.
-  마모 중 재장착 없음. 히터는 칩 위 폴리이미드 필름 히터 + TMP117 + 아두이노 PWM (`docs/log/seeun/2.temperature_bench_design.md`)
+  마모 중 재장착 없음. 히터는 칩 위 폴리이미드 필름 히터 + TMP117 + 아두이노 PWM (`docs/log/seeun/2.temperature_bench_design.md`).
+  25°C 사다리는 2026-10-02 09:47 · 09:53 · 09:57Z 시작(25 · 45 · 75MHz)
 - **세션**: `1790851785` (0 → 50,000, 첫 구간 뒤 유인 확인) · `1790879592` (50,000 → 100,000, 전 구간 무인). verdict FAIL 0
 - **x=0 행**: 2026-09-30 **보드 A · 상온** newchip (집계표 §1). 마모 리그(보드 B · 65°C)와 달라 폭·창 위치를 마모 행과 바로 빼지 않는다
 - **짝 그림**: [`../../plots/wear_temp_chip17_2026-10.png`](../../plots/wear_temp_chip17_2026-10.png) — 사이클 축 세 칸(마모 중 온도 · 폭 변화 · 소거 배율과 상온 빠른 무리)
 - **온도 수치**: [`../temperature/temp_chip17_2026-10.md`](../temp_chip17_2026-10.md)
 - **원본**: 마모 루프 `data/wear/{1790851785,1790879592}/` · 스윕 `data/sweep_chip17_D1642C325331242E_<stamp>.csv`(+`_reads`, `.analysis.json`) ·
   스윕 세션 로그 `data/session_chip17_D1642C325331242E_<batch>.log` · 온도 `data/temp_chip17_{65C_20261001T104343Z,68C_20261002T023819Z,68C_20261002T032602Z}.csv`.
-  전부 박지민이 보냈다(2026-10-02). 장부 26행은 이미 `docs/chip_pe.md` 에 있다
+  전부 박지민이 보냈다(2026-10-02). 장부 26행은 이미 `docs/chip_pe.md` 에 있다. 25°C 사다리는
+  `data/sweep_chip17_D1642C325331242E_20261002T{094737Z,095354Z}.csv`(+`_reads`, `.analysis.json`) · `…095729Z_reads.csv`(75MHz, 요약 CSV 미수신)
 
 ## 1. 25MHz 체크포인트
 
@@ -66,6 +69,32 @@
 
 chip17 의 100k 배율 2.44 에 상온 칩이 닿은 사이클: chip09 61,000 · chip01 34,000 · chip04 24,000.
 
+## 3. 100k 뒤 25°C 클럭 사다리 (`--mode sweep`, P/E 0)
+
+65°C 런이 끝나고(03:32Z) 약 6시간 뒤 히터 없이 잰 한 번이다. 리그(보드 B)와 `git_rev`(`877a848`)는 65°C 체크포인트 13점과 같다.
+65°C 런과 같은 장착인지는 기록이 없다.
+
+| SCLK | 폭 @1e-2 / 1e-3 / 1e-4 (ps) | 창 위치 (스텝) | F | 스윕 |
+|---|---|---|---|---|
+| 25MHz | 39,818.2 / 39,800.1 / 39,784.7 | −596 | 0.47 | `094737Z` |
+| 45MHz | 21,976.5 / 21,962.8 / 21,952.2 | −589 | 0.46 | `095354Z` |
+| 75MHz | 12,224.6 / 12,202.1 / 12,189.2 | +224 | 0.34 | `095729Z` ¹ |
+
+25MHz 를 같은 리그의 65°C 체크포인트와 놓으면:
+
+| | 65°C 체크포인트 13점 | 25°C | 차이 |
+|---|---|---|---|
+| 폭 @1e-2 (ps) | 39,760.4 - 39,778.5 | 39,818.2 | +39.7 - +57.8 (100 대비 +54.5 · 90k +49.2 · 100k +39.7) |
+| 폭 @1e-3 (ps) | 39,746.3 - 39,765.2 | 39,800.1 | +34.8 - +53.7 |
+| 폭 @1e-4 (ps) | 39,734.2 - 39,752.4 | 39,784.7 | +32.3 - +50.5 |
+| 창 위치 (스텝) | −597 - −594 | −596 | 범위 안 |
+
+- ¹ 요약 CSV(`…095729Z.csv`)를 아직 못 받았다. `_reads.csv` 를 phase_step 마다 모아(읽기 수 · Σe · e>0 인 읽기 수 · Σe²) 요약의
+  수치 열을 다시 만들고 같은 분석을 돌렸다. 같은 방법으로 25·45MHz 를 다시 모으면 원본 요약과 수치 열이 같고(phase_ps 표기만
+  0.001ps 차) 폭·창 위치도 같다. 요약 CSV 를 받으면 그 파일로 다시 돌린다
+- 45·75MHz 는 chip17 의 마모 전 짝이 없다
+- 온도는 박지민 전언(25°C)이다 — 온도 로그와 스윕 세션 로그는 받지 않았다
+
 ## 재현
 
 ```bash
@@ -73,4 +102,6 @@ uv run python host/analysis/wear_curves.py data/wear/1790851785 data/wear/179087
 uv run python host/analysis/temp_wear_summary.py --chip chip17 --sessions data/wear/1790851785 data/wear/1790879592 \
     --temp 'data/temp_chip17_*.csv' --curves build/data/wear_curves_chip17_65C.csv
 # → build/data/wear_temp_chip17.csv (이 CSV) · temp_chip17_{intervals,hourly}.csv · build/plots/{temp_chip17_timeline,wear_temp_chip17}.png
+uv run python host/analysis/bathtub_analysis.py --json data/sweep_chip17_D1642C325331242E_20261002T094737Z.csv   # 25°C 25MHz (45MHz 는 095354Z)
+# → .analysis.json 이 폭 3종, 화면의 [recenter] 줄이 창 위치. 위 CSV 는 65°C 체크포인트만 내므로 마지막 3행(§3)은 이 값을 옮겨 붙였다
 ```
