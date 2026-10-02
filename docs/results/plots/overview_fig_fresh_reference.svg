@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" font-family="Pretendard, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif" font-size="15">
-<rect width="1000" height="520" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" font-family="Pretendard, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif" font-size="15">
+<rect width="1100" height="560" fill="white"/>
 <defs><marker id="ah" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#444"/></marker></defs>
 <text x="50" y="50" font-size="19" font-weight="700" fill="#222">진단할 칩 (W25Q64, 섹터 128개)</text>
-<text x="50" y="72" font-size="14" fill="#555">색이 섹터의 이력이다 — 마모는 칩 전체가 아니라 지운 섹터에만 쌓인다</text>
+<text x="50" y="72" font-size="14" fill="#555">마모는 칩 전체가 아니라 지운 섹터에만 쌓인다</text>
 <rect x="50" y="92" width="22" height="22" rx="3" fill="#b23a3a" stroke="#7a1f1f" stroke-width="1"/>
 <rect x="75" y="92" width="22" height="22" rx="3" fill="#b23a3a" stroke="#7a1f1f" stroke-width="1"/>
 <rect x="100" y="92" width="22" height="22" rx="3" fill="#b23a3a" stroke="#7a1f1f" stroke-width="1"/>
@@ -131,32 +131,32 @@
 <rect x="375" y="267" width="22" height="22" rx="3" fill="#d7e8f7" stroke="#7fa6cc" stroke-width="1"/>
 <rect x="400" y="267" width="22" height="22" rx="3" fill="#d7e8f7" stroke="#7fa6cc" stroke-width="1"/>
 <rect x="425" y="267" width="22" height="22" rx="3" fill="#d7e8f7" stroke="#7fa6cc" stroke-width="1"/>
-<rect x="50" y="295" width="16" height="16" rx="3" fill="#b23a3a" stroke="#666" stroke-width="1"/>
-<text x="74" y="308" font-size="14" fill="#222">섹터 0-6: 반복 소거 영역(로그·카운터) → 닳은 값 e</text>
-<rect x="50" y="319" width="16" height="16" rx="3" fill="#e9c6a0" stroke="#666" stroke-width="1"/>
-<text x="74" y="332" font-size="14" fill="#222">섹터 7-31: 같은 128KB 안, 소거 교란 → 기준에서 제외</text>
-<rect x="50" y="343" width="16" height="16" rx="3" fill="#d7e8f7" stroke="#666" stroke-width="1"/>
-<text x="74" y="356" font-size="14" fill="#222">섹터 32-127: 펌웨어 등 거의 안 지움 → 신품값 e₀ · 부류</text>
-<rect x="540" y="40" width="410" height="84" rx="8" fill="#eef4fb" stroke="#7fa6cc" stroke-width="1.5"/>
+<rect x="50" y="297" width="16" height="16" rx="3" fill="#b23a3a" stroke="#666" stroke-width="1"/>
+<text x="74" y="310" font-size="14" fill="#222">섹터 0-6: 반복 소거 영역 → 닳은 값 e</text>
+<rect x="50" y="321" width="16" height="16" rx="3" fill="#e9c6a0" stroke="#666" stroke-width="1"/>
+<text x="74" y="334" font-size="14" fill="#222">섹터 7-31: 같은 128KB, 소거 교란 → 제외</text>
+<rect x="50" y="345" width="16" height="16" rx="3" fill="#d7e8f7" stroke="#666" stroke-width="1"/>
+<text x="74" y="358" font-size="14" fill="#222">섹터 32-127: 거의 안 지움 → 신품값 e₀ · 부류</text>
+<rect x="540" y="40" width="520" height="84" rx="8" fill="#eef4fb" stroke="#7fa6cc" stroke-width="1.5"/>
 <text x="552" y="63" font-weight="700" fill="#222">① 신품값과 부류 — 섹터 32-127 을 한 번 지운다</text>
 <text x="552" y="84" font-size="13" fill="#333">소거 시간 중앙값 = 이 칩의 신품값 e₀</text>
-<text x="552" y="103" font-size="13" fill="#333">e₀ 가 40ms 미만이면 빠른 무리, 이상이면 느린 무리</text>
-<rect x="540" y="146" width="410" height="64" rx="8" fill="#fbeeee" stroke="#b23a3a" stroke-width="1.5"/>
+<text x="552" y="103" font-size="13" fill="#333">e₀ 가 40ms 미만이면 빠른 무리, 아니면 느린 무리</text>
+<rect x="540" y="146" width="520" height="64" rx="8" fill="#fbeeee" stroke="#b23a3a" stroke-width="1.5"/>
 <text x="552" y="169" font-weight="700" fill="#222">② 닳은 값 — 섹터 0-6 을 한 번 지운다</text>
-<text x="552" y="190" font-size="13" fill="#333">소거 시간 7개 e, 배율 e / e₀ 로 바꾼다</text>
-<rect x="540" y="232" width="410" height="142" rx="8" fill="#f3f3f3" stroke="#444" stroke-width="1.5"/>
+<text x="552" y="190" font-size="13" fill="#333">소거 시간 7개 e → 배율 e / e₀</text>
+<rect x="540" y="232" width="520" height="142" rx="8" fill="#f3f3f3" stroke="#444" stroke-width="1.5"/>
 <text x="552" y="255" font-weight="700" fill="#222">③ 이력을 아는 칩들의 곡선과 확률적으로 비교</text>
-<text x="552" y="276" font-size="13" fill="#333">같은 무리의 교정 칩 × 섹터 곡선(1k 구간 분위수)이 구성원</text>
-<text x="552" y="295" font-size="13" fill="#333">구간마다 '이 값이 나올 확률'을 매기고 정규화</text>
-<text x="552" y="314" font-size="13" fill="#333">칩마다 늙는 속도가 다른 것은 속도 배율 r ∈ [½, 2] 로 적분</text>
-<rect x="540" y="396" width="410" height="84" rx="8" fill="#eef7ee" stroke="#4f8a4f" stroke-width="1.5"/>
+<text x="552" y="276" font-size="13" fill="#333">같은 무리의 교정 칩 × 섹터 곡선이 구성원</text>
+<text x="552" y="295" font-size="13" fill="#333">구간마다 '이 값이 나올 확률'을 매겨 정규화</text>
+<text x="552" y="314" font-size="13" fill="#333">칩마다 다른 노화 속도는 배율 r ∈ [½, 2] 로 적분</text>
+<rect x="540" y="396" width="520" height="84" rx="8" fill="#eef7ee" stroke="#4f8a4f" stroke-width="1.5"/>
 <text x="552" y="419" font-weight="700" fill="#222">④ 답 — 누적 P/E 횟수 x 의 범위</text>
-<text x="552" y="440" font-size="13" fill="#333">가장 그럴듯한 구간(MAP) · 68% 구간 · 95% 구간</text>
+<text x="552" y="440" font-size="13" fill="#333">가장 그럴듯한 구간(MAP) · 68% · 95% 구간</text>
 <text x="552" y="459" font-size="13" fill="#333">점이 아니라 범위로 낸다 (수치는 Ⅳ)</text>
-<line x1="745" y1="124" x2="745" y2="146" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
-<line x1="745" y1="210" x2="745" y2="232" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
-<line x1="745" y1="374" x2="745" y2="396" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="800" y1="124" x2="800" y2="146" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="800" y1="210" x2="800" y2="232" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="800" y1="374" x2="800" y2="396" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
 <line x1="453" y1="203" x2="534" y2="82" stroke="#7fa6cc" stroke-width="2" marker-end="url(#ah)"/>
 <path d="M 211 90 L 211 80 L 477 80 C 500 80, 500 178, 534 178" fill="none" stroke="#b23a3a" stroke-width="2" marker-end="url(#ah)"/>
-<text x="50" y="506" font-size="13" fill="#666">실측 근거: 섹터 0-6 을 10만 회 지운 세 칩에서 섹터 32-127 의 소거 시간은 신품 대비 1.00 (Ⅳ 참조)</text>
+<text x="50" y="530" font-size="13" fill="#666">실측 근거: 섹터 0-6 을 10만 회 지운 세 칩에서 섹터 32-127 의 소거 시간은 신품 대비 1.00 (Ⅳ 참조)</text>
 </svg>
