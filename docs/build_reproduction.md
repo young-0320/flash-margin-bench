@@ -112,7 +112,7 @@ PC 스크립트는 `uv run python ...`으로 실행한다. 빌드 자체에는 �
 `program_g2/g3.tcl` 이 ELF 를 올린 뒤 `print -set g_uart_baud` 로 덮어쓴다. `run_sweep_chip.py --baud`
 와 `run_wear.py --wear-baud`·`--sweep-baud` 가 그 손잡이다. 921600 스윕에서 CSV 행이 빠지는 PC
 (지민)는 `run_wear.py --sweep-baud 115200` 으로 체크포인트 스윕만 낮춘다. 측정값에는 영향이 없다
-(chip01 두 보 레이트 차이 +0.45ps, σ 안 — `docs/results/data/newchip/newchip_survey_2026-09.md`).
+(chip01 두 보 레이트 차이 +0.45ps, σ 안 — `docs/results/data/newchip_survey_2026-09.md`).
 
 | 호스트 OS    | 흔한 UART 포트            | 비고                                                                                                                               |
 | ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |

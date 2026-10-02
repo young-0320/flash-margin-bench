@@ -36,7 +36,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_*_2026-09.csv")
-SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_2026-09.csv"
+SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
@@ -129,7 +129,7 @@ def curve_loglik(obs, mem, runs=1):
     관측 수로 나눠(기하 평균) prep 전부를 관측 하나로 친다(runs=1, 기본). 측정 잡음만 보면 따로 돌린 prep 은 독립이라
     runs(prep 횟수)를 곱할 수 있지만, 처음 보는 칩에는 교정 곡선과의 차이가 있고 그것은 prep 을 반복해도 줄지 않는다 —
     합성 복원에서 runs 를 곱하면 정체 칩을 뺀 prep 5회의 95% 구간이 82% 만 품었다(곱하지 않으면 96%). 그래서 기본은 1,
-    --prep-indep 는 시험용 (2026-10-01, 로그 48 [D48-58] · docs/results/data/inverse/synthetic_recovery_2026-10.md)."""
+    --prep-indep 는 시험용 (2026-10-01, 로그 48 [D48-58] · docs/results/data/synthetic_recovery_2026-10.md)."""
     return {b: runs * sum(_logmeanexp([_logpdf(x, mu, s) for mu, s in ms]) for x in obs) / len(obs)
             for b, ms in mem.items()}
 

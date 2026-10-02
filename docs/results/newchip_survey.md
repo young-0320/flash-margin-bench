@@ -1,8 +1,8 @@
 # 신품 전수 측정 해석 (S-2) — 2026-09
 
-- **수치**: [`data/newchip/newchip_survey_2026-09.md`](../data/newchip/newchip_survey_2026-09.md) (+ 동명 CSV) — 절 번호가 같다. 표는 다시 싣지 않는다
-- **절차의 원전**: `docs/spec/s2.newchip_protocol.md` · **경위**: [로그 28](../../log/young/28.realchip_day_chip02_chip03.md) ·
-  [로그 43](../../log/young/43.newchip_survey_anchor_failure.md) · [로그 48](../../log/young/48.pilot_wear_handler_and_plan_approval.md) §8-§10
+- **수치**: [`data/newchip_survey_2026-09.md`](data/newchip_survey_2026-09.md) (+ 동명 CSV) — 절 번호가 같다. 표는 다시 싣지 않는다
+- **절차의 원전**: `docs/spec/s2.newchip_protocol.md` · **경위**: [로그 28](../log/young/28.realchip_day_chip02_chip03.md) ·
+  [로그 43](../log/young/43.newchip_survey_anchor_failure.md) · [로그 48](../log/young/48.pilot_wear_handler_and_plan_approval.md) §8-§10
 - 2026-09-26 에 집계표에서 해석을 떼어 이 문서로 옮겼다. 문장은 당시 그대로이고, 이후 바뀐 자리에는 추기를 달았다
 
 ## 결론
@@ -66,10 +66,10 @@ chip04 를 같은 날 네 번 쟀다(수치 §1). 정상 재장착은 6ps 안이
 width 는 9칩 중앙값에서 +6.3 으로 가장 가깝고, 소거는 빠른 무리(chip06·09·02 와 함께 26-29ms)에 들며, 벽은 θ 셋이
 33.6ps 안에 모여 얇은 쪽이다. 세 지표 어디에도 특이값이 없어, 마모로 곡선이 움직이면 그 변화가 개체 특성에 가려지지
 않고 보인다. 9/22 런은 앵커 없이 쟀지만 4분 뒤 2차 런이 +2.5ps(재현 기준 41.6ps 안)로 재현 증인이 됐고, 이 값이 파일럿
-곡선의 x=0 이다. 결과는 [`wear_pilot_chip01.md`](../wear/wear_pilot_chip01.md).
+곡선의 x=0 이다. 결과는 [`wear_pilot_chip01.md`](wear/wear_pilot_chip01.md).
 
 7/08 우리 리그 값 대비 −78.3ps 는 반복 σ 의 100배가 넘지만 배선·장착이 다른 세션 간 차이이고, chip01 의 재장착 σ 는
-미측정이라([로그 28](../../log/young/28.realchip_day_chip02_chip03.md) `[U28-1]`) 세대·리그 몫으로 귀속하지 않는다.
+미측정이라([로그 28](../log/young/28.realchip_day_chip02_chip03.md) `[U28-1]`) 세대·리그 몫으로 귀속하지 않는다.
 
 **9/16 지민 PC 런의 처리.** 25MHz 4런은 계약 §6 상 무효라 채택하지 않았다. 같은 날 같은 리그의 75MHz 런(UART 양 1/3)은
 무손실이었으므로 원인은 칩·PL 이 아니라 지민 호스트의 수신 처리량이다. 75MHz 1런은 유효하나 조건이 달라 표 밖에 두었고,

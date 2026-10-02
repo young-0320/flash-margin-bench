@@ -2,8 +2,8 @@
 
 > 수치·조건·재현만 둔다. 해석과 결정은 로그 48 §24 [D48-58] · S-1 §15 2026-10-01 저녁 추기.
 
-- **그림**: [`../../plots/synthetic_recovery_2026-10.png`](../../plots/synthetic_recovery_2026-10.png) — 가로 모델이 말한 확률(최고밀도 구간), 세로 참값이 그 구간에 든 비율. 대각선이 정직
-- **코드**: `host/analysis/wear_inverse.py` `synthetic()` · §1-§3 은 교정 표 4칩(chip01·03·04·07, `../wear_curves/`) · R 2.0 · §4 는 chip09 를 더한 5칩 · R 3.8 · 눈금 ratio · 무리 경계 40ms
+- **그림**: [`../plots/synthetic_recovery_2026-10.png`](../plots/synthetic_recovery_2026-10.png) — 가로 모델이 말한 확률(최고밀도 구간), 세로 참값이 그 구간에 든 비율. 대각선이 정직
+- **코드**: `host/analysis/wear_inverse.py` `synthetic()` · §1-§3 은 교정 표 4칩(chip01·03·04·07, `wear_curves/`) · R 2.0 · §4 는 chip09 를 더한 5칩 · R 3.8 · 눈금 ratio · 무리 경계 40ms
 - **생성 (모델 가정대로)**: 무리를 고르고 x 는 U(1, 100,000) · r 은 로그균등 [1/2, 2] · 곡선 지점 M = x·r 에 구간이 있는 그 무리 교정 칩 하나를
   정체로 고른다. prep 마다 섹터 0-6 을 그 칩·그 섹터·그 구간의 N(p50, (p90−p10)/2.56) 에서 뽑는다(σ 하한 p50 의 2%). 한 prep 의 섹터들은 같은
   칩·같은 r 을 공유한다

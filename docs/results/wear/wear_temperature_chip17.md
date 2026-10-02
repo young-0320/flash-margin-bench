@@ -2,8 +2,8 @@
 
 - **작성일**: 2026-10-02 · **측정**: 2026-10-01 19:51 - 10-02 12:32 KST (보드 B, 박지민)
 - **수치**: [`data/wear/wear_endurance_chip17_2026-10.md`](../data/wear/wear_endurance_chip17_2026-10.md) (체크포인트 · 1k 구간 배율) ·
-  [`data/temperature/temp_chip17_2026-10.md`](../data/temperature/temp_chip17_2026-10.md) (온도 전체 · 구간별 · 시간별) ·
-  [`data/inverse/chip17_loco_2026-10.md`](../data/inverse/chip17_loco_2026-10.md) (상온 모델로 맞히기 · 교정에 넣었을 때) — 표를 다시 싣지 않고 인용한다
+  [`data/temp_chip17_2026-10.md`](../data/temp_chip17_2026-10.md) (온도 전체 · 구간별 · 시간별) ·
+  [`data/chip17_loco_2026-10.md`](../data/chip17_loco_2026-10.md) (상온 모델로 맞히기 · 교정에 넣었을 때) — 표를 다시 싣지 않고 인용한다
 - **그림**: [`plots/wear_temp_chip17_2026-10.png`](../plots/wear_temp_chip17_2026-10.png) (사이클 축: 온도 · 폭 변화 · 소거 배율) ·
   [`plots/temp_chip17_timeline_2026-10.png`](../plots/temp_chip17_timeline_2026-10.png) (시계 축 온도)
 - **사전 등록**: `docs/spec/s1.wear_bench_spec.md` §15 2026-10-01 추기 (chip17 80°C 종단 — 온도 축) · 로그 51 §3 (모델 전제는 상온 마모 이력 ·

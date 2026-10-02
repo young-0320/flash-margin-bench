@@ -26,7 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt                              # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_2026-09.csv"
+SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 CURVES_DIR = REPO / "docs" / "results" / "data" / "wear_curves"
 ROOM_FAST = ("chip01", "chip04", "chip09")                 # 상온 빠른 무리 교정 칩
 KST = timedelta(hours=9)

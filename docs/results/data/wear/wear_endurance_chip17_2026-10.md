@@ -12,7 +12,7 @@
 - **세션**: `1790851785` (0 → 50,000, 첫 구간 뒤 유인 확인) · `1790879592` (50,000 → 100,000, 전 구간 무인). verdict FAIL 0
 - **x=0 행**: 2026-09-30 **보드 A · 상온** newchip (집계표 §1). 마모 리그(보드 B · 65°C)와 달라 폭·창 위치를 마모 행과 바로 빼지 않는다
 - **짝 그림**: [`../../plots/wear_temp_chip17_2026-10.png`](../../plots/wear_temp_chip17_2026-10.png) — 사이클 축 세 칸(마모 중 온도 · 폭 변화 · 소거 배율과 상온 빠른 무리)
-- **온도 수치**: [`../temperature/temp_chip17_2026-10.md`](../temperature/temp_chip17_2026-10.md)
+- **온도 수치**: [`../temperature/temp_chip17_2026-10.md`](../temp_chip17_2026-10.md)
 - **원본**: 마모 루프 `data/wear/{1790851785,1790879592}/` · 스윕 `data/sweep_chip17_D1642C325331242E_<stamp>.csv`(+`_reads`, `.analysis.json`) ·
   스윕 세션 로그 `data/session_chip17_D1642C325331242E_<batch>.log` · 온도 `data/temp_chip17_{65C_20261001T104343Z,68C_20261002T023819Z,68C_20261002T032602Z}.csv`.
   전부 박지민이 보냈다(2026-10-02). 장부 26행은 이미 `docs/chip_pe.md` 에 있다

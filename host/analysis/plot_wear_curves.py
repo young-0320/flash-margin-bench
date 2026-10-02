@@ -124,7 +124,7 @@ def plot_chips(curves, out_dir):
         print(f"→ {out}")
 
 
-SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip" / "newchip_survey_2026-09.csv"
+SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 RATIO_PANELS = (("빠른 무리 (신품 40ms 미만)", ("chip04", "chip01", "chip09")), ("느린 무리 (신품 40ms 이상)", ("chip03", "chip07")))
 CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4"}
 
