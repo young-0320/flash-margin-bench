@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" font-family="Pretendard, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif" font-size="14">
+<rect width="1000" height="500" fill="white"/>
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#444"/></marker></defs>
+<rect x="40" y="40" width="560" height="420" rx="12" fill="#fafafa" stroke="#333" stroke-width="2"/>
+<text x="56" y="68" font-size="18" font-weight="700" fill="#222">Zybo Z7-20 (Zynq-7020) — 한 보드, 두 경로</text>
+<rect x="60" y="90" width="255" height="210" rx="8" fill="#eef4fb" stroke="#7fa6cc" stroke-width="1.5"/>
+<text x="72" y="113" font-weight="700" fill="#222">PL  측정 경로 — 위상 스윕 계측기</text>
+<text x="72" y="134" font-size="12.5" fill="#333">MMCM 동적 위상 이동 15.873ps/스텝</text>
+<text x="72" y="153" font-size="12.5" fill="#333">샘플 클럭 위상만 민다 (SCLK·명령 고정)</text>
+<text x="72" y="172" font-size="12.5" fill="#333">SPI 읽기 → PRBS15 비교 → 오류 카운터</text>
+<text x="72" y="191" font-size="12.5" fill="#333">위상당 112회 × 2,048비트, 2,520스텝</text>
+<text x="72" y="210" font-size="12.5" fill="#333">→ 욕조 곡선 → 유효 윈도우 폭(ps)</text>
+<rect x="330" y="90" width="250" height="210" rx="8" fill="#fbeeee" stroke="#b23a3a" stroke-width="1.5"/>
+<text x="342" y="113" font-weight="700" fill="#222">PS  마모 경로 — P/E 엔진 (C)</text>
+<text x="342" y="134" font-size="12.5" fill="#333">섹터 0-6 에 프로그램·소거 반복</text>
+<text x="342" y="153" font-size="12.5" fill="#333">소거 시간 = 명령 끝 → Busy 해제 (µs)</text>
+<text x="342" y="172" font-size="12.5" fill="#333">매 사이클 섹터별로 기록 (A 행)</text>
+<text x="342" y="191" font-size="12.5" fill="#333">tally 2곳에 100회당 1바이트 이중 기록</text>
+<text x="342" y="210" font-size="12.5" fill="#333">UART 행마다 체크섬</text>
+<rect x="200" y="330" width="240" height="60" rx="8" fill="#fff8e1" stroke="#c9a227" stroke-width="1.5"/>
+<text x="212" y="354" font-weight="700" fill="#222">W25Q64 SPI NOR (소켓)</text>
+<text x="212" y="376" font-size="12.5" fill="#333">64비트 UID 로 개체 식별 · 같은 핀, 비트스트림만 교체</text>
+<line x1="187" y1="300" x2="262" y2="330" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="455" y1="300" x2="380" y2="330" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<text x="56" y="440" font-size="12.5" fill="#555">체크포인트마다 호스트가 두 경로를 번갈아 올린다: 마모 → 범위 prep → 위상 스윕 → 마모 재개</text>
+<rect x="650" y="90" width="310" height="190" rx="8" fill="#f6f6f6" stroke="#444" stroke-width="1.5"/>
+<text x="662" y="113" font-weight="700" fill="#222">호스트 PC — Python 실행기</text>
+<text x="662" y="134" font-size="12.5" fill="#333">run_wear.py — 구간 계획·체크포인트·재개</text>
+<text x="662" y="153" font-size="12.5" fill="#333">run_sweep_chip.py — prep → 스윕 → 분석</text>
+<text x="662" y="172" font-size="12.5" fill="#333">UID 등록부 · P/E 장부 (append-only)</text>
+<text x="662" y="191" font-size="12.5" fill="#333">네 경로 대조: 카운터·행 수·tally·UID</text>
+<text x="662" y="210" font-size="12.5" fill="#333">CSV → 교정 표 → 역산 모델</text>
+<rect x="650" y="310" width="310" height="100" rx="8" fill="#eef7ee" stroke="#4f8a4f" stroke-width="1.5"/>
+<text x="662" y="333" font-weight="700" fill="#222">열화 환경 (옵션)</text>
+<text x="662" y="354" font-size="12.5" fill="#333">Arduino PWM + DFR0457 MOSFET 전력 제어</text>
+<text x="662" y="373" font-size="12.5" fill="#333">TMP117 센서 — 일정 온도에서 같은 절차</text>
+<line x1="600" y1="170" x2="650" y2="170" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="650" y1="200" x2="600" y2="200" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+<text x="608" y="162" font-size="11" fill="#333">UART</text>
+<text x="608" y="216" font-size="11" fill="#333">JTAG</text>
+<text x="650" y="486" font-size="13" fill="#666">측정 결과·수치는 Ⅳ 참조</text>
+</svg>
