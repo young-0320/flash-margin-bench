@@ -159,6 +159,17 @@ def test_screen_aligns_labels_and_ends_with_the_verdict(tmp_path):
     lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000,
                       "프로그램 시간 없음 (구 prep) — 교차 확인 생략")
     labeled = [ln for ln in lines if ": " in ln and not ln.startswith(("─", " "))]
-    assert {wi._w(ln.split(": ")[0]) for ln in labeled} == {11}      # 한글을 2칸으로 세어 콜론이 같은 자리
+    assert {wi._w(ln.split(": ")[0]) for ln in labeled} == {13}      # 한글을 2칸으로 세어 콜론이 같은 자리
     assert lines[-2].startswith("판정") and "확률" in lines[-2] and lines[-1] == "─" * 61
     assert "UID 0000000000000000 (등록부에 없음)" in lines[1] and lines[6].endswith("— 생략")
+
+
+def test_screen_calls_a_chip_below_the_first_band_new(tmp_path):
+    """곡선 첫 구간(1-1,000)보다도 덜 닳은 칩 — 교정 밴드 밖이어도 보류가 아니라 신품이고, 주의 대신 참고 줄이 뜬다."""
+    curves = wi.load_curves(synth_curves(tmp_path))
+    worn = [25_000] * 7                                          # fastA 첫 구간(약 30.3ms)의 밴드보다 아래
+    r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
+    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000,
+                      "프로그램 시간 없음 (구 prep) — 교차 확인 생략")
+    assert any(ln.startswith("참고") and ln.endswith("교정 첫 구간(1-1,000회)보다 덜 닳음") for ln in lines)
+    assert not any(ln.startswith("주의") for ln in lines) and lines[-2].startswith("판정") and "신품" in lines[-2]

@@ -202,8 +202,10 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, runs
     lo = min(mu - 1.2816 * s for mu, s in mem[mstar])
     hi = max(mu + 1.2816 * s for mu, s in mem[mstar])
     outside = sum(1 for x in obs if not lo <= x <= hi)
+    below = sum(1 for x in obs if x < lo)
     return {"group": grp, "chips": chips, "map": (top, top + 999), "hpd68": ranges(hpd(post, 0.68)),
-            "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post}
+            "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post,
+            "below_first": below if mstar == min(ll) else 0}       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
 
 
 def program_check(program, grp):
@@ -234,12 +236,13 @@ def grade(post):
     return name, span.replace("%-", "-"), p
 
 
-def sparkline(post, top, width=20):
-    """사후 분포를 한 줄 막대로 — 0 부터 top 까지 width 칸. 칸마다 1k 구간 확률의 합, 가장 큰 칸이 █."""
-    step = top / width
-    cells = [sum(p for b, p in post.items() if k * step < b + 999 <= (k + 1) * step) for k in range(width)]
-    peak = max(cells) or 1
-    return "".join(" " if v == 0 else "▁▂▃▄▅▆▇█"[min(7, int(v / peak * 8))] for v in cells)
+def sparkline(post, top):
+    """사후 분포를 한 줄 점자 막대로 — 1k 구간 하나가 점 한 열(글자 하나에 두 열), 높이 4단. 가장 큰 구간이 꽉 찬 열."""
+    cols = [post.get(k * 1000 + 1, 0.0) for k in range(top // 1000)]
+    peak = max(cols) or 1
+    lv = [0 if v == 0 else max(1, round(v / peak * 4)) for v in cols]
+    left, right = (0, 0x40, 0x44, 0x46, 0x47), (0, 0x80, 0xA0, 0xB0, 0xB8)   # 점자 점은 아래부터 채운다
+    return "".join(chr(0x2800 + left[lv[i]] + right[lv[i + 1]]) for i in range(0, len(lv) - 1, 2))
 
 
 def _w(s):
@@ -247,9 +250,9 @@ def _w(s):
     return sum(2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in s)
 
 
-def _row(label, text):
-    """계획 화면(run_wear.py)과 같은 꼴 — 라벨을 화면 폭 11칸에 맞춘다 (한글은 2칸)."""
-    return label + " " * max(0, 11 - _w(label)) + ": " + text
+def _row(label, text, width=13):
+    """계획 화면(run_wear.py)과 같은 꼴 — 라벨을 화면 폭 width 칸에 맞춘다 (한글은 2칸). 「68% 신뢰구간」 이 12칸이라 13."""
+    return label + " " * max(0, width - _w(label)) + ": " + text
 
 
 def chip_label(uids):
@@ -263,45 +266,49 @@ def chip_label(uids):
         label = chip_registry.label_for(uid)
     except Exception:
         label = None
-    return f"{label}  UID {uid}" if label else f"UID {uid} (등록부에 없음)"
+    return f"{label} (UID {uid})" if label else f"UID {uid} (등록부에 없음)"
 
 
 def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us, program_line):
-    """시연용 결과 화면 — 무엇을 쟀고 · 무엇과 비교했고 · 몇 번 썼나 · 그래서 어느 등급인가."""
+    """시연용 결과 화면 — 무엇을 쟀고 · 무엇과 비교했나 → 분포와 숫자 → 판정."""
     rule = "─" * 61
     med = statistics.median(worn)
     a, b = r["map"]
     hi95 = max(z for _, z in r["hpd95"])
-    top = min(MAX_CYCLE, max(20_000, math.ceil(hi95 / 10_000) * 10_000))
-    ticks = [0, top // 4, top // 2, top * 3 // 4, top]
-    axis = ""
-    for k, t in enumerate(ticks):                             # 눈금 글자를 막대의 0 · ¼ · ½ · ¾ · 끝 칸에 맞춘다
-        axis += " " * max(1 if k else 0, 5 * k - len(axis)) + ("0" if t == 0 else f"{t // 1000}k")
+    top = min(MAX_CYCLE, max(40_000, math.ceil(hi95 / 20_000) * 20_000))   # 막대는 top/2k 글자 (1k 구간이 점 한 열)
+    width, axis = top // 2000, ""
+    for k in range(5):                                       # 눈금 글자를 막대의 0 · ¼ · ½ · ¾ · 끝에 맞춘다
+        t = top * k // 4
+        axis += " " * max(1 if k else 0, round(width * k / 4) - len(axis)) + ("0" if t == 0 else f"{t // 1000}k")
     name, span, p = grade(r["post"])
     fast = r["group"] == "fast"
+    rated = f"{RATED // 10_000}만 회" if RATED % 10_000 == 0 else f"{RATED:,} 회"
+    used = "1% 미만" if (a + b) / 2 < RATED / 100 else f"약 {round((a + b) / 2 / RATED * 100)}%"
+    upper = f"95% 상한으로 잡아도 {math.ceil(hi95 / RATED * 100)}%" if hi95 < RATED else "95% 상한은 정격 끝"
+    fresh_side = r["outside_at_map"] and r["below_first"] == r["outside_at_map"]
     out = ["── 수명 역산 " + "─" * 48,
            _row("칩", chip_label(uids)),
            _row("측정", f"섹터 {min(sectors)}-{max(sectors)} 소거 + PRBS 기록 {runs}회 (P/E +{runs})"),
-           _row("무리", f"{'빠른' if fast else '느린'} 무리 — 기준 섹터({REFERENCE.start}-{REFERENCE.stop - 1}) 소거 "
+           _row("무리", f"{'빠른' if fast else '느린'} 무리 — 기준 섹터({REFERENCE.start}-{REFERENCE.stop - 1}) 소거 시간 "
                        f"{ref / 1000:.1f}ms (신품 {split_us / 1000:g}ms {'미만' if fast else '이상'})"),
            _row("교정 곡선", " · ".join(sorted(r["chips"])) + f" (같은 무리 {len(r['chips'])}칩)"
                 + (f" · 칩별 속도 차 {rate_range:g}배까지" if rate_range > 1 else "")),
-           _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 소거 {med / 1000:.1f}ms = 기준의 {med / ref:.2f}배 ({len(worn)}회 중앙값)"),
+           _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 소거 시간 {med / 1000:.1f}ms = 기준의 {med / ref:.2f}배 ({len(worn)}회 중앙값)"),
            _row("교차 확인", program_line.replace("교차 확인 생략", "생략").replace("**", "")),
            rule,
-           _row("추정 사용량", f"{a:,}-{b:,} 회 (가장 그럴듯한 구간)"),
-           _row("68% 범위", fmt_ranges(r["hpd68"]) + " 회"),
-           _row("95% 범위", fmt_ranges(r["hpd95"]) + " 회"),
-           _row("정격 대비", f"{RATED:,} 회의 " + ("1% 미만" if (a + b) / 2 < RATED / 100 else f"약 {round((a + b) / 2 / RATED * 100)}%") + " — "
-                + (f"95% 범위로도 {math.ceil(hi95 / RATED * 100)}% 이하" if hi95 < RATED else "95% 범위는 정격 끝까지")),
-           "  확률" + " " * 5 + sparkline(r["post"], top),
-           " " * 11 + axis + "   누적 P/E"]
-    if r["outside_at_map"]:
+           "  확률" + " " * 7 + sparkline(r["post"], top),
+           " " * 13 + axis + "   누적 P/E",
+           _row("MAP 추정", f"{a:,}-{b:,} 회 (사후 확률이 가장 큰 구간)"),
+           _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
+           _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
+           _row("정격 대비", f"{rated} 중 {used} 사용 ({upper})")]
+    if fresh_side:                                            # 곡선 첫 구간보다도 아래 — 경고가 아니라 신품이라는 뜻이다
+        out.append(_row("참고", "교정 첫 구간(1-1,000회)보다 덜 닳음"))
+    elif r["outside_at_map"]:
         out.append(_row("주의", f"관측 {r['outside_at_map']}/{r['n_obs']} 이 가장 그럴듯한 구간의 교정 밴드 밖"
                         + (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else "")))
-    out.append(_row("판정", "보류 — 관측이 교정 곡선 밖이다" if r["outside_at_map"] == r["n_obs"]
-                    else f"{name} (정격의 {span}) — 확률 {p:.0%}"))
-    return out + [rule]
+    hold = r["outside_at_map"] == r["n_obs"] and not fresh_side
+    return out + [rule, _row("판정", "보류 — 관측이 교정 곡선 밖이다" if hold else f"{name} (정격의 {span}) — 확률 {p:.0%}"), rule]
 
 
 # ---------- 모의 블라인드 ----------
