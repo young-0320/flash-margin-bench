@@ -10,3 +10,5 @@
 - [ ] plot_shmoo
 - [ ] chipdb (칩 이력 DB)
 - [ ] Fail Map 생성·해석
+
+- `overview_figures.py` — 보고서 Ⅱ. 개요의 개념도 2장(SVG): 칩 안의 신품 섹터 · 시스템 블록도. `build/plots/` 에 쓰고 사람이 `docs/results/plots/` 로 승격
