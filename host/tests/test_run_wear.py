@@ -489,6 +489,21 @@ def test_accept_measures_a_missed_checkpoint_before_start(sim_bin, tmp_path):
     assert r.returncode == 0 and "빠진 체크포인트" not in r.stdout, r.stdout + r.stderr
 
 
+def test_accept_at_the_target_measures_the_missed_point_and_sends_no_start(sim_bin, tmp_path):
+    """누적이 이미 --to 면 빠진 체크포인트만 재고 START 없이 끝난다. 0 사이클 구간을 START 하면 구간 끝 probe 가
+    체크포인트 prep 이 써 둔 PRBS 를 잔류로 읽어 FAIL 이 난다 (chip09 100k, 로그 48 §26)."""
+    r, pe = _run(["accept", "--session", "1758413020", "--to", "100"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr
+    ledger = pe.read_text()
+    r, _ = _run(["accept", "--session", "1758413021", "--cycle", "100", "--to", "100"], tmp_path, sim_bin)
+    assert r.returncode == 0, r.stdout + r.stderr
+    d = tmp_path / "logs" / "1758413021"
+    assert "START 를 보내지 않는다" in (d / "plan.txt").read_text()
+    assert "WEAR START" not in (d / "commands.txt").read_text() and not (d / "verdict.txt").exists()
+    assert (d / "checkpoints.csv").read_text().splitlines()[1].startswith("100,")      # 빠진 점은 잰다 (휴지 뒤)
+    assert pe.read_text() == ledger
+
+
 def test_status_halt_tally_uid_on_sim(sim_bin, tmp_path):
     for cmd, want in [("status", "cycle=0 state=idle"), ("uid", f"uid={CHIP01_UID} 등록부=chip01"),
                       ("tally", "tally_a=0 tally_b=0"), ("dump", "copy 1: 0x00 0개")]:

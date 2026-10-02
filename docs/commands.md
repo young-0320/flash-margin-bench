@@ -212,6 +212,7 @@ uv run python host/run/run_wear.py accept --chip chipNN
 #   체크포인트마다 0~6 소거+PRBS(P/E +1) → 스윕 → 분석·plot 을 실행기가 하고, 앞 K 점에서만 사람에게 묻는다
 #   시작 자리가 체크포인트인데 장부에 그 체크포인트 행이 없으면(호스트가 구간 끝을 놓쳤다) START 전에 먼저 잰다
 #   — 계획 화면에 「빠진 체크포인트 N」 으로 뜨고, C 행 measured 칸이 「휴지 뒤」 다
+#   누적이 이미 --to 면(종점을 놓쳐 --cycle 100000 --to 100000) 그 점만 재고 START 없이 끝난다
 
 # 100사이클 인수 (A 시험) — 엔진을 고친 뒤에만. 본 마모의 첫 체크포인트(100)가 같은 판정을 돌린다 (런북 12)
 uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --cycle 0 --to 100

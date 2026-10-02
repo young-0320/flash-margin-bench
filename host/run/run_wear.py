@@ -284,7 +284,6 @@ def plan_banner(chip, uid, segs, to, base=WEAR_BASE_GROUP, mhz=25, measure=True,
     """승인 전에 사람이 읽는 계획 한 장 — 어디를·어디서부터·얼마나·어디서 재고·어디까지 사람이 보나."""
     confirm = sum(1 for g in segs if g[2])
     cps = [g[0] + g[1] for g in segs if g[3]]
-    start, span = segs[0][0], to - segs[0][0]
     dur = fmt_dur(estimate(segs, cycle_s, cp_s))
     out = ["── 마모 계획 ────────────────────────────────────────────────",
            f"칩         : {chip}  UID {uid}",
@@ -298,8 +297,13 @@ def plan_banner(chip, uid, segs, to, base=WEAR_BASE_GROUP, mhz=25, measure=True,
         f"마모 섹터  : {wear_area(base)} (7섹터 · 112페이지)",
         "보호 섹터  : 근접 대조군 7~13 · 원격 대조군 2,041~2,047 · tally 2벌 512 · 1,536 (엔진이 거부)",
         f"마모 패턴  : 0x{PATTERN:02x} (셀당 8비트가 1→0)",
-        f"누적       : {start:,} → {to:,} ({span:,} 사이클 · 예상 {dur} · {src})",
     ]
+    if not segs:                                             # 0 사이클 START 는 probe 가 체크포인트 PRBS 를 잔류로 읽어 FAIL (로그 48 §26)
+        out += [f"누적       : 목표 {to:,} 에 이미 닿았다 — 태울 구간이 없어 START 를 보내지 않는다",
+                "─────────────────────────────────────────────────────────────"]
+        return "\n".join(out)
+    start = segs[0][0]
+    out.append(f"누적       : {start:,} → {to:,} ({to - start:,} 사이클 · 예상 {dur} · {src})")
     if cps:
         out.append("체크포인트 : " + f"{len(cps)}점 — " + " · ".join(f"{c:,}" for c in cps))
         out.append(f"측정 방식  : 체크포인트마다 {wear_area(base)} 소거 + PRBS 기록(P/E +1) → "
@@ -349,8 +353,7 @@ def resolve_target(ap_error, args, cycle):
 
 
 def build_segments(args, cycle, to):
-    return plan_segments(cycle, to, SEG_CHUNK, args.confirm_first, args.checkpoint_list) \
-        or [(cycle, 0, True, False)]
+    return plan_segments(cycle, to, SEG_CHUNK, args.confirm_first, args.checkpoint_list)
 
 
 # ── 세션 ──────────────────────────────────────────────────────────────────
