@@ -1,16 +1,17 @@
-# wear_curves_2026-09 — 마모 4칩의 섹터별 소거·프로그램 시간 곡선 (수명 역산 교정 표)
+# wear_curves_2026-09 — 교정 칩의 섹터별 소거·프로그램 시간 곡선 (수명 역산 교정 표)
 
 > 수치와 규칙만 둔다. 모델과 판정은 역산 해석 문서(작성 예정)에서 한다.
 
-- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07(0 → 100k)의 마모 루프 A 행(사이클 × 섹터 7개의
+- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07 · 교정 chip09(0 → 100k)의 마모 루프 A 행(사이클 × 섹터 7개의
   소거·프로그램 시간)을 **1,000사이클 구간 × 섹터**로 묶은 분위수 표. 칩당 CSV 한 장 `wear_curves_<chip>_2026-09.csv`.
   수명 역산 모델(S-1 §15 두 층 역산)이 읽는 유일한 교정 입력이다 — A.txt(666MB, 리포 밖)를 다시 열지 않는다
 - **왜 이 묶음인가**: 결과 문서 네 편의 §3-§5 가 같은 묶음(`(cycle−1)//1000` 구간 · 섹터 중앙값)으로 계단·프로그램 상승을
   읽었다. 그 집계는 일회성 코드였고, 이 표가 그 정본이다. 분위수 p10·p90 을 더한 것은 블라인드 개봉 prep 이 섹터당
   **한 번의 소거**라 중앙값이 아니라 한 표본이기 때문이다 — 구간 안 산포가 곧 한 표본의 기대 흔들림이다
 - **생산**: `host/analysis/wear_curves.py` → `build/data/wear_curves_<chip>.csv`. 사람이 이 폴더(`docs/results/data/wear_curves/`)로 옮기며 이름에 `_2026-09` 를 붙인다
-- **짝 그림**: `../../plots/wear_curves_2026-09.png` — 칩별 칸(윗줄 빠른 무리 chip01·04 · 아랫줄 느린 무리 chip03·07), 섹터 0-6 의 소거 p50 선과
-  p10-p90 띠. y 는 네 칸 공유(ms), x 는 칩별(chip01 만 300k). 표에 없는 구간은 선을 끊었다
+- **짝 그림**: `../../plots/wear_curves_<chip>_2026-09.png` — 교정 칩마다 한 장(2026-10-02 부터 · 지금 chip01·03·04·07·09), 섹터 0-6 의 소거
+  p50 선과 p10-p90 띠. y 는 모든 장이 같다(전 칩 p90 최대) — 나란히 놓으면 무리 사이 절대값 차이가 보인다. x 는 칩별(chip01 만 300k).
+  표에 없는 구간은 선을 끊었다. 9월 4칩을 한 장에 담은 2×2 `../../plots/wear_curves_2026-09.png` 는 그때의 기록으로 둔다(10/2 보고서 재료가 가리킨다)
 - **짝 그림 2**: `../../plots/wear_ratio_curves_2026-10.png` — 교정 5칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸, 0-100k. 빠른 칸의 점선은
   chip06 블라인드 관측 배율 1.63. `plot_wear_curves.py --ratio --mark 1.63 --mark-label '…'`
 
@@ -51,7 +52,8 @@ uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
 uv run python host/analysis/wear_curves.py --chip chip09 data/wear/1790786787 -o docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
-uv run python host/analysis/plot_wear_curves.py   # 승격한 CSV 4장 → build/plots/wear_curves_2026-09.png
+uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 CSV 마다 → build/plots/wear_curves_<chip>_2026-09.png
+uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plots/wear_curves_2026-09.png
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
 ```
 
