@@ -1,6 +1,6 @@
 # wear_endurance_chip04_2026-09 — 종단 마모 chip04 · 0 → 100,000 사이클 수치
 
-> 수치와 표만 둔다. 해석·판정은 [`../../wear_endurance_chip04.md`](../../wear/wear_endurance_chip04.md).
+> 수치와 표만 둔다. 해석·판정은 [`../../wear/wear_endurance_chip04.md`](../../wear/wear_endurance_chip04.md).
 
 - **무엇**: chip04(`D16484578B525622`, W25Q64) 섹터 0-6 을 100,000 사이클 마모시키며 체크포인트에서 25MHz 스윕,
   마모 전후에 45·75MHz 스윕, 끝에 newchip 1회를 더한 요약. CSV 한 행 = 측정 1개. `erase_*`·`program_*` 은 **그
