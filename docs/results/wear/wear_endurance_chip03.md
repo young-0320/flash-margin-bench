@@ -1,7 +1,7 @@
 # 종단 마모 결과 해석 — chip03, 0 → 100,000 사이클
 
 - **작성일**: 2026-09-27 · **측정**: 2026-09-26 - 09-27 (보드 A)
-- **수치**: [`data/wear/wear_endurance_chip03_2026-09.md`](data/wear/wear_endurance_chip03_2026-09.md) (+ 동명 CSV) — 표를 다시 싣지 않고 거기를 인용한다
+- **수치**: [`data/wear/wear_endurance_chip03_2026-09.md`](../data/wear/wear_endurance_chip03_2026-09.md) (+ 동명 CSV) — 표를 다시 싣지 않고 거기를 인용한다
 - **사전 등록**: `docs/spec/s1.wear_bench_spec.md` §15 2026-09-26 추기 (H1′·H2′·H3-H5 · 두 층 역산)
 - **비교 대상**: 파일럿 [`wear_pilot_chip01.md`](wear_pilot_chip01.md)
 - **경위**: `docs/log/young/48.pilot_wear_handler_and_plan_approval.md` §15

@@ -1,6 +1,6 @@
 # wear_pilot_chip01_2026-09 — P/E 파일럿 chip01 · 0 → 300,000 사이클 수치
 
-> 수치와 표만 둔다. 해석·판정은 [`../../wear_pilot_chip01.md`](../../wear_pilot_chip01.md).
+> 수치와 표만 둔다. 해석·판정은 [`../../wear_pilot_chip01.md`](../../wear/wear_pilot_chip01.md).
 
 - **무엇**: chip01(`D1654CB09B352233`, W25Q64) 섹터 0-6 을 300,000 사이클 마모시키며 12 체크포인트에서
   25MHz 스윕, 끝점에서 45·75MHz 스윕을 더한 요약. CSV 한 행 = 체크포인트 1개 (x=0 은 신품 newchip 런).

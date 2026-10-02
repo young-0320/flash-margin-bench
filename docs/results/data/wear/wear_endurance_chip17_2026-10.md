@@ -1,6 +1,6 @@
 # wear_endurance_chip17_2026-10 — 온도 마모 chip17 · 65°C · 0 → 100,000 사이클 수치
 
-> 수치와 표만 둔다. 해석·판정은 [`../../wear_temperature_chip17.md`](../../wear_temperature_chip17.md).
+> 수치와 표만 둔다. 해석·판정은 [`../../wear_temperature_chip17.md`](../../wear/wear_temperature_chip17.md).
 
 - **무엇**: chip17(`D1642C325331242E`, W25Q64, 빠른 무리 · 새 로트) 섹터 0-6 을 **칩 위 약 65°C** 에서 100,000 사이클 마모시키며
   체크포인트마다 25MHz 스윕을 한 요약. CSV 한 행 = 체크포인트 1개. `erase_*`·`program_*` 은 **그 체크포인트 직전 구간**의 마모
