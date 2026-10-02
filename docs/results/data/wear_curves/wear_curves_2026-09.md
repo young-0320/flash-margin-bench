@@ -14,6 +14,12 @@
 - **짝 그림 2**: `../../plots/wear_ratio_curves_2026-10.png` — 교정 5칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸, 0-100k. 빠른 칸의 점선은
   chip06 블라인드 관측 배율 1.63. `plot_wear_curves.py --ratio --mark 1.63 --mark-label '…'`
 
+## 교정 밖 — 온도 칩
+
+`wear_curves_chip17_65C_2026-10.csv` 는 chip17 을 **칩 위 약 65°C** 에서 0 → 100k 마모한 같은 묶음의 표다(박지민 보드 B, 세션
+`1790851785` · `1790879592`, A 행 700,000 · 뺀 사이클 없음). 이름의 `_65C_2026-10` 이 교정 glob(`wear_curves_*_2026-09.csv`)에 걸리지 않게
+한다 — **교정 칩이 아니다**. 수치는 `../wear/wear_endurance_chip17_2026-10.md` §2, 교정에 넣었을 때의 LOCO 는 `../inverse/chip17_loco_2026-10.md`.
+
 ## 열
 
 | 열 | 뜻 |
@@ -46,6 +52,7 @@ uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 da
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
 uv run python host/analysis/wear_curves.py --chip chip09 data/wear/1790786787 -o docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
 uv run python host/analysis/plot_wear_curves.py   # 승격한 CSV 4장 → build/plots/wear_curves_2026-09.png
+uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
 ```
 
 각 명령이 stdout 에 읽은 행 수 · 깨진 행 수 · `n<1000` 구간을 찍는다. 그 줄을 아래 표에 옮긴다.

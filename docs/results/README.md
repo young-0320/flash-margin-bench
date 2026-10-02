@@ -18,10 +18,11 @@
 | `data/monte_carlo/` | 스윕 파라미터 사전 등록 몬테카를로 (N·θ 선택) |
 | `data/sweep/` | 단일 스윕 게재분 — 7월 chip01 반복 5회 · G0 루프백 |
 | `data/newchip/` | 신품 전수 측정 집계표 (S-2) |
-| `data/wear/` | 마모 체크포인트 요약 — 파일럿 chip01 · 종단 chip03·04·07 |
+| `data/wear/` | 마모 체크포인트 요약 — 파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17(65°C) |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출) |
 | `data/blind/` | 블라인드 추정 결과 — `wear_inverse.py --out` 산출(머리말에 코드·입력 sha256). 개봉 전 커밋한 것 그대로 |
-| `data/inverse/` | 수명 역산 모델 검증 — 합성 복원 (`wear_inverse.py --synthetic`) |
+| `data/inverse/` | 수명 역산 모델 검증 — 합성 복원 (`wear_inverse.py --synthetic`) · 65°C 칩 LOCO (`--loco --curves`) |
+| `data/temperature/` | 온도 마모 런의 칩 위 온도 — 전체 · 구간별 · 시간별 (`temp_wear_summary.py`) |
 
 이 구분은 2026-09-26 부터다. 그 전에 올린 `data/` 의 md 중 `newchip_survey_2026-09.md` 는 같은 날 나눴고, 나머지(7월·8월분)는
 짧은 유래 문서라 그대로 둔다.
@@ -33,4 +34,5 @@
 - [`wear_endurance_chip03.md`](wear_endurance_chip03.md) — 종단 chip03 0 → 100k: 폭 불변(H1′), 프로그램 20k 부터(H2′ 거짓), 계단 없음, 근접 대조군 128KB 교란
 - [`wear_endurance_chip04.md`](wear_endurance_chip04.md) — 종단 chip04 0 → 100k: 폭 불변(H1′), 프로그램 불변(H2′ 참), 7섹터 계단 25-47k·높이 18.5-22.7ms·착지 약 111ms(H6 참), H4 거짓, 128KB 교란 가장 큼
 - [`wear_endurance_chip07.md`](wear_endurance_chip07.md) — 종단 chip07 0 → 100k: 계단 없음(예측 참), 프로그램 5k 부터 2.1배(H2′ 거짓), 폭 25MHz 불변(계측 사건 전후 사후 처리 · 75/45MHz 판정 불가), 60k·80k 결측, 128KB 소거 교란 재현, prep 프로그램 시간은 A 행과 눈금이 다름
+- [`wear_temperature_chip17.md`](wear_temperature_chip17.md) — 온도 마모 chip17 칩 위 65°C 0 → 100k: 폭 불변(H1′ 참), 소거는 상온 빠른 무리보다 덜 늘어 100k 2.44배(상온 2.80-3.97) — 65°C 효과는 개체차와 구별 불가·계단 없음(H6 수준 미달), 프로그램 +20%(H2′ 거짓), 상온 모델 v2 는 사용량을 0.15-0.35배로 낮게 봄(LOCO 68% 2/12) → 교정에 넣지 않음
 - [`blind_chip06.md`](blind_chip06.md) — 블라인드 chip06 정답 12,000: 판정용 v2 가 68%·95% 구간에 품음(49번째 백분위), 기준 ①② 통과 · ③ 불통과, 교정 4칩 v1 은 68% 밖
