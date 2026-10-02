@@ -141,3 +141,24 @@ def test_study_p50_matches_registered_loco(tmp_path):
     assert not skipped
     assert [(r["chip"], r["x"], (r["map"], r["map"] + 999), r["h68"], r["h95"]) for r in rows] == \
            [(c, x, m, h68, h95) for c, x, m, h68, h95, _, _ in ref]
+
+
+def test_grade_picks_the_band_with_most_mass():
+    """시연 화면의 판정 — 정격 대비 구간(1 · 20 · 60%) 중 사후 확률이 가장 큰 것. 구간은 1k 구간의 끝 사이클로 나눈다."""
+    name, span, p = wi.grade({7001: 0.5, 15001: 0.26, 25001: 0.24})
+    assert (name, span) == ("저마모", "1-20%") and abs(p - 0.76) < 1e-9
+    assert wi.grade({1: 1.0})[:2] == ("신품", "1% 미만")
+    assert wi.grade({70001: 1.0})[:2] == ("고마모", "60% 이상")
+    assert wi.grade({19001: 0.4, 20001: 0.6})[0] == "중마모"          # 19,001-20,000 은 저마모, 20,001-21,000 은 중마모
+
+
+def test_screen_aligns_labels_and_ends_with_the_verdict(tmp_path):
+    curves = wi.load_curves(synth_curves(tmp_path))
+    worn = [int((30_000 + 0.6 * 12_500) * (1 + 0.004 * s)) for s in range(7)]
+    r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
+    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000,
+                      "프로그램 시간 없음 (구 prep) — 교차 확인 생략")
+    labeled = [ln for ln in lines if ": " in ln and not ln.startswith(("─", " "))]
+    assert {wi._w(ln.split(": ")[0]) for ln in labeled} == {11}      # 한글을 2칸으로 세어 콜론이 같은 자리
+    assert lines[-2].startswith("판정") and "확률" in lines[-2] and lines[-1] == "─" * 61
+    assert "UID 0000000000000000 (등록부에 없음)" in lines[1] and lines[6].endswith("— 생략")

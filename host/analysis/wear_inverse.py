@@ -6,6 +6,8 @@
 #   옵션: --scale ms|ratio (기본 ratio — 규칙은 S-1 §15 2026-09-30 추기, 4칩 LOCO 로 확정) · --rate-range 2.0 · --split-ms 40 · --curves <glob>
 #         --synthetic N [--plot <png>]  합성 복원 (가정대로 만든 가짜 칩으로 포함률) · --prep-indep  시험용 우도 (기본 꺼짐)
 #         --out <경로>  추정 결과를 파일로도 — 머리말에 git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)
+#   화면은 시연용(계획 화면 꼴 — 칩 · 측정 · 무리 · 교정 곡선 · 사후 분포 한 줄 · 판정 신품/저마모/중마모/고마모), --out 기록은
+#   입력 A·B·C · 답 줄 그대로다 (블라인드 기록 형식을 바꾸지 않는다 — 로그 48 [D48-69])
 #
 # 모델 (S-1 §15 2026-09-30 추기):
 #   입력 A  섹터 32-127 소거 시간의 중앙값  = 이 칩의 신품값. 40ms 아래면 빠른 무리(chip01·chip04 곡선), 위면 느린 무리(chip03·chip07)
@@ -48,6 +50,9 @@ LOCO_CYCLES = (1_000, 3_000, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_
 
 PREP_ERASE = re.compile(r"#PREP ERASE (\d+) (\d+)\s*$", re.M)
 PREP_PROGRAM = re.compile(r"#PREP PROGRAM (\d+) (\d+)\s*$", re.M)
+PREP_UID = re.compile(r"#PREP UID ([0-9A-F]{16})")
+RATED = 100_000                            # 정격 내구 — W25Q64JV 데이터시트 "Min. 100K per sector" (docs/ref)
+GRADES = ((0.01, "신품"), (0.20, "저마모"), (0.60, "중마모"), (1.00, "고마모"))   # 정격 대비 상한 — 20-60% 는 빠른 무리의 계단 구간
 
 
 # ---------- 입력 ----------
@@ -198,7 +203,7 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, runs
     hi = max(mu + 1.2816 * s for mu, s in mem[mstar])
     outside = sum(1 for x in obs if not lo <= x <= hi)
     return {"group": grp, "chips": chips, "map": (top, top + 999), "hpd68": ranges(hpd(post, 0.68)),
-            "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs)}
+            "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post}
 
 
 def program_check(program, grp):
@@ -214,6 +219,89 @@ def program_check(program, grp):
 
 def fmt_ranges(rs):
     return " · ".join(f"{a:,}-{b:,}" for a, b in rs)
+
+
+# ---------- 화면 (시연용 — 기록 파일(--out)은 위의 입력 A·B·C · 답 줄 그대로) ----------
+
+def grade(post):
+    """사후 확률이 가장 큰 등급과 그 확률. 등급은 정격 대비 구간(GRADES) — 구간 끝 사이클 기준으로 1k 구간을 나눈다."""
+    mass, lo = [], 0.0
+    for hi, name in GRADES:
+        mass.append((sum(p for b, p in post.items() if lo * RATED < b + 999 <= hi * RATED), name, lo, hi))
+        lo = hi
+    p, name, lo, hi = max(mass)
+    span = f"{hi:.0%} 미만" if lo == 0 else f"{lo:.0%} 이상" if hi >= 1 else f"{lo:.0%}-{hi:.0%}"
+    return name, span.replace("%-", "-"), p
+
+
+def sparkline(post, top, width=20):
+    """사후 분포를 한 줄 막대로 — 0 부터 top 까지 width 칸. 칸마다 1k 구간 확률의 합, 가장 큰 칸이 █."""
+    step = top / width
+    cells = [sum(p for b, p in post.items() if k * step < b + 999 <= (k + 1) * step) for k in range(width)]
+    peak = max(cells) or 1
+    return "".join(" " if v == 0 else "▁▂▃▄▅▆▇█"[min(7, int(v / peak * 8))] for v in cells)
+
+
+def _w(s):
+    import unicodedata
+    return sum(2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in s)
+
+
+def _row(label, text):
+    """계획 화면(run_wear.py)과 같은 꼴 — 라벨을 화면 폭 11칸에 맞춘다 (한글은 2칸)."""
+    return label + " " * max(0, 11 - _w(label)) + ": " + text
+
+
+def chip_label(uids):
+    if len(uids) != 1:
+        return "UID " + " · ".join(sorted(uids)) + ("  ⚠ 로그의 칩이 서로 다르다" if uids else "(로그에 없음)")
+    uid = next(iter(uids))
+    try:
+        import sys
+        sys.path.insert(0, str(REPO / "host" / "capture"))
+        import chip_registry
+        label = chip_registry.label_for(uid)
+    except Exception:
+        label = None
+    return f"{label}  UID {uid}" if label else f"UID {uid} (등록부에 없음)"
+
+
+def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us, program_line):
+    """시연용 결과 화면 — 무엇을 쟀고 · 무엇과 비교했고 · 몇 번 썼나 · 그래서 어느 등급인가."""
+    rule = "─" * 61
+    med = statistics.median(worn)
+    a, b = r["map"]
+    hi95 = max(z for _, z in r["hpd95"])
+    top = min(MAX_CYCLE, max(20_000, math.ceil(hi95 / 10_000) * 10_000))
+    ticks = [0, top // 4, top // 2, top * 3 // 4, top]
+    axis = ""
+    for k, t in enumerate(ticks):                             # 눈금 글자를 막대의 0 · ¼ · ½ · ¾ · 끝 칸에 맞춘다
+        axis += " " * max(1 if k else 0, 5 * k - len(axis)) + ("0" if t == 0 else f"{t // 1000}k")
+    name, span, p = grade(r["post"])
+    fast = r["group"] == "fast"
+    out = ["── 수명 역산 " + "─" * 48,
+           _row("칩", chip_label(uids)),
+           _row("측정", f"섹터 {min(sectors)}-{max(sectors)} 소거 + PRBS 기록 {runs}회 (P/E +{runs})"),
+           _row("무리", f"{'빠른' if fast else '느린'} 무리 — 기준 섹터({REFERENCE.start}-{REFERENCE.stop - 1}) 소거 "
+                       f"{ref / 1000:.1f}ms (신품 {split_us / 1000:g}ms {'미만' if fast else '이상'})"),
+           _row("교정 곡선", " · ".join(sorted(r["chips"])) + f" (같은 무리 {len(r['chips'])}칩)"
+                + (f" · 칩별 속도 차 {rate_range:g}배까지" if rate_range > 1 else "")),
+           _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 소거 {med / 1000:.1f}ms = 기준의 {med / ref:.2f}배 ({len(worn)}회 중앙값)"),
+           _row("교차 확인", program_line.replace("교차 확인 생략", "생략").replace("**", "")),
+           rule,
+           _row("추정 사용량", f"{a:,}-{b:,} 회 (가장 그럴듯한 구간)"),
+           _row("68% 범위", fmt_ranges(r["hpd68"]) + " 회"),
+           _row("95% 범위", fmt_ranges(r["hpd95"]) + " 회"),
+           _row("정격 대비", f"{RATED:,} 회의 " + ("1% 미만" if (a + b) / 2 < RATED / 100 else f"약 {round((a + b) / 2 / RATED * 100)}%") + " — "
+                + (f"95% 범위로도 {math.ceil(hi95 / RATED * 100)}% 이하" if hi95 < RATED else "95% 범위는 정격 끝까지")),
+           "  확률" + " " * 5 + sparkline(r["post"], top),
+           " " * 11 + axis + "   누적 P/E"]
+    if r["outside_at_map"]:
+        out.append(_row("주의", f"관측 {r['outside_at_map']}/{r['n_obs']} 이 가장 그럴듯한 구간의 교정 밴드 밖"
+                        + (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else "")))
+    out.append(_row("판정", "보류 — 관측이 교정 곡선 밖이다" if r["outside_at_map"] == r["n_obs"]
+                    else f"{name} (정격의 {span}) — 확률 {p:.0%}"))
+    return out + [rule]
 
 
 # ---------- 모의 블라인드 ----------
@@ -691,9 +779,11 @@ def main(argv=None):
     if r["outside_at_map"]:
         out.append(f"주의    MAP 구간 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
                    (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else ""))
-    print("\n".join(out))
-    if args.out:
+    uids = {m for p in args.logs for m in PREP_UID.findall(Path(p).read_text(encoding="utf-8", errors="replace"))}
+    print("\n".join(screen(uids, erase, runs, ref, worn, r, args.rate_range, split, program_check(program, r["group"]))))
+    if args.out:                                             # 기록은 화면이 아니라 위의 줄들 — 블라인드 기록의 형식을 바꾸지 않는다
         write_record(args.out, argv, args.logs, args.curves, out)
+        print(f"기록 → {args.out}")
 
 
 def write_record(path, argv, logs, curves_glob, out):
