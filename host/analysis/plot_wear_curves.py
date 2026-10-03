@@ -1,10 +1,10 @@
 # plot_wear_curves.py — 수명 역산 교정 표 4장 → 칩별 소거 시간 곡선 그림 (2×2)
 #
 # 사용: uv run python host/analysis/plot_wear_curves.py [-o build/plots/wear_curves_2026-09.png]
-#       uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 칩마다 한 장 wear_curves_<chip>_2026-09.png
+#       uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 칩마다 한 장 — 이름은 교정 CSV 와 짝 (.png)
 #       uv run python host/analysis/plot_wear_curves.py --ratio [--mark 1.63 --mark-label '...'] -o <png>   # 칩별 배율 곡선 한 장
 #
-# 입력: docs/results/data/wear_curves/wear_curves_<chip>_2026-09.csv (wear_curves.py 산출을 승격한 것)
+# 입력: docs/results/data/wear_curves/wear_curves_<chip>_<YYYY-MM>.csv (wear_curves.py 산출을 승격한 것 — 접미사 붙은 것은 교정 밖)
 # 그림: 윗줄 빠른 무리(chip01 · chip04) · 아랫줄 느린 무리(chip03 · chip07). 칸마다 섹터 0-6 의 1k 구간 소거 p50 선과
 #       p10-p90 띠. y 는 네 칸 공유(ms) — 무리 사이 절대값 차이가 보이게. x 는 칩별(chip01 만 300k).
 #       표에 없는 구간(chip07 53-60k · 77-80k)은 선을 끊는다. 2×2 는 9월 4칩의 기록이고, 2026-10-02 부터는 같은 칸을
@@ -21,10 +21,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt                              # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_*_2026-09.csv")
+CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv")   # 교정 = 접미사 없는 이름 (_65C · _ali · _nocal 은 밖)
 LAYOUT = (("chip01", "chip04"), ("chip03", "chip07"))      # 기본 그림(2×2)은 9월 4칩 그대로. 그 뒤 칩은 --per-chip 에
 GROUP = {"chip01": "fast", "chip04": "fast", "chip09": "fast", "chip03": "slow", "chip07": "slow"}
 BIN = 1000
+STEMS = {}                                                  # chip → 교정 CSV 이름 (칩별 그림 이름의 짝)
 
 # 플롯 팔레트 (dataviz 검증 통과 — 7색 categorical, 대비 WARN 은 범례로 보완)
 SURFACE = "#fcfcfb"
@@ -44,6 +45,7 @@ def load(pattern=CURVES_GLOB):
                                                float(r["erase_us_p50"]) / 1e3, float(r["erase_us_p90"]) / 1e3))
                 chip = r["chip"]
         out[chip] = {s: sorted(v) for s, v in rows.items()}
+        STEMS[chip] = Path(path).stem
     return out
 
 
@@ -102,7 +104,7 @@ def plot(curves, out_png):
 
 
 def plot_chips(curves, out_dir):
-    """교정 칩마다 한 장 — 이름은 교정 표와 짝(`wear_curves_<chip>_2026-09.png`). y 는 모든 장이 같다(전 칩 p90 최대) —
+    """교정 칩마다 한 장 — 이름은 교정 표와 짝(`wear_curves_<chip>_<YYYY-MM>.png`). y 는 모든 장이 같다(전 칩 p90 최대) —
     나란히 놓으면 2×2 처럼 무리 사이 절대값 차이가 보인다."""
     top = max(hi for sectors in curves.values() for pts in sectors.values() for *_, hi in pts) * 1.05
     for chip, sectors in sorted(curves.items()):
@@ -117,7 +119,7 @@ def plot_chips(curves, out_dir):
         fig.suptitle("Wear calibration curve — 1k-cycle bins, line = p50, band = p10–p90",
                      color=INK, fontsize=11, x=0.01, ha="left")
         fig.tight_layout(rect=(0, 0.06, 1, 0.97))
-        out = Path(out_dir) / f"wear_curves_{chip}_2026-09.png"
+        out = Path(out_dir) / f"{STEMS[chip]}.png"
         out.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out, facecolor=SURFACE)
         plt.close(fig)
@@ -183,7 +185,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="수명 역산 교정 표 → 칩별 소거 시간 곡선 그림")
     ap.add_argument("-o", "--out", default=str(REPO / "build" / "plots" / "wear_curves_2026-09.png"))
     ap.add_argument("--curves", default=CURVES_GLOB, help="교정 표 glob")
-    ap.add_argument("--per-chip", metavar="DIR", help="교정 칩마다 한 장씩 DIR 에 (wear_curves_<chip>_2026-09.png)")
+    ap.add_argument("--per-chip", metavar="DIR", help="교정 칩마다 한 장씩 DIR 에 (교정 CSV 와 같은 이름 .png)")
     ap.add_argument("--ratio", action="store_true", help="칩별 신품 대비 배율 곡선 한 장 (무리별 두 칸, x 는 100k 까지)")
     ap.add_argument("--mark", type=float, help="--ratio 의 빠른 무리 칸에 가로 점선 (배율)")
     ap.add_argument("--mark-label", default="", help="그 점선의 글씨")

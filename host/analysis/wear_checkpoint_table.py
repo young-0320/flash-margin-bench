@@ -148,6 +148,9 @@ def plot(chips, fresh, out_png, xmax=100_000):
     """폭 변화(체크포인트 100 대비) · 프로그램 p50 — 행 = 지표, 열 = 무리. 같은 칸 안의 칩 색은 --pairs all 로 검증했다.
     폭은 비고에 「계측 사건」 이 든 행부터 그리지 않는다(기준이 달라 마모와 비교할 수 없다 — 표의 주). 휴지 뒤 점은 속 빈 표식,
     온도 칩은 점선. 파일럿(300k)은 xmax 까지만 — 그 너머는 표에 있다."""
+    new = sorted(c for c in chips if c not in COLORS)
+    if new:
+        print(f"색 미지정 {', '.join(new)} — 회색으로 그린다. COLORS 에 넣고 --pairs all 검증 뒤 다시 그린다")
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -184,9 +187,9 @@ def plot(chips, fresh, out_png, xmax=100_000):
             label = c + (f" ({temp}°C)" if temp else "") + (" — 300k 중 100k 까지" if chips[c]["pilot"] else "")
             for i, ys in ((0, dw), (1, pg)):
                 ax = axes[i][j]
-                ax.plot(x, ys, color=COLORS[c], lw=1.8, marker="o", ms=3.4, ls=(0, (4, 2)) if temp else "-", label=label)
+                ax.plot(x, ys, color=COLORS.get(c, pwc.MUTED), lw=1.8, marker="o", ms=3.4, ls=(0, (4, 2)) if temp else "-", label=label)
                 for k in rested:
-                    ax.plot(x[k], ys[k], marker="o", ms=6, mfc=pwc.SURFACE, mec=COLORS[c], mew=1.5, ls="none")
+                    ax.plot(x[k], ys[k], marker="o", ms=6, mfc=pwc.SURFACE, mec=COLORS.get(c, pwc.MUTED), mew=1.5, ls="none")
                 last = max((k for k, v in enumerate(ys) if not math.isnan(v)), default=None)
                 if last is not None and not chips[c]["pilot"]:       # 잘린 파일럿 선은 범례로만 — 끝 라벨이 다른 선 위에 얹힌다
                     ends.setdefault((i, j), []).append((x[last], ys[last], c))

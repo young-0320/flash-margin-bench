@@ -17,6 +17,7 @@ import glob
 import json
 import math
 import re
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -26,6 +27,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt                              # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wear_checkpoint_csv as wcc                           # noqa: E402
+
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 CURVES_DIR = REPO / "docs" / "results" / "data" / "wear_curves"
 ROOM_FAST = ("chip01", "chip04", "chip09")                 # 상온 빠른 무리 교정 칩
@@ -230,13 +234,15 @@ def main(argv=None):
                "erase_us_max", "program_us_p50", "program_us_p99", "program_us_max", "cycle_s_p50", "recenter_steps",
                "temp_wear_c", "temp_prep_c", "temp_sweep_c", "sweep_batch", "wear_session", "note"]
     crows = []
-    new = [k for k in sw if "20260930" in k]                              # x=0 — 보드 A 상온 newchip
-    if new:
-        s0 = sw[new[0]]
+    wear_start = datetime.fromtimestamp(int(Path(a.sessions[0]).name), timezone.utc)
+    x0 = wcc.pick_x0(a.chip, [s for s in wcc.session_logs(a.chip, REPO / "data") if s["t"] < wear_start],
+                     warn=lambda m: print(m, file=sys.stderr))         # x=0 — 상온 newchip (상온 칩 표와 같은 규칙)
+    if x0:
+        s0 = sw.get(x0["sweep"], {})
         crows.append({"cycle": 0, "mhz": 25, "width_1e2_ps": s0.get("w2"), "width_1e3_ps": s0.get("w3"),
-                      "width_1e4_ps": s0.get("w4"), "floor_ber": s0.get("floor"), "erase_us_p50": int(fresh[a.chip]),
+                      "width_1e4_ps": s0.get("w4"), "floor_ber": s0.get("floor"), "erase_us_p50": wcc.med(x0["erase"]),
                       "recenter_steps": s0.get("recenter", ""), "sweep_batch": s0.get("batch", ""),
-                      "note": "x=0 신품 — newchip prep 소거 n=128 (집계표 §1). 보드 A · 상온 — 마모 리그(보드 B · 65°C)와 다름"})
+                      "note": f"x=0 신품 — newchip prep 소거 n={len(x0['erase'])} (집계표 §1). 상온 newchip — 마모 온도·리그와 다를 수 있다"})
     for cyc in sorted(ck):
         r, s = ck[cyc], sw.get(ck[cyc]["sweep_csv"], {})
         crows.append({"cycle": cyc, "mhz": int(r["mhz"]), "width_1e2_ps": s.get("w2"), "width_1e3_ps": s.get("w3"),

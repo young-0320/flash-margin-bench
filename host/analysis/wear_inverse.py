@@ -37,7 +37,7 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_*_2026-09.csv")
+CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv")   # 교정 = 접미사 없는 이름 (_65C · _ali · _nocal 은 밖)
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00

@@ -297,6 +297,11 @@ BER 이 0.001 → 0.25 로 뛰는 것은 물리적으로 불가능하고, 캡처
 `docs/results/data/wear_curves/wear_curves_2026-09.md` —
 `uv run python host/analysis/wear_curves.py --chip chip04 data/wear/<세션> ... [--drop-cycles A-B]`
 
+관련: **PE 종료 뒤 기계적 갱신** (워크플로 13) — 1단계는 `build/pe_end/<chip>/` 에만 쓰고(raw 를 `data/` 로 · 체크포인트 CSV · 1k 곡선 ·
+현장 역산), 훑어본 뒤 `--promote` 가 `docs/results/` 로 옮기고 칩별 곡선 그림·한눈 표를 다시 뽑는다. 옵션이 없으면 상온·교정에 넣는다 —
+`uv run python host/analysis/pe_end.py --chip chipNN [--no-calib | --temp] [--drop-cycles A-B ...] [--from <보드 B 묶음>]` ·
+`uv run python host/analysis/pe_end.py --chip chipNN --promote [--overwrite]`
+
 관련: 수명 역산 1차 모델 — 개봉 prep 로그 → 마모 섹터의 누적 P/E 구간(MAP · 68% · 95%)과 판정(신품 · 저마모 · 중마모 · 고마모 — 정격 대비 1·20·60%). 화면은 시연용, `--out` 기록은 블라인드 형식. `--loco` 는 모의 블라인드 —
 `uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [--scale ms|ratio]` · `uv run python host/analysis/wear_inverse.py --loco`
 
