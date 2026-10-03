@@ -31,6 +31,7 @@ PLOTS = REPO / "docs" / "results" / "plots"                 # 표 문서(data/we
 FAST_US = 40_000                                            # 신품 소거 40ms 미만 = 빠른 무리 (S-1 §15)
 COLORS = {**pwc.CHIP_COLORS, "chip17": "#4a3aa7", "chip12": "#008300"}   # 칸마다 --pairs all 검증 통과 (빠른 4색 · 느린 3색)
 H1_PS = 42                                                  # S-1 §15 H1′ — 체크포인트 100 대비 3σ
+SEPARATE = {"chip12": "구매처 미검증 — 같은 칩으로 보지 않는다, 로그 48 [D48-77]"}   # 무리에 넣지 않고 표·그림에서 뺀다
 
 
 def load(pattern=TABLES):
@@ -38,6 +39,8 @@ def load(pattern=TABLES):
     out = {}
     for path in sorted(glob.glob(pattern)):
         chip = re.search(r"(chip\d+)", Path(path).name).group(1)
+        if chip in SEPARATE:
+            continue
         rows, temps = {}, []
         with open(path, newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):
@@ -112,7 +115,8 @@ def build(chips, fresh, title):
            "- **신품 행**: 집계표 §1 (newchip — 다른 날·다른 장착). 소거는 prep 의 섹터 32-127 중앙값이라 마모 루프와 재는 자리가 다르고,",
            "  프로그램은 눈금이 달라(PRBS prep) 비워 둔다. 폭의 전후 비교는 체크포인트 100 기준이다(S-1 §15 H1′)",
            "- **열**: 빠른 무리(신품 소거 40ms 미만) → 느린 무리 → 온도 칩. 빈 칸은 아직 없는 점, `결측` 은 호스트가 놓쳐 못 잰 점,",
-           "  `[n]` 은 아래 주", ""]
+           "  `[n]` 은 아래 주",
+           "- **뺀 칩**: " + " · ".join(f"{c} ({why})" for c, why in SEPARATE.items()) + " — 칩별 수치 문서에만 둔다", ""]
     out += figures(chips)
     for title_, key, scale, fmt in (("욕조 폭 (25MHz · BER 10⁻² · ps)", "width_1e2_ps", 1, "{:,.1f}"),
                                     ("소거 p50 (ms)", "erase_us_p50", 1e3, "{:.1f}"),
