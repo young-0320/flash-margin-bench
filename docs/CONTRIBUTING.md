@@ -73,7 +73,7 @@ repo/flash-margin-bench/
 | `ps/`               | Zynq ARM 코어에서 도는 베어메탈 C + vitis tcl. UART 명령 서버, 온도 PID, JEDEC ID 식별. "PS는 얇게" 원칙에 따라 최소 로직만. vitis tcl이 여기 있는 이유: vivado의 출력(.xsa)을 소비하는 별도 공정이고 소유자가 다르므로`fpga/`가 아니다.                                                                                                        |
 | `host/`             | 호스트 PC에서 도는 Python. 무거운 로직 전부, 코드량 최대 영역.                                                                                                                                                                                                                                                                                    |
 | `host/capture/`     | UART 스윕 스트림 → 계약 §6 CSV (`sweep_uart_capture.py`) + 등록부 파서(`chip_registry.py`). **계약 §6이 바뀌면 바뀐다** — 열·파일명·`_invalid`·생성 거부 규칙이 여기 있다. 모든 스윕 경로가 이 파일을 지난다.                                                                                                                  |
-| `host/run/`         | 실험 절차 래퍼 —`run_sweep_chip.py`(prep→UID→스윕 ×N), 이후 `run_newchip.py`·`run_wear.py`. **실험 절차가 바뀌면 바뀐다** (반복·재장착·칩 순회). 캡처를 import 해 쓰며 `ps/scripts/*.tcl`을 호출한다. 이름은 자기가 만드는 산출물을 따른다(`run_sweep_chip` → `sweep_chip*`). 종전 `sweep_runner` 항목은 여기로 이관. |
+| `host/run/`         | 실험 절차 래퍼 —`run_sweep_chip.py`(prep→UID→스윕 ×N) · `run_wear.py`(P/E 마모). 다칩 배치 `run_newchip.py` 는 미구현. **실험 절차가 바뀌면 바뀐다** (반복·재장착·칩 순회). 캡처를 import 해 쓰며 `ps/scripts/*.tcl`을 호출한다. 이름은 자기가 만드는 산출물을 따른다(`run_sweep_chip` → `sweep_chip*`). 종전 `sweep_runner` 항목은 여기로 이관. |
 | `host/analysis/`    | 몬테카를로, 교정 곡선 구축, 오차 정량화 (CSV → 수치. 하드웨어를 모른다).                                                                                                                                                                                                                                                                         |
 | `host/tests/`       | 블랙박스 TB — `docs/spec/s4.blackbox_tb.md` 의 채점표를 pytest + Hypothesis 로 실행한다. 가짜 P/E 엔진도 여기 둔다: 흉내 내는 대상은 엔진(박지민 영역)이지만 **쓰는 쪽이 이 TB 뿐**이다. 엔진 스펙이 확정되기 전에 커밋되는 것이 이 폴더의 성립 조건이다(`[D41-1]`). |
 | `host/viz/`         | plot_bathtub/shmoo, chipdb(칩 이력 DB).                                                                                                                                                                                                                                                                                                           |
@@ -110,6 +110,19 @@ uv run python host/analysis/bathtub_analysis.py --selftest   # 실행은 uv run 
 4. 테스트 벤치의 파일 이름은 tb_로 시작한다 (예: `tb_full_adder.v`).
 
 ## 3. Git 사용법
+
+### **처음 한 번**
+
+Git 설치는 https://velog.io/@young-0320/개발-환경-설정-3-Git-설치Windows 참고. 커밋 기록에 남을 이름 · 이메일을 등록하고 레포를 받는다.
+
+```bash
+git config --global user.name "본인이름"
+git config --global user.email "깃허브 이메일"
+git clone https://github.com/young-0320/flash-margin-bench
+cd flash-margin-bench
+```
+
+`git push -u origin main` 을 한 번 해 두면 그 뒤로는 `git push` · `git pull` 만 쳐도 된다. 커밋 히스토리는 `git log --oneline` 으로 한 줄씩 본다.
 
 ### **기본 원칙**
 
