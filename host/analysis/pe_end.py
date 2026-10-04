@@ -31,6 +31,8 @@ ANALYSIS = REPO / "host" / "analysis"
 TEMP_LOGS = lambda chip: (f"temp_{chip}_*T??????Z.csv", f"temp_{chip}_*T??????Z_events.txt")   # temp_logger.py 원본만 — 요약 산출물(temp_<chip>_hourly.csv 등)은 아니다
 TABLE_MD = "wear_checkpoint_table_2026-10.md"               # 한눈 표 — 이름은 승격본 그대로
 TABLE_PNG = "wear_checkpoint_width_program_2026-10.png"
+RATIO_PNG = "wear_ratio_curves_calib.png"                   # 교정 칩 배율 겹침 — 교정 칩이 늘 때마다 다시 그린다
+RATIO_MARK = (1.63, "chip06 관측 (블라인드, 신품의 1.63배)")    # 10/2 그림과 같은 관측선
 HUMAN = ["8·9 해석 문서 docs/results/wear/<축>_<chip>.md 와 results README 해석 목록 한 줄",
          "3 수치 md (같은 이름 .md) — 표·세션·재현 명령, 사건 각주 (inverse.txt 는 현장 역산 절 재료)",
          "11 등록부 용도 칸 · 13 S-1 §15 판정 · 14 보고서 재료 · 15 로그 48 · 16 다른 해석 문서의 상호참조",
@@ -85,7 +87,7 @@ def copy_raw(chip, sessions, file_roots, data, deep=False):
     return copied
 
 
-def last_checkpoint(sessions):
+def checkpoints(sessions):
     rows = {}
     for s in sessions:
         p = Path(s) / "checkpoints.csv"
@@ -93,7 +95,7 @@ def last_checkpoint(sessions):
             rows.update({int(r["cycle"]): r for r in csv.DictReader(p.open(newline="", encoding="utf-8"))})
     if not rows:
         raise SystemExit("C 행이 없다 — 체크포인트를 하나도 재지 않은 세션들이다")
-    return rows[max(rows)]
+    return [rows[c] for c in sorted(rows)]
 
 
 def month_of(sweep_csv):
@@ -145,7 +147,8 @@ def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
     if out.exists():
         shutil.rmtree(out)
     (out / "tmp").mkdir(parents=True)
-    last = last_checkpoint(sessions)
+    cps = checkpoints(sessions)
+    last = cps[-1]
     ym = month_of(last["sweep_csv"])
     curves = out / "tmp" / "wear_curves.csv"
     run(ANALYSIS / "wear_curves.py", "--chip", chip, *sessions, *[f"--drop-cycles={d}" for d in drops], "-o", curves)
@@ -176,6 +179,12 @@ def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
     if after:
         log = glob.glob(str(data / f"session_{chip}_*_{after[-1]['batch']}.log"))[0]
         run(ANALYSIS / "wear_inverse.py", log, out=out / "inverse.txt")
+    for r in (cps[0], cps[-1]):                             # 마진 전후 한 쌍 — 첫 · 마지막 체크포인트의 욕조 그림
+        png = root / "build" / "plots" / f"bathtub_{r['sweep_csv'][:-4]}.png"
+        if not png.exists():                                # 보드 B 묶음 등 — 같은 CSV 에서 다시 그린다
+            run(ANALYSIS / "bathtub_analysis.py", data / r["sweep_csv"])
+        shutil.copy2(png, out / png.name)
+        files[png.name] = "plots"
     shutil.rmtree(out / "tmp")
 
     calib = not temp and not no_calib
@@ -228,6 +237,8 @@ def promote(chip, overwrite=False, root=REPO):
         run(ANALYSIS / "plot_wear_curves.py", "--per-chip", out / "plots")
         for p in sorted((out / "plots").glob("wear_curves_*.png")):
             put(p, res / "plots" / p.name)
+        run(ANALYSIS / "plot_wear_curves.py", "--ratio", "--mark", RATIO_MARK[0], "--mark-label", RATIO_MARK[1], "-o", out / RATIO_PNG)
+        put(out / RATIO_PNG, res / "plots" / RATIO_PNG)       # 현행 교정 묶음 — wear_ratio_curves_2026-10.png 는 10/2 교정 5칩 기록으로 둔다
     run(ANALYSIS / "wear_checkpoint_table.py", "--plot", out / TABLE_PNG)
     put(out / TABLE_PNG, res / "plots" / TABLE_PNG)         # 표 md 는 plots/ 를 보고 그림 링크를 단다 — 그림 먼저
     run(ANALYSIS / "wear_checkpoint_table.py", "-o", out / TABLE_MD)

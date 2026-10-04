@@ -126,7 +126,7 @@ def plot_chips(curves, out_dir):
 
 
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
-RATIO_PANELS = (("빠른 무리 (신품 40ms 미만)", ("chip04", "chip01", "chip09")), ("느린 무리 (신품 40ms 이상)", ("chip03", "chip07")))
+RATIO_TITLES = {"fast": "빠른 무리 (신품 40ms 미만)", "slow": "느린 무리 (신품 40ms 이상)"}
 def group(chip):
     """신품 소거(집계표) 40ms 미만 = fast (S-1 §15) — 새 교정 칩도 사전 없이 그린다."""
     with open(SURVEY_CSV, newline="", encoding="utf-8") as f:
@@ -134,7 +134,8 @@ def group(chip):
     return "fast" if us[-1] < 40_000 else "slow"
 
 
-CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4"}
+CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4",
+               "chip18": "#006300"}                            # 칸마다 --pairs all 통과 (빠른 칸 4색 · 2026-10-04)
 
 
 def plot_ratio(curves, out_png, xmax=100, mark=None):
@@ -148,7 +149,8 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
     plt.rcParams["font.family"] = "Noto Sans CJK JP"
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True, dpi=160)
     fig.set_facecolor(SURFACE)
-    for ax, (title, chips) in zip(axes, RATIO_PANELS):
+    panels = [(RATIO_TITLES[g], sorted((c for c in curves if group(c) == g), key=lambda c: -fresh[c])) for g in ("fast", "slow")]
+    for ax, (title, chips) in zip(axes, panels):                 # 칸 = 교정 glob 의 칩을 무리별로, 신품 소거 내림차순
         ax.set_facecolor(SURFACE)
         ax.grid(True, color=GRID, lw=0.7)
         ax.set_axisbelow(True)
