@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt                              # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv")   # 교정 = 접미사 없는 이름 (_65C · _ali · _nocal 은 밖)
 LAYOUT = (("chip01", "chip04"), ("chip03", "chip07"))      # 기본 그림(2×2)은 9월 4칩 그대로. 그 뒤 칩은 --per-chip 에
-GROUP = {"chip01": "fast", "chip04": "fast", "chip09": "fast", "chip03": "slow", "chip07": "slow"}
 BIN = 1000
 STEMS = {}                                                  # chip → 교정 CSV 이름 (칩별 그림 이름의 짝)
 
@@ -79,7 +78,7 @@ def panel(ax, chip, sectors):
         ax.plot(x, mid, color=SECTOR_COLORS[s], lw=1.4, label=f"sector {s}")
     ax.set_xlim(0, max(b for pts in sectors.values() for b, *_ in pts) / 1e3 + 1)
     ax.set_ylim(bottom=0)
-    ax.set_title(f"{chip}  ({GROUP[chip]} group)", color=INK, fontsize=10, loc="left")
+    ax.set_title(f"{chip}  ({group(chip)} group)", color=INK, fontsize=10, loc="left")
 
 
 def plot(curves, out_png):
@@ -128,6 +127,13 @@ def plot_chips(curves, out_dir):
 
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 RATIO_PANELS = (("빠른 무리 (신품 40ms 미만)", ("chip04", "chip01", "chip09")), ("느린 무리 (신품 40ms 이상)", ("chip03", "chip07")))
+def group(chip):
+    """신품 소거(집계표) 40ms 미만 = fast (S-1 §15) — 새 교정 칩도 사전 없이 그린다."""
+    with open(SURVEY_CSV, newline="", encoding="utf-8") as f:
+        us = [float(r["erase_us_median"]) for r in csv.DictReader(f) if r["label"] == chip and r["erase_us_median"]]
+    return "fast" if us[-1] < 40_000 else "slow"
+
+
 CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4"}
 
 
