@@ -14,7 +14,7 @@
   세션 로그 `data/session_chip18_D1652C218B613936_<batch>.log` (9/30 신품 · 체크포인트 13점 · 10/4 newchip). 장부 행은 `docs/chip_pe.md`
 - **짝 그림**: 마진 전후 한 쌍 — [`../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T010959Z.png`](../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T010959Z.png)
   (체크포인트 100) · [`../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T191723Z.png`](../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T191723Z.png) (100,000).
-  칩별 섹터 곡선 [`../../plots/wear_curves_chip18_2026-10.png`](../../plots/wear_curves_chip18_2026-10.png) · 교정 칩 배율 겹침 [`../../plots/wear_ratio_curves_calib.png`](../../plots/wear_ratio_curves_calib.png)
+  칩별 섹터 곡선 [`../../plots/wear_curves_chip18_2026-10.png`](../../plots/wear_curves_chip18_2026-10.png) · 교정 칩 배율 겹침 [`../../plots/wear_ratio_curves_2026-10-04.png`](../../plots/wear_ratio_curves_2026-10-04.png)
 - **생산**: `host/analysis/pe_end.py --chip chip18` (1단계) → `--promote` (로그 48 §37). 이 md 와 CSV note 는 사람이 썼다
 
 ## 1. 25MHz 체크포인트
@@ -127,6 +127,7 @@ chip18 자신의 LOCO MAP 은 정답의 약 절반이다 — 40,000 에서 23,00
 
 - 포함률은 R 에 단조롭지 않다(1.8 → 1.7 에서 68% 가 50 → 51 로 오르고 95% 는 70 → 68 로 내린다). 한 점이 1.4%p 이고, 70점은 6칩을 체크포인트마다
   다시 잰 것이라 서로 독립이 아니다
+- 판단(2026-10-04, 로그 48 [D48-86]): 이 단계의 적정 R 은 1.6. 교정 칩이 계속 늘어 모델(기본 2.0)에는 반영하지 않는다
 
 ## 재현
 
