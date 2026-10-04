@@ -12,6 +12,9 @@
 - **x=0 행**: 2026-09-30 보드 A newchip (집계표 §1) — 신품 배치 때의 장착이라 체크포인트 100 과 같은 장착이 아니다
 - **원본**: 마모 루프 `data/wear/1790989701/` · 스윕 `data/sweep_chip18_D1652C218B613936_<stamp>.csv`(+`_reads`, `.analysis.json`) ·
   세션 로그 `data/session_chip18_D1652C218B613936_<batch>.log` (9/30 신품 · 체크포인트 13점 · 10/4 newchip). 장부 행은 `docs/chip_pe.md`
+- **짝 그림**: 마진 전후 한 쌍 — [`../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T010959Z.png`](../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T010959Z.png)
+  (체크포인트 100) · [`../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T191723Z.png`](../../plots/bathtub_sweep_chip18_D1652C218B613936_20261003T191723Z.png) (100,000).
+  칩별 섹터 곡선 [`../../plots/wear_curves_chip18_2026-10.png`](../../plots/wear_curves_chip18_2026-10.png) · 교정 칩 배율 겹침 [`../../plots/wear_ratio_curves_calib.png`](../../plots/wear_ratio_curves_calib.png)
 - **생산**: `host/analysis/pe_end.py --chip chip18` (1단계) → `--promote` (로그 48 §37). 이 md 와 CSV note 는 사람이 썼다
 
 ## 1. 25MHz 체크포인트
