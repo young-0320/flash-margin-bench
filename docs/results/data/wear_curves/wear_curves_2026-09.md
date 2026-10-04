@@ -2,7 +2,7 @@
 
 > 수치와 규칙만 둔다. 모델과 판정은 역산 해석 문서(작성 예정)에서 한다.
 
-- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07 · 교정 chip09(0 → 100k)의 마모 루프 A 행(사이클 × 섹터 7개의
+- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07 · 교정 chip09 · 새 배치 chip18(0 → 100k, 2026-10-04)의 마모 루프 A 행(사이클 × 섹터 7개의
   소거·프로그램 시간)을 **1,000사이클 구간 × 섹터**로 묶은 분위수 표. 칩당 CSV 한 장 `wear_curves_<chip>_2026-09.csv`.
   수명 역산 모델(S-1 §15 두 층 역산)이 읽는 유일한 교정 입력이다 — A.txt(666MB, 리포 밖)를 다시 열지 않는다
 - **왜 이 묶음인가**: 결과 문서 네 편의 §3-§5 가 같은 묶음(`(cycle−1)//1000` 구간 · 섹터 중앙값)으로 계단·프로그램 상승을
@@ -11,7 +11,7 @@
 - **생산**: `host/analysis/wear_curves.py` → `build/data/wear_curves_<chip>.csv`. 사람이 이 폴더(`docs/results/data/wear_curves/`)로 옮기며 이름에 `_2026-09` 를 붙인다.
   **2026-10-03 부터 교정 = 접미사 없는 이름** `wear_curves_<chip>_<YYYY-MM>.csv`(달은 마지막 체크포인트) — `wear_inverse.py`·`plot_wear_curves.py` 의 glob 이
   `wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv` 다. 교정 밖은 접미사(`_65C` 온도 · `_ali` · `_nocal`). `host/analysis/pe_end.py` 가 이름을 붙인다(워크플로 13)
-- **짝 그림**: `../../plots/wear_curves_<chip>_2026-09.png` — 교정 칩마다 한 장(2026-10-02 부터 · 지금 chip01·03·04·07·09), 섹터 0-6 의 소거
+- **짝 그림**: `../../plots/wear_curves_<chip>_<YYYY-MM>.png` — 교정 칩마다 한 장(2026-10-02 부터 · 지금 chip01·03·04·07·09·18), 섹터 0-6 의 소거
   p50 선과 p10-p90 띠. y 는 모든 장이 같다(전 칩 p90 최대) — 나란히 놓으면 무리 사이 절대값 차이가 보인다. x 는 칩별(chip01 만 300k).
   표에 없는 구간은 선을 끊었다. 9월 4칩을 한 장에 담은 2×2 `../../plots/wear_curves_2026-09.png` 는 그때의 기록으로 둔다(10/2 보고서 재료가 가리킨다)
 - **짝 그림 2**: `../../plots/wear_ratio_curves_2026-10.png` — 교정 5칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸, 0-100k. 빠른 칸의 점선은
@@ -45,6 +45,7 @@
 | chip03 | `1790408609` | 없음 | 정상 종료 (`../wear/wear_endurance_chip03_2026-09.md`) |
 | chip04 | `1790423530` · `1790482991` · `1790491294` | **66,654-66,671** | SPI 접촉 불량 — 소거 8µs · 프로그램 130µs 행 120개. 66,601-66,653 은 두 번 돌아 재개 세션 값 (`../wear/wear_endurance_chip04_2026-09.md` §8) |
 | chip07 | `1790494073` · `1790562456` · `1790643103` | 없음 | 52,671-60,000 · 76,170-80,000 은 호스트 사망으로 A 행 자체가 없다 → 그 구간은 표에 없거나 `n` 이 작다 (`../wear/wear_endurance_chip07_2026-09.md` §6) |
+| chip18 | `1790989701` | 없음 | 끊김 · 재개 없는 첫 종단 (`../wear/wear_endurance_chip18_2026-10.md`) |
 
 ## 재현
 
@@ -54,6 +55,7 @@ uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
 uv run python host/analysis/wear_curves.py --chip chip09 data/wear/1790786787 -o docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
+uv run python host/analysis/pe_end.py --chip chip18                       # → build/pe_end/chip18/wear_curves_chip18_2026-10.csv, --promote 로 승격
 uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 CSV 마다 → build/plots/wear_curves_<chip>_2026-09.png
 uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plots/wear_curves_2026-09.png
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
@@ -70,3 +72,4 @@ uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 da
 | chip04 | 699,874 (cycle 1-100,000) | 0 | 1개: 66,001-67,000 (섹터당 n 982) | 2026-09-30 |
 | chip07 | 621,872 (cycle 1-100,000) | 0 | 2개: 52,001-53,000 (n 670, 섹터 6 669) · 76,001-77,000 (n 169). 53,001-60,000 · 77,001-80,000 구간 10개는 표에 없음 | 2026-09-30 |
 | chip09 | 700,000 (cycle 1-100,000) | 0 | 없음. 파일 이름의 2026-09 는 교정 묶음 이름(마모는 2026-09-30 - 10-01) | 2026-10-01 |
+| chip18 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-10-04 |
