@@ -2,7 +2,8 @@
 
 - **작성일**: 2026-10-01 (개봉 당일) · **수치**: [`data/blind_chip06_2026-10.md`](data/blind_chip06_2026-10.md) — 표를 다시 싣지 않고 거기를 인용한다
 - **사전 등록**: `docs/spec/s1.wear_bench_spec.md` §15 (2026-09-30 · 10-01 추기) · 로그 48 [D48-47]-[D48-61]
-- **그림**: [`plots/wear_ratio_curves_2026-10.png`](plots/wear_ratio_curves_2026-10.png) — chip06 관측선(1.63배)이 교정 곡선과 만나는 자리
+- **그림**: [`plots/wear_ratio_curves_2026-10-04.png`](plots/wear_ratio_curves_2026-10-04.png) — chip06 관측선(1.63배)이 교정 곡선과 만나는 자리. 판정 때의 교정 5칩판(10/2)은
+  지웠고, 이 그림은 판정 뒤 교정에 든 chip18 까지 그린 6칩판이다
 
 ## 결론
 

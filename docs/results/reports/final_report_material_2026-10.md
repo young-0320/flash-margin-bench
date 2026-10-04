@@ -107,6 +107,6 @@ chip17(빠른 무리, 새 로트) 65°C 종단 10만 회 — 기술적 한계로
 |---|---|---|
 | 욕조 곡선 (신품) | `docs/results/plots/bathtub_*` | 계측기 원리 |
 | 노화 곡선 4칩 (섹터별) | `docs/results/plots/wear_curves_2026-09.png` | 마모 실험 |
-| **노화 배율 곡선 5칩 + chip06 관측선** | `docs/results/plots/wear_ratio_curves_2026-10.png` | 같은 무리 안 속도 차이 · 블라인드 범위가 넓은 이유 |
+| **노화 배율 곡선 5칩 + chip06 관측선** | `docs/results/plots/wear_ratio_curves_2026-10-04.png` (10/2 5칩판은 지움 — 이 그림은 chip18 까지 6칩) | 같은 무리 안 속도 차이 · 블라인드 범위가 넓은 이유 |
 | **합성 복원** | `docs/results/plots/synthetic_recovery_2026-10.png` | 모델 확률의 정직성 · 우도 수정을 되돌린 근거 |
 | 몬테카를로 | `docs/results/plots/monte_carlo_*` | 알고리즘 사전 검증 |

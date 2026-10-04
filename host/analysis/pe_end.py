@@ -238,7 +238,7 @@ def promote(chip, overwrite=False, root=REPO):
         run(ANALYSIS / "plot_wear_curves.py", "--per-chip", out / "plots")
         for p in sorted((out / "plots").glob("wear_curves_*.png")):
             put(p, res / "plots" / p.name)
-        ratio = RATIO_PNG()                                 # 가장 최근 날짜가 현행 — wear_ratio_curves_2026-10.png 는 10/2 교정 5칩 기록
+        ratio = RATIO_PNG()                                 # 가장 최근 날짜가 현행
         run(ANALYSIS / "plot_wear_curves.py", "--ratio", "--mark", RATIO_MARK[0], "--mark-label", RATIO_MARK[1], "-o", out / ratio)
         put(out / ratio, res / "plots" / ratio)
     run(ANALYSIS / "wear_checkpoint_table.py", "--plot", out / TABLE_PNG)

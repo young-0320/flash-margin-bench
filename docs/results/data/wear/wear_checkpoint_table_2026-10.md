@@ -15,7 +15,7 @@
 | 무엇 | 그림 |
 |---|---|
 | 폭 변화 · 프로그램 — 칩 간 (이 표의 그림) | [wear_checkpoint_width_program_2026-10.png](../../plots/wear_checkpoint_width_program_2026-10.png) |
-| 소거 — 칩 겹침 (신품 대비 배율) | [wear_ratio_curves_2026-10-04.png](../../plots/wear_ratio_curves_2026-10-04.png) · [wear_ratio_curves_2026-10.png](../../plots/wear_ratio_curves_2026-10.png) |
+| 소거 — 칩 겹침 (신품 대비 배율) | [wear_ratio_curves_2026-10-04.png](../../plots/wear_ratio_curves_2026-10-04.png) |
 | 소거 — 칩별 섹터 곡선 (1k 구간) | [chip01](../../plots/wear_curves_chip01_2026-09.png) · [chip03](../../plots/wear_curves_chip03_2026-09.png) · [chip04](../../plots/wear_curves_chip04_2026-09.png) · [chip07](../../plots/wear_curves_chip07_2026-09.png) · [chip09](../../plots/wear_curves_chip09_2026-09.png) · [chip18](../../plots/wear_curves_chip18_2026-10.png) |
 | chip17 의 그림 | [temp_chip17_timeline_2026-10.png](../../plots/temp_chip17_timeline_2026-10.png) · [wear_temp_chip17_2026-10.png](../../plots/wear_temp_chip17_2026-10.png) |
 
