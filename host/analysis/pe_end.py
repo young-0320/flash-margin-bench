@@ -21,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -31,7 +32,7 @@ ANALYSIS = REPO / "host" / "analysis"
 TEMP_LOGS = lambda chip: (f"temp_{chip}_*T??????Z.csv", f"temp_{chip}_*T??????Z_events.txt")   # temp_logger.py 원본만 — 요약 산출물(temp_<chip>_hourly.csv 등)은 아니다
 TABLE_MD = "wear_checkpoint_table_2026-10.md"               # 한눈 표 — 이름은 승격본 그대로
 TABLE_PNG = "wear_checkpoint_width_program_2026-10.png"
-RATIO_PNG = "wear_ratio_curves_calib.png"                   # 교정 칩 배율 겹침 — 교정 칩이 늘 때마다 다시 그린다
+RATIO_PNG = lambda: f"wear_ratio_curves_{datetime.now():%Y-%m-%d}.png"   # 교정 칩 배율 겹침 — 교정이 바뀐 날짜로 한 장씩 (그날의 교정 기록)
 RATIO_MARK = (1.63, "chip06 관측 (블라인드, 신품의 1.63배)")    # 10/2 그림과 같은 관측선
 HUMAN = ["8·9 해석 문서 docs/results/wear/<축>_<chip>.md 와 results README 해석 목록 한 줄",
          "3 수치 md (같은 이름 .md) — 표·세션·재현 명령, 사건 각주 (inverse.txt 는 현장 역산 절 재료)",
@@ -237,8 +238,9 @@ def promote(chip, overwrite=False, root=REPO):
         run(ANALYSIS / "plot_wear_curves.py", "--per-chip", out / "plots")
         for p in sorted((out / "plots").glob("wear_curves_*.png")):
             put(p, res / "plots" / p.name)
-        run(ANALYSIS / "plot_wear_curves.py", "--ratio", "--mark", RATIO_MARK[0], "--mark-label", RATIO_MARK[1], "-o", out / RATIO_PNG)
-        put(out / RATIO_PNG, res / "plots" / RATIO_PNG)       # 현행 교정 묶음 — wear_ratio_curves_2026-10.png 는 10/2 교정 5칩 기록으로 둔다
+        ratio = RATIO_PNG()                                 # 가장 최근 날짜가 현행 — wear_ratio_curves_2026-10.png 는 10/2 교정 5칩 기록
+        run(ANALYSIS / "plot_wear_curves.py", "--ratio", "--mark", RATIO_MARK[0], "--mark-label", RATIO_MARK[1], "-o", out / ratio)
+        put(out / ratio, res / "plots" / ratio)
     run(ANALYSIS / "wear_checkpoint_table.py", "--plot", out / TABLE_PNG)
     put(out / TABLE_PNG, res / "plots" / TABLE_PNG)         # 표 md 는 plots/ 를 보고 그림 링크를 단다 — 그림 먼저
     run(ANALYSIS / "wear_checkpoint_table.py", "-o", out / TABLE_MD)

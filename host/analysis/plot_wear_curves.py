@@ -150,6 +150,9 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True, dpi=160)
     fig.set_facecolor(SURFACE)
     panels = [(RATIO_TITLES[g], sorted((c for c in curves if group(c) == g), key=lambda c: -fresh[c])) for g in ("fast", "slow")]
+    new = sorted(c for c in curves if c not in CHIP_COLORS)
+    if new:
+        print(f"색 미지정 {', '.join(new)} — 회색으로 그린다. CHIP_COLORS 에 넣고 칸마다 --pairs all 검증 뒤 다시 그린다")
     for ax, (title, chips) in zip(axes, panels):                 # 칸 = 교정 glob 의 칩을 무리별로, 신품 소거 내림차순
         ax.set_facecolor(SURFACE)
         ax.grid(True, color=GRID, lw=0.7)
@@ -169,8 +172,8 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
                         by[b].append(mid / fresh[chip])
             x = [(b + BIN / 2) / 1e3 for b in bins]
             med = [sorted(by[b])[len(by[b]) // 2] for b in bins]
-            ax.fill_between(x, [min(by[b]) for b in bins], [max(by[b]) for b in bins], color=CHIP_COLORS[chip], alpha=0.12, lw=0)
-            ax.plot(x, med, color=CHIP_COLORS[chip], lw=2, label=f"{chip} (신품 {fresh[chip]:.1f}ms)")
+            ax.fill_between(x, [min(by[b]) for b in bins], [max(by[b]) for b in bins], color=CHIP_COLORS.get(chip, MUTED), alpha=0.12, lw=0)
+            ax.plot(x, med, color=CHIP_COLORS.get(chip, MUTED), lw=2, label=f"{chip} (신품 {fresh[chip]:.1f}ms)")
             ax.annotate(chip, (x[-1], med[-1]), xytext=(4, 0), textcoords="offset points", va="center", fontsize=8.5, color=INK2)
         if mark and "빠른" in title:
             ax.axhline(mark[0], color=MUTED, lw=1.2, ls=(0, (4, 3)))
