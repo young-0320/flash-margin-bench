@@ -18,6 +18,7 @@
   | CSV 스키마·무효 런 정의 | `docs/interface/contract.md` §6 |
   | 신품 전수 측정 절차 | `docs/spec/s2.newchip_protocol.md` |
   | 마모 벤치 절차·인수 기준 | `docs/spec/s1.wear_bench_spec.md` |
+  | 수명 역산 모델 판별 사양 | `docs/spec/s5.lifetime_inverse_model.md` |
 
   본 문서는 이들을 **연결만** 한다. 합격 기준·문턱값·시료 배분표를 여기에 복제하지 않는다
   (복제하면 원전과 어긋나는 문서가 하나 더 생긴다).
