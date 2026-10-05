@@ -13,6 +13,7 @@
 | 파일 | 문서 | 판번 | 출처 | 수록일 | 우리가 쓰는 곳 |
 | ---- | ---- | ---- | ---- | ------ | -------------- |
 | `w25q64jv_datasheet_revc.pdf` | W25Q64JV Datasheet (3V 64M-bit Serial Flash) | **Revision C** (2016-06-03) | winbond.com | 2026-07-08 | JEDEC ID·명령셋(0x9F/0x03/0x0B/0x4B)·타이밍(tSE·tPP·tCLQV)·내구성 "Min. 100K per sector"·BP 보호비트 |
+| `w25q64fv_datasheet_revl.pdf` | W25Q64FV Datasheet (3V 64M-bit Serial Flash) — **우리 칩의 실제 세대** | **Revision L** (2013-10-07) | alldatasheet.com 재배포본 (Winbond 원본이 단종으로 안 보여서) | 2026-10-05 | 4KB 섹터 소거 tSE **typ 60ms(끝자리 IG) · 45ms(IQ · IF)** · max 400ms(76쪽) · 페이지 프로그램 tPP typ 0.7 · max 3ms — 기준선 ① 의 데이터시트 기준. 칩 마킹은 `../chip_registry.md` |
 | `zybo_z7_refmanual_rev20180221.pdf` | Zybo Z7 Board Reference Manual (보드 rev.B 대상) | **2018-02-21 개정** | digilent.com | 2026-07-08 | Pmod 종류(JB 고속/JE 200Ω)·핀 배정·JP5 부팅 모드 |
 
 ## 선행 연구 조사 문서
