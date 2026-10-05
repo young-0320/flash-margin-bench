@@ -18,6 +18,8 @@
     reproduce.py                    빌드·검증 전체 (보드 없이)
     host/run/run_sweep_chip.py      실칩 측정 (prep → 스윕 → 분석)
     host/run/run_wear.py            P/E 마모 엔진 (accept · resume · tally-erase · 읽기)
+    host/analysis/pe_end.py         마모가 끝난 칩의 결과 정리 · 승격 (보드 없이, §4)
+    host/analysis/wear_inverse.py   수명 역산 — prep 로그 → 누적 P/E 구간과 판정 (보드 없이, §4)
 
 [중하단]  위 스크립트가 부른다. 직접 칠 일은 드물다 — §4 에 그 드문 경우만
     host/capture/sweep_uart_capture.py   UART → CSV
@@ -42,7 +44,7 @@
 보드가 필요 없다. 새 PC 에서 처음 하거나, 소스를 고친 뒤에 돌린다.
 
 ```bash
-python reproduce.py                    # 전체 11단계 (약 10분)
+python reproduce.py                    # 전체 12단계 (약 10분)
 python reproduce.py --only g3-25       # 한 단계만
 python reproduce.py --only tb wear     # P/E 엔진만 — TB + flash_wear.elf (실칩 전 최소, 약 30초)
 python reproduce.py --vitis-only       # ELF 만 다시 (Vivado 생략)
@@ -57,7 +59,8 @@ python reproduce.py --list             # 단계 목록과 실제 명령
 | `--keep-going`                 | 실패해도 끝까지 — 기본은 첫 실패에서 중단                                    |
 
 기본 단계: `sim · selftest · tb · g0 · g2 · prep · prep-wear · id · wear · g3-25 · g3-45 · g3-75`
-(`prep-wear` = 파일럿 체크포인트용 `build/vitis_prep_0_7` — 2026-09-22 추가)
+(`prep-wear` = 체크포인트용 `build/vitis_prep_0_7` — 2026-09-22 추가. **`flash_prep.c` 가 바뀌었으면 마모 전에
+`--only prep-wear` 를 돌린다** — 안 돌리면 체크포인트만 옛 펌웨어로 돈다, `build_reproduction.md` §3.3)
 선택 단계(`--only` 로만): `jedec · smoke · g0e · g3e-25/45/75`
 
 **읽는 법.** 각 단계는 6겹으로 채점된다 — 종료 코드 · 완료 문구 · 산출물 존재와 갱신 ·
@@ -105,14 +108,14 @@ uv run python host/run/run_sweep_chip.py --mode <newchip|sweep> --mhz <25|45|75>
 | `--port`        | `/dev/ttyUSB1` | Windows 는`COM<N>`                                                                                                        |
 | `--baud`        | 921600           | 호스트 포트 + 펌웨어 양쪽 (xsct 가 ELF 의`g_uart_baud` 를 덮어쓴다). 921600 을 못 받는 PC 는 `115200`                   |
 | `--base-sector` | 0                | 수정안#1 미승인 — 0 만 허용                                                                                                |
-| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(MASK)`. `newchip` 에서만                                                                  |
+| `--blind`       | 꺼짐             | `chip_pe.md` 에 증분 대신 `(MASK)`. `newchip` 에서만. **지금 블라인드 절차는 이 옵션을 쓰지 않는다** — 정답은 칩의 tally 가 쥔다 (S-1 §15) |
 
 N(위상 스텝당 읽기 횟수)은 옵션이 아니다 — 실칩은 **112 고정**. `BEGIN` 의 `n=` 이 다르면 첫 줄에서 중단한다.
 
 ### 상황별
 
 ```bash
-# 신품 첫 투입 (chip05~10) — P/E +1
+# 신품 첫 투입 (새로 온 칩) — P/E +1
 uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25
 
 # 등록된 칩 재측정 — 어느 칩인지는 기계가 안다. P/E 불변
@@ -158,7 +161,7 @@ uv run python host/run/run_wear.py <명령> [옵션…]
 | `accept` (계획 승인 → 마모)                 | 프로그래밍 → UID 대조 → START → 완주 대기 → verdict 9줄 (A1~A7 · C · probe)                                 | `--base-sector` 영역에 `--to` 까지 | 계획 화면에서 사람이 enter 를 쳐야 START 를 보낸다 (`--i-approve-real-pe` 는 그 화면을 건너뛴다)         |
 | `resume`                                     | RESUME → 판정 → BLANK → (잔류 있으면 REERASE) → 채택값 출력.**START는 보내지 않는다**                   | 재소거 때만 섹터 ±1                   | —                                                                                                         |
 | `tally-erase`                                | tally 두 벌(512·1,536) 소거 — 같은 칩으로 0 부터 다시                                                           | 512·1,536 각 +1                       | `--i-approve-tally-erase` + **그 칩의 UID 를 직접 타이핑** + 지우기 전 값을 `chip_pe.md` 에 먼저 |
-| `status` · `tally` · `dump` · `uid` | 읽기                                                                                                              | 0                                      | —                                                                                                         |
+| `status` · `tally` · `dump` · `uid` | 읽기. **엔진이 이미 떠 있을 때만 답한다** — 보드에 아무것도 올리지 않는다                                         | 0                                      | —                                                                                                         |
 | `halt`                                       | 다음 사이클 경계에서 정지. 이어 가려면`accept` (표시값은 tally 에서 읽는다 — 눈금 밖이면 `--cycle <표시값>`) | 0                                      | —                                                                                                         |
 
 | 옵션                                          | 기본                                       | 무엇 / 언제                                                                                                                                                                                                                       |
@@ -199,6 +202,8 @@ uv run python host/run/run_wear.py accept --chip chip01 --sim build/sim/flash_we
     --to 300 --chip-pe /tmp/practice_pe.md --logdir /tmp/practice_logs
 
 # 실칩, 읽기 전용 점검 (P/E 0) — 소켓의 칩·tally 상태
+#   엔진(flash_wear.elf)이 떠 있는 동안에만 쓴다. 전원을 껐다 켰거나 스윕·prep 을 돌린 뒤면 「UID: 응답 없음」 이다 —
+#   그때는 accept 를 친다(엔진을 올리고 UID 를 대조한 뒤 계획 화면에서 멈춘다 · enter 전에는 P/E 0)
 uv run python host/run/run_wear.py uid
 uv run python host/run/run_wear.py tally
 # 공짜 probe — START 없이 BLANK 만. 갓 소거된 7섹터면 program_fail 229376 이 나와야 한다
@@ -229,6 +234,8 @@ uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-e
 `build/logs/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
 동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요 · `measured` 직후/휴지 뒤) · `verdict.txt` ·
 `A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` · `raw.txt` · `commands.txt` · `session.log`.
+체크포인트 prep 의 섹터별 소거 · 프로그램 시간(`#PREP ERASE` · `#PREP PROGRAM`, PRBS 패턴)은 `session.log` 에 원문으로 남는다 —
+`checkpoints.csv` 의 프로그램 시간 칸은 마모 루프(0x00 패턴) 값이라 눈금이 다르다.
 구간마다 **덧붙는다** — 판정(인수 시험 9줄 · 마모 런 8줄, A6 는 인수 시험에서만)도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
 흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `build/` 는 재빌드에 지워지지
 않지만 커밋도 안 되므로 필요하면 `docs/results/` 로 승격한다. 종료 코드 0 = 전부 PASS ·
@@ -242,6 +249,8 @@ uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-e
 | `UID 불일치`                 | 소켓의 칩이`--chip` 과 다르다                                   | 칩 확인. 아무것도 하지 않았다                                                                                    |
 | `엔진이 error 로 부팅했다`   | SPI/JEDEC/UID 실패                                                | 배선·JP5·칩 장착. START 는 안 갔다                                                                             |
 | `엔진이 running 이다`        | 이전 세션이 돌고 있다                                             | `halt` 로 세우거나 끝나기를 기다린다                                                                           |
+| `UID: 응답 없음 (3회)`       | 읽기 명령을 쳤는데 보드에 엔진이 없다 (`raw.txt` 가 0바이트)      | 칩 · 케이블 문제가 아니다. `accept` 로 시작한다                                                                  |
+| 체크포인트 스윕이 `_invalid`  | 921600 에서 CSV 행이 빠졌다 (PC 에 따라)                          | `--sweep-baud 115200`. 흩어져 빠졌거나 뚝 끊겼으면 USB 접촉 — `dmesg` 의 disconnect                            |
 | `링크가 닫혔다 (…)` 로 중단 | USB 가 빠졌고 30초 안에 다시 안 열렸다. 엔진은 혼자 구간을 끝낸다 | `resume --from-session` → 장부 정정 행 → `accept --cycle <채택값>` (빠진 체크포인트는 accept 가 먼저 잰다) |
 | verdict`SKIP  A2`·`A3`    | 구간 도중 링크가 다시 붙었다 — 그 사이 행이 없다                 | 칩이 든 값(A1·A4·A5)이 PASS 면 그대로 간다.`session.log` 에 재접속 기록                                      |
 | verdict`probe` FAIL          | 세는 경로가 죽었다                                                | B 행의 0 을 믿지 않는다. 런북 12 §3.3                                                                           |
@@ -302,8 +311,16 @@ BER 이 0.001 → 0.25 로 뛰는 것은 물리적으로 불가능하고, 캡처
 `uv run python host/analysis/pe_end.py --chip chipNN [--no-calib | --temp] [--drop-cycles A-B ...] [--from <보드 B 묶음>]` ·
 `uv run python host/analysis/pe_end.py --chip chipNN --promote [--overwrite]`
 
-관련: 수명 역산 1차 모델 — 개봉 prep 로그 → 마모 섹터의 누적 P/E 구간(MAP · 68% · 95%)과 판정(신품 · 저마모 · 중마모 · 고마모 — 정격 대비 1·20·60%). 화면은 시연용, `--out` 기록은 블라인드 형식. `--loco` 는 모의 블라인드 —
-`uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [--scale ms|ratio]` · `uv run python host/analysis/wear_inverse.py --loco`
+관련: **수명 역산 모델** (현행 v3.2 — 버전별 사양 `docs/spec/s5.lifetime_inverse_model.md`) — 개봉 prep 로그 → 마모 섹터의 누적 P/E
+추정 결과(사후 중앙값) · 68% · 95% 구간과 판정(신품 · 저마모 · 중마모 · 고마모 — 정격 대비 1 · 20 · 60%). 같은 칩의 prep 로그를 여러 개 주면
+한 번에 쓴다. 화면은 시연용이고 `--out` 은 블라인드 기록(머리말에 모델 버전 · git_rev · 입력 sha256). 보드가 필요 없다 —
+
+```bash
+uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [로그 더] [--out <경로>]
+uv run python host/analysis/wear_inverse.py --loco                    # 모의 블라인드 — 교정 칩을 하나씩 빼고 맞힌다
+uv run python host/analysis/wear_inverse.py --loco --study            # 같은 것을 무리 · 사이클 구간별 요약표로
+uv run python host/analysis/wear_inverse.py --loco --rate-range 1.6   # 속도 배율 R 을 두 무리에 같은 값으로 (기본은 빠른 1.6 · 느린 1.3)
+```
 
 ---
 

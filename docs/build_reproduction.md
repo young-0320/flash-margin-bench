@@ -9,6 +9,9 @@
 
 표기 `[검증 2026-09-14]`는 그 날 영웅 PC(Ubuntu 24, Vivado/Vitis 2025.2)에서 실제로 통과한 명령.
 
+**개정 2026-10-05** — 호스트 시험 수(114 → 163, 분석 스크립트 시험 포함) · 체크포인트용 prep ELF(`prep-wear`)의 재빌드 조건 ·
+`build/pe_end/` 를 반영했다. 빌드 명령과 Vivado 기준값(§3.6)은 2026-09-14 · 09-16 검증 그대로다.
+
 ---
 
 ## ⚡ 하나로 전부 — `reproduce.py`
@@ -53,7 +56,7 @@ RTL·엔진이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 —
 [검증 루프 — 보드 불필요]
 sim/smoke/  iverilog 스모크 TB 4개 (core · flash · spi · g0)   → 전부 PASS
 host/       파이썬 셀프테스트 3개 (분석기 · 등록부 · P/E 이력) → 전부 PASS
-host/tests/ 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬(gcc) + 실행기 → 114 passed
+host/tests/ 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬(gcc) + 실행기, 그리고 분석 스크립트 시험 → 163 passed
 sim/tb/     cocotb + Winbond 모델 회귀 = G1 (박지민, 구축 중)   → 기준 docs/spec/s3.g1_test_plan.md
 
 [빌드·측정 루프 — 보드 필요]
@@ -256,6 +259,13 @@ build/vitis_prep/flash_prep/build/flash_prep.elf
 
 기대 출력: `== done (default 0~127): …/flash_prep.elf` (체크포인트 모드면 `sectors <base>~<끝>`). `[검증 2026-09-21]` 02:22 통과.
 
+**체크포인트용 사본 `build/vitis_prep_0_7/` 은 따로 굽는다** — 같은 스크립트를 `PREP_BASE=0 PREP_N=7` 로 부른 것이고
+`reproduce.py` 의 `prep-wear` 단계다. `run_wear.py` 가 체크포인트마다 올리는 것은 위 기본 ELF 가 아니라 이 사본이라,
+**`flash_prep.c` 를 고친 뒤 이 단계를 빼먹으면 체크포인트만 옛 펌웨어로 돈다.** 2026-09-29 에 넣은 섹터별
+`#PREP PROGRAM` 출력이 chip15 · chip18 종단(10/4 까지)의 체크포인트 로그에 없는 것이 이 유형이다 — 영웅 PC 는 2026-10-05 에
+다시 구웠다. 마모를 시작하기 전에 `python3 reproduce.py --only prep-wear` 를 돌리고, 첫 체크포인트 뒤
+`grep -c "#PREP PROGRAM [0-9]" build/logs/wear/<세션>/session.log` 가 7 인지 본다.
+
 같은 XSA로 형제 앱 **`flash_id`** 도 만든다 — JEDEC과 UID만 읽고 **쓰기 명령을 내보내지
 않는다**(P/E 불변). `--mode sweep` 재측정의 세션 1이 이 ELF를 요구하므로 실칩 재측정을
 하는 사람은 같이 빌드해 둔다 (로그 36).
@@ -427,7 +437,9 @@ uv run python host/run/chip_pe.py --selftest
 uv run pytest host/tests/ -q            # 또는 python3 reproduce.py --only tb
 ```
 
-기대 결과: `114 passed`. `[검증 2026-09-21]` 통과 (11초). **gcc 가 없으면** ② 가 skip 되고
+기대 결과: `163 passed`. `[검증 2026-10-05]` 통과 (약 40초 — 2026-09-21 에는 114개 · 11초였다). 블랙박스 TB 세 층에 더해
+분석 스크립트 시험(`test_pe_end` · `test_wear_curves` · `test_wear_checkpoint_csv` · `test_wear_inverse`)이 같은 폴더에서 같이 돈다.
+**gcc 가 없으면** ② 가 skip 되고
 `test_gcc_absent_is_reported_not_hidden` 1개가 FAIL 한다 — 조용히 넘어가지 않게 둔 의도된 실패이니
 `build-essential` 을 깔고 다시 돌린다. Windows 네이티브는 ② 가 POSIX(`poll.h`) 라 지원하지 않는다 — WSL 로.
 
@@ -447,6 +459,7 @@ RTL·XDC는 그대로이고 `ps/src/*.c`만 바뀐 경우, Vivado를 다시 돌�
 ```bash
 vitis -s ps/scripts/build_g0_sweep.py                  # g0 스윕 앱   ← build/vivado/g0_loopback.xsa
 vitis -s ps/scripts/build_flash_prep.py                # prep 앱      ← build/vivado_g2/g2_jedec.xsa
+PREP_BASE=0 PREP_N=7 vitis -s ps/scripts/build_flash_prep.py   # 체크포인트용 prep (build/vitis_prep_0_7) — flash_prep.c 를 고쳤으면 이것도 (§3.3)
 vitis -s ps/scripts/build_flash_wear.py                # 마모 엔진    ← 같은 g2 XSA (커밋 뒤에 굽는다 — §3.5)
 G3_MHZ=25 vitis -s ps/scripts/build_g3_sweep.py        # g3 스윕 앱   ← build/vivado_g3_25/g3_chip_25.xsa
 ```
@@ -479,6 +492,7 @@ build/
 ├── vitis_g3_25/ 45/ 75/    g3: g3_sweep/build/g3_sweep.elf
 ├── data/                   측정 CSV·세션 로그 (빌드 산출물 아님 — 측정 때 생김)
 ├── logs/                   reproduce_<UTC>/ (채점 로그) · wear/<session>/ (P/E 시험 verdict — 승격은 docs/results/)
+├── pe_end/<chip>/          PE 종료 뒤 pe_end.py 1단계 산출물 (체크포인트 CSV · 1k 곡선 · 현장 역산) — 훑어본 뒤 --promote 가 docs/results/ 로 (워크플로 13)
 └── plots/                  분석 그림 (빌드 산출물 아님)
 ```
 
