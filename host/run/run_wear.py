@@ -774,7 +774,7 @@ def cmd_accept(run):
         print(banner)
         if a.sim or a.i_approve_real_pe:                     # 비대화형·연습은 확인 화면을 건너뛴다
             break
-        print("진행 enter · 고칠 옵션 입력 (예: --to 100000 --confirm-first 3) · 취소 q")
+        print("진행 enter · 고칠 옵션 입력 (예: --to 100000 --confirm-first 0) · 취소 q")
         try:
             typed = input("> ").strip()
         except EOFError:
