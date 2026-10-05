@@ -179,5 +179,10 @@ def test_median_bin_is_the_half_mass_bin():
     assert wi.median_bin({5001: 1.0}) == 5001
 
 
-def test_v3_defaults():
-    assert wi.RATE_RANGE == 1.6 and not hasattr(wi, "program_check")
+def test_v3_defaults(tmp_path):
+    """v3.1 — R 은 무리별(빠른 1.6 · 느린 1.3), rate_range 를 안 주면(None) 무리에 맞는 값을 쓴다."""
+    assert wi.RATE_RANGE == {"fast": 1.6, "slow": 1.3} and not hasattr(wi, "program_check")
+    curves = wi.load_curves(synth_curves(tmp_path))
+    assert wi.invert(31_000, [40_000] * 7, curves, FRESH, "ms", 40_000, None)["rate_range"] == 1.6
+    assert wi.invert(49_000, [55_000] * 7, curves, FRESH, "ms", 40_000, None)["rate_range"] == 1.3
+    assert wi.invert(49_000, [55_000] * 7, curves, FRESH, "ms", 40_000, 2.0)["rate_range"] == 2.0
