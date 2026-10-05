@@ -299,3 +299,32 @@ Updated: 2026-09-20
 | 2026-10-03 | chip18 | D1652C218B613936 | 0~6 | +10000 | run_wear accept (session 1790989701) | cycle 90000→100000 |
 | 2026-10-03 | chip18 | D1652C218B613936 | 0~6 | +1 | run_wear checkpoint (session 1790989701) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
 | 2026-10-04 | chip18 | D1652C218B613936 | 0~127 | +1 | flash_prep (batch 20261004T003236Z) |  |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +100 | run_wear accept (session 1791078343) | cycle 0→100 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 100 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +900 | run_wear accept (session 1791078343) | cycle 100→1000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +2000 | run_wear accept (session 1791078343) | cycle 1000→3000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 3000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +7000 | run_wear accept (session 1791078343) | cycle 3000→10000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 10000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791078343) | cycle 10000→20000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 20000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791078343) | cycle 20000→30000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 30000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791078343) | cycle 30000→40000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 40000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791078343) | cycle 40000→50000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 50000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791078343) | cycle 50000→60000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791078343) | 체크포인트 60000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +9109 | run_wear accept (session 1791078343) | cycle 60000→69109 · error |
+| 2026-10-04 | chip15 | D16314314B671B24 | 6 | ±1 | run_wear resume (session 1791123737) | reerase · ±1 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +891 | run_wear accept (session 1791123800) | cycle 69109→70000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791123800) | 체크포인트 70000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791123800) | cycle 70000→80000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791123800) | 체크포인트 80000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791123800) | cycle 80000→90000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791123800) | 체크포인트 90000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +10000 | run_wear accept (session 1791123800) | cycle 90000→100000 |
+| 2026-10-04 | chip15 | D16314314B671B24 | 0~6 | +1 | run_wear checkpoint (session 1791123800) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip15 | D16314314B671B24 | 0~127 | +1 | flash_prep (batch 20261005T020850Z) |  |

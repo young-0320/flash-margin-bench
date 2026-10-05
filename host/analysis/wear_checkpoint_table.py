@@ -29,7 +29,7 @@ TABLES = str(REPO / "docs" / "results" / "data" / "wear" / "wear_*_20*.csv")
 SURVEY = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 PLOTS = REPO / "docs" / "results" / "plots"                 # 표 문서(data/wear/)에서 ../../plots/
 FAST_US = 40_000                                            # 신품 소거 40ms 미만 = 빠른 무리 (S-1 §15)
-COLORS = {**pwc.CHIP_COLORS, "chip17": "#4a3aa7", "chip12": "#008300",   # 칸마다 --pairs all 검증 통과 (빠른 5색 · 느린 3색)
+COLORS = {**pwc.CHIP_COLORS, "chip17": "#4a3aa7", "chip12": "#008300",   # 칸마다 --pairs all 검증 통과 (빠른 5색 · 느린 4색)
           "chip18": "#006300"}                              # 빠른 칸 5번째 — 팔레트 44단계 중 이것만 통과 (2026-10-04)
 H1_PS = 42                                                  # S-1 §15 H1′ — 체크포인트 100 대비 3σ
 SEPARATE = {"chip12": "구매처 미검증 — 같은 칩으로 보지 않는다, 로그 48 [D48-77]"}   # 무리에 넣지 않고 표·그림에서 뺀다

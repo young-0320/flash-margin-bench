@@ -135,7 +135,7 @@ def group(chip):
 
 
 CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4",
-               "chip18": "#006300"}                            # 칸마다 --pairs all 통과 (빠른 칸 4색 · 2026-10-04)
+               "chip18": "#006300", "chip15": "#d0453a"}       # 칸마다 --pairs all 통과 (빠른 칸 4색 · 2026-10-04 · 느린 칸 3색 · 2026-10-05)
 
 
 def plot_ratio(curves, out_png, xmax=100, mark=None):
@@ -163,6 +163,7 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
             ax.spines[side].set_visible(False)
         ax.tick_params(colors=INK2, labelsize=8.5)
         ax.axhline(1.0, color=BASELINE, lw=1)
+        ends = []
         for chip in chips:
             bins = sorted({b for pts in curves[chip].values() for b, *_ in pts if b <= xmax * 1000})
             by = {b: [] for b in bins}
@@ -174,7 +175,12 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
             med = [sorted(by[b])[len(by[b]) // 2] for b in bins]
             ax.fill_between(x, [min(by[b]) for b in bins], [max(by[b]) for b in bins], color=CHIP_COLORS.get(chip, MUTED), alpha=0.12, lw=0)
             ax.plot(x, med, color=CHIP_COLORS.get(chip, MUTED), lw=2, label=f"{chip} (신품 {fresh[chip]:.1f}ms)")
-            ax.annotate(chip, (x[-1], med[-1]), xytext=(4, 0), textcoords="offset points", va="center", fontsize=8.5, color=INK2)
+            ends.append([med[-1], chip, x[-1]])
+        ends.sort()
+        for lo, hi in zip(ends, ends[1:]):                         # 끝 라벨이 겹치면 위쪽을 밀어 올린다 (chip03 · chip15 가 100k 에서 같은 배율)
+            hi[0] = max(hi[0], lo[0] + 0.13)
+        for y, chip, x1 in ends:
+            ax.annotate(chip, (x1, y), xytext=(4, 0), textcoords="offset points", va="center", fontsize=8.5, color=INK2)
         if mark and "빠른" in title:
             ax.axhline(mark[0], color=MUTED, lw=1.2, ls=(0, (4, 3)))
             ax.annotate(mark[1], (xmax * 0.42, mark[0]), xytext=(0, -12), textcoords="offset points", fontsize=8.5, color=INK2)
