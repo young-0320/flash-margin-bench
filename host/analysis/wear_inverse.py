@@ -300,16 +300,16 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
     fresh_side = r["outside_at_map"] and r["below_first"] == r["outside_at_map"]
     out = ["── 수명 역산 " + "─" * 48,
            _row("칩", chip_label(uids)),
-           _row("측정", f"섹터 {min(sectors)}-{max(sectors)} 소거 + PRBS 기록 {runs}회 (P/E +{runs})"),
-           _row("무리", f"{'빠른' if fast else '느린'} 무리 — 기준 섹터({REFERENCE.start}-{REFERENCE.stop - 1}) 소거 시간 "
-                       f"{ref / 1000:.1f}ms (신품 {split_us / 1000:g}ms {'미만' if fast else '이상'})"),
-           _row("교정 곡선", " · ".join(sorted(r["chips"])) + f" (같은 무리 {len(r['chips'])}칩)"
-                + (f" · 칩별 속도 차 {rate_range:g}배까지" if rate_range > 1 else "")),
-           _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 소거 시간 {med / 1000:.1f}ms = 기준의 {med / ref:.2f}배 ({len(worn)}회 중앙값)"),
+           _row("측정", f"섹터 {min(sectors)}-{max(sectors)}, 소거 시간 {runs}회 측정"),
+           _row("기준 섹터", f"{REFERENCE.start}-{REFERENCE.stop - 1} 섹터, 소거 시간 {ref / 1000:.1f}ms → "
+                f"{'빠른' if fast else '느린'} 무리 ({split_us / 1000:g}ms {'미만' if fast else '이상'})"),
+           _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 섹터, 소거 시간 {med / 1000:.1f}ms ({ref / 1000:.1f}ms 의 {med / ref:.2f}배)"),
+           _row("교정 곡선", f"같은 무리 {len(r['chips'])}칩 (" + " · ".join(sorted(r["chips"])) + ")"
+                + (f" · R={rate_range:g}" if rate_range > 1 else "")),
            rule,
            "  확률" + " " * 7 + sparkline(r["post"], top),
            " " * 13 + axis + "   누적 P/E",
-           _row("추정", f"{a:,}-{b:,} 회 (사후 중앙값 — 이보다 적게 썼을 확률 절반)"),
+           _row("추정 결과", f"{a:,}-{b:,} 회 (사후 중앙값 활용)"),
            _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
            _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
            _row("정격 대비", f"{rated} 중 {used} 사용 ({upper})")]
