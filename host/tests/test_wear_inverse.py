@@ -74,8 +74,7 @@ def test_parse_prep_log_and_observation(tmp_path):
     erase, program = wi.parse_prep_logs([p])
     ref, worn = wi.observation(erase)
     assert ref == 34_000 and worn == [110_000] * 7
-    assert "빠른 무리" in wi.program_check(program, "fast")
-    assert "어긋난다" in wi.program_check(program, "slow")
+    assert program[0] == [6_950] and program[127] == [6_700]       # 파싱은 남긴다 (v4 프로그램 축 재료) — 화면 · 기록에는 안 쓴다
 
 
 def test_answers_stop_at_100k(tmp_path):
@@ -139,7 +138,7 @@ def test_study_p50_matches_registered_loco(tmp_path):
     ref = wi.loco(curves, FRESH, "ratio", 40_000, cycles=cyc, rate_range=2.0)
     rows, skipped = wi.loco_study(curves, FRESH, "ratio", 40_000, 2.0, cycles=cyc)
     assert not skipped
-    assert [(r["chip"], r["x"], (r["map"], r["map"] + 999), r["h68"], r["h95"]) for r in rows] == \
+    assert [(r["chip"], r["x"], (r["med"], r["med"] + 999), r["h68"], r["h95"]) for r in rows] == \
            [(c, x, m, h68, h95) for c, x, m, h68, h95, _, _ in ref]
 
 
@@ -156,12 +155,11 @@ def test_screen_aligns_labels_and_ends_with_the_verdict(tmp_path):
     curves = wi.load_curves(synth_curves(tmp_path))
     worn = [int((30_000 + 0.6 * 12_500) * (1 + 0.004 * s)) for s in range(7)]
     r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
-    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000,
-                      "프로그램 시간 없음 (구 prep) — 교차 확인 생략")
+    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000)
     labeled = [ln for ln in lines if ": " in ln and not ln.startswith(("─", " "))]
     assert {wi._w(ln.split(": ")[0]) for ln in labeled} == {13}      # 한글을 2칸으로 세어 콜론이 같은 자리
     assert lines[-2].startswith("판정") and "확률" in lines[-2] and lines[-1] == "─" * 61
-    assert "UID 0000000000000000 (등록부에 없음)" in lines[1] and lines[6].endswith("— 생략")
+    assert "UID 0000000000000000 (등록부에 없음)" in lines[1] and lines[6].startswith("─")
 
 
 def test_screen_calls_a_chip_below_the_first_band_new(tmp_path):
@@ -169,7 +167,17 @@ def test_screen_calls_a_chip_below_the_first_band_new(tmp_path):
     curves = wi.load_curves(synth_curves(tmp_path))
     worn = [25_000] * 7                                          # fastA 첫 구간(약 30.3ms)의 밴드보다 아래
     r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000)
-    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000,
-                      "프로그램 시간 없음 (구 prep) — 교차 확인 생략")
+    lines = wi.screen({"0000000000000000"}, {0: [], 127: []}, 1, 31_000, worn, r, 1.0, 40_000)
     assert any(ln.startswith("참고") and ln.endswith("교정 첫 구간(1-1,000회)보다 덜 닳음") for ln in lines)
     assert not any(ln.startswith("주의") for ln in lines) and lines[-2].startswith("판정") and "신품" in lines[-2]
+
+
+def test_median_bin_is_the_half_mass_bin():
+    """v3 대표값 — 누적 확률이 처음 절반을 넘는 구간. 오른쪽 꼬리가 길면 MAP 보다 뒤에 선다."""
+    post = {1: 0.30, 1001: 0.15, 2001: 0.15, 3001: 0.15, 4001: 0.25}
+    assert max(post, key=post.get) == 1 and wi.median_bin(post) == 2001
+    assert wi.median_bin({5001: 1.0}) == 5001
+
+
+def test_v3_defaults():
+    assert wi.RATE_RANGE == 1.6 and not hasattr(wi, "program_check")

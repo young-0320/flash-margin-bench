@@ -3,25 +3,26 @@
 # 사용:
 #   uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [prep 로그 더]   # 블라인드 개봉
 #   uv run python host/analysis/wear_inverse.py --loco                                                   # 모의 블라인드
-#   옵션: --scale ms|ratio (기본 ratio — 규칙은 S-1 §15 2026-09-30 추기, 4칩 LOCO 로 확정) · --rate-range 2.0 · --split-ms 40 · --curves <glob>
+#   옵션: --scale ms|ratio (기본 ratio — 규칙은 S-1 §15 2026-09-30 추기, 4칩 LOCO 로 확정) · --rate-range 1.6 · --split-ms 40 · --curves <glob>
 #         --synthetic N [--plot <png>]  합성 복원 (가정대로 만든 가짜 칩으로 포함률) · --prep-indep  시험용 우도 (기본 꺼짐)
 #         --out <경로>  추정 결과를 파일로도 — 머리말에 git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)
 #   화면은 시연용(계획 화면 꼴 — 칩 · 측정 · 무리 · 교정 곡선 · 사후 분포 한 줄 · 판정 신품/저마모/중마모/고마모), --out 기록은
-#   입력 A·B·C · 답 줄 그대로다 (블라인드 기록 형식을 바꾸지 않는다 — 로그 48 [D48-69])
+#   입력 A·B · 답 줄 그대로다 (블라인드 기록 형식을 바꾸지 않는다 — 로그 48 [D48-69]. v3 에서 입력 C 줄을 빼고 답 줄 앞에 중앙값을 더했다 [D48-94])
 #
 # 모델 (S-1 §15 2026-09-30 추기):
 #   입력 A  섹터 32-127 소거 시간의 중앙값  = 이 칩의 신품값. 40ms 아래면 빠른 무리(chip01·chip04 곡선), 위면 느린 무리(chip03·chip07)
 #   입력 B  섹터 0-6 의 소거 시간 (prep 을 k 번 돌렸으면 7k 개)
-#   입력 C  섹터 0-6 의 프로그램 시간 — A 의 무리 선택이 맞는지 확인만 (빠른 무리 7.0ms 근처 · 느린 무리 올라 있음)
+#   (입력 C — prep 프로그램 시간으로 무리를 교차 확인하던 줄은 v3 에서 뺐다. 다 쓴 느린 칩에서 헛울렸다 — 로그 48 [U48-16])
 #   교정    wear_curves CSV(1k 구간 × 섹터 × p10/p50/p90). 무리 안 칩 × 섹터 하나하나를 그 구간의 "구성원"으로 두고,
 #           구성원마다 p50 을 중심, (p90-p10)/2.56 을 폭으로 하는 정규분포를 놓는다
 #   계산    곡선 지점 M 마다 관측 B 가 나올 우도 = 관측별 (구성원 평균 밀도) 의 기하 평균 — 7개 관측은 같은 칩이라 독립으로 곱하지 않는다.
 #   속도 r  같은 무리 안에서도 사이클당 손상량이 칩마다 다르다 — 곡선 모양은 같고 가로축만 r 배 늘어난다(chip01 대 chip04 약 1.4,
 #           chip03 대 chip07 약 1.25). 누적 사이클 x 인 칩은 교정 곡선의 M = x·r 지점처럼 보인다. r 은 [1/R, R] 에서 로그 균등으로
 #           적분한다. R 의 규칙: 두 쌍의 로그 차이 평균 ÷ 1.13 = 개체 표준편차(약 0.25), 새 칩 하나 대 교정 칩 하나의 95% 범위
-#           = √2 × 1.96 × 표준편차 → R ≈ 2.0. LOCO 결과에 맞춰 조정하지 않는다 (--rate-range 2.0 · 1 이면 끔)
+#           = √2 × 1.96 × 표준편차 → R ≈ 2.0 (v1 · v2). v3 는 교정 7칩 LOCO 가 명목에 가장 가까운 1.6 (로그 48 [D48-94]) · 1 이면 끔
 #           x 의 사전은 1-100k 에 평평. → x 구간별 확률. 기호: 누적 P/E 사이클 = x (N 은 위상당 읽기 112 에만 쓴다, 로그 51 [D51-1])
-#   출력    확률이 가장 큰 구간(MAP) · 68% · 95% 최고밀도 집합(사이클 범위로 합쳐서). 100k 너머는 교정이 없어 답하지 않는다
+#   출력    사후 중앙값 구간(대표값, v3 — MAP 은 오른쪽 꼬리가 긴 사후에서 낮게 치우쳤다, 로그 48 [D48-94]) · 68% · 95% 최고밀도 집합
+#           (사이클 범위로 합쳐서). 100k 너머는 교정이 없어 답하지 않는다
 #           MAP 구간의 밴드(구성원 p10 최소 ~ p90 최대) 밖에 있는 관측 수를 같이 찍는다 — 전부 밖이면 교정 범위 밖이다
 #
 # --loco: 교정 칩 하나를 빼고 그 칩의 구간별 p50(섹터 7개)을 관측으로 넣어, 나머지 칩만으로 맞힌다. 블라인드 전에 기대 오차를 얻는
@@ -42,7 +43,7 @@ SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
 WORN = range(0, 7)
 REFERENCE = range(32, 128)                 # 마모 영역에서 128KB 넘게 떨어진 섹터 — 세 칩에서 신품 대비 1.00
 SIGMA_FLOOR = 0.02                         # 구간이 판판해도 폭을 p50 의 2% 아래로 두지 않는다 (한 표본의 자릿수 흔들림)
-RATE_RANGE = 2.0                           # 속도 배율 r 의 범위 [1/R, R]. 교정 5칩 LOCO 가 명목에 가장 가까운 값 (로그 48 [D48-60]) — rate_rule() 의 3.84 는 곡선 혼합과 r 이 칩 산포를 두 번 세어 버렸다
+RATE_RANGE = 1.6                           # 속도 배율 r 의 범위 [1/R, R]. v3 — 교정 7칩 LOCO 가 명목에 가장 가까운 값 (로그 48 [D48-94]). v2 는 교정 5칩 기준 2.0 ([D48-60])
 N_RATE = 41                                # r 격자 (로그 등간격, 홀수라 r=1 이 포함된다)
 MAX_CYCLE = 100_000                        # 답하는 범위(x)의 끝 — 교정 4칩이 모두 닿는 곳. 곡선 지점 M = x·r 은 그 너머(chip01 의
                                            # 100k-300k)도 쓴다 — r > 1 인(교정 칩보다 빨리 늙는) 칩의 x ≤ 100k 를 설명하려면 필요하다
@@ -175,6 +176,16 @@ def hpd(post, mass):
     return sorted(keep)
 
 
+def median_bin(post):
+    """사후 누적 확률이 처음 절반을 넘는 1k 구간의 시작 — v3 의 대표값."""
+    acc, total = 0.0, sum(post.values())
+    for b in sorted(post):
+        acc += post[b]
+        if acc >= total / 2:
+            return b
+    return max(post)
+
+
 def ranges(bins, width=1000):
     """[1, 1001, 2001, 5001] → [(1, 3000), (5001, 6000)] — 이어진 구간을 합친다."""
     out = []
@@ -203,27 +214,17 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, runs
     hi = max(mu + 1.2816 * s for mu, s in mem[mstar])
     outside = sum(1 for x in obs if not lo <= x <= hi)
     below = sum(1 for x in obs if x < lo)
-    return {"group": grp, "chips": chips, "map": (top, top + 999), "hpd68": ranges(hpd(post, 0.68)),
+    med = median_bin(post)
+    return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "hpd68": ranges(hpd(post, 0.68)),
             "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post,
             "below_first": below if mstar == min(ll) else 0}       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
-
-
-def program_check(program, grp):
-    """입력 C — 무리 선택의 교차 확인 문구. 판정에 넣지 않는다."""
-    worn = [v for s in WORN for v in program.get(s, [])]
-    if not worn:
-        return "프로그램 시간 없음 (구 prep) — 교차 확인 생략"
-    med = statistics.median(worn) / 1000
-    hint = "빠른 무리와 맞음" if med < 7.3 else "느린 무리와 맞음"
-    ok = (hint.startswith("빠른")) == (grp == "fast")
-    return f"마모 섹터 프로그램 중앙값 {med:.2f}ms → {hint}" + ("" if ok else " — **입력 A 의 무리 선택과 어긋난다**")
 
 
 def fmt_ranges(rs):
     return " · ".join(f"{a:,}-{b:,}" for a, b in rs)
 
 
-# ---------- 화면 (시연용 — 기록 파일(--out)은 위의 입력 A·B·C · 답 줄 그대로) ----------
+# ---------- 화면 (시연용 — 기록 파일(--out)은 위의 입력 A·B · 답 줄 그대로) ----------
 
 def grade(post):
     """사후 확률이 가장 큰 등급과 그 확률. 등급은 정격 대비 구간(GRADES) — 구간 끝 사이클 기준으로 1k 구간을 나눈다."""
@@ -269,11 +270,11 @@ def chip_label(uids):
     return f"{label} (UID {uid})" if label else f"UID {uid} (등록부에 없음)"
 
 
-def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us, program_line):
+def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
     """시연용 결과 화면 — 무엇을 쟀고 · 무엇과 비교했나 → 분포와 숫자 → 판정."""
     rule = "─" * 61
     med = statistics.median(worn)
-    a, b = r["map"]
+    a, b = r["median"]
     hi95 = max(z for _, z in r["hpd95"])
     top = min(MAX_CYCLE, max(40_000, math.ceil(hi95 / 20_000) * 20_000))   # 막대는 top/2k 글자 (1k 구간이 점 한 열)
     width, axis = top // 2000, ""
@@ -294,11 +295,10 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us, program_line
            _row("교정 곡선", " · ".join(sorted(r["chips"])) + f" (같은 무리 {len(r['chips'])}칩)"
                 + (f" · 칩별 속도 차 {rate_range:g}배까지" if rate_range > 1 else "")),
            _row("마모 섹터", f"{WORN.start}-{WORN.stop - 1} 소거 시간 {med / 1000:.1f}ms = 기준의 {med / ref:.2f}배 ({len(worn)}회 중앙값)"),
-           _row("교차 확인", program_line.replace("교차 확인 생략", "생략").replace("**", "")),
            rule,
            "  확률" + " " * 7 + sparkline(r["post"], top),
            " " * 13 + axis + "   누적 P/E",
-           _row("MAP 추정", f"{a:,}-{b:,} 회 (사후 확률이 가장 큰 구간)"),
+           _row("추정", f"{a:,}-{b:,} 회 (사후 중앙값 — 이보다 적게 썼을 확률 절반)"),
            _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
            _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
            _row("정격 대비", f"{rated} 중 {used} 사용 ({upper})")]
@@ -314,7 +314,7 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us, program_line
 # ---------- 모의 블라인드 ----------
 
 def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
-    """교정 칩 하나씩 빼고 자기 p50 으로 맞힌다. 행마다 (칩, 정답, MAP, 68%, 95%, 정답∈68, 정답∈95)."""
+    """교정 칩 하나씩 빼고 자기 p50 으로 맞힌다. 행마다 (칩, 정답, 사후 중앙값, 68%, 95%, 정답∈68, 정답∈95)."""
     rows = []
     for chip in sorted(curves):
         rest = {c: v for c, v in curves.items() if c != chip}
@@ -329,7 +329,7 @@ def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
             r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range)
             in68 = any(a <= cyc <= z for a, z in r["hpd68"])
             in95 = any(a <= cyc <= z for a, z in r["hpd95"])
-            rows.append((chip, cyc, r["map"], r["hpd68"], r["hpd95"], in68, in95))
+            rows.append((chip, cyc, r["median"], r["hpd68"], r["hpd95"], in68, in95))
     return rows
 
 
@@ -513,12 +513,12 @@ def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_
                     obs = [v / fresh[chip] for v in worn] if scale == "ratio" else list(worn)
                     mem = members(rest, fresh, cal, scale)
                     post = posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx)
-                    top = max(post, key=post.get)
+                    top, med = max(post, key=post.get), median_bin(post)
                     h68, h95 = ranges(hpd(post, 0.68)), ranges(hpd(post, 0.95))
                 else:
                     r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range)
-                    top, h68, h95 = r["map"][0], r["hpd68"], r["hpd95"]
-                rows.append({"chip": chip, "group": grp, "x": cyc, "rep": rep, "map": top, "h68": h68, "h95": h95,
+                    top, med, h68, h95 = r["map"][0], r["median"][0], r["hpd68"], r["hpd95"]
+                rows.append({"chip": chip, "group": grp, "x": cyc, "rep": rep, "map": top, "med": med, "h68": h68, "h95": h95,
                              "in68": any(a <= cyc <= z for a, z in h68), "in95": any(a <= cyc <= z for a, z in h95),
                              "slope": slope_obs[0] if slope_obs else None})
     return rows, skipped
@@ -764,7 +764,7 @@ def main(argv=None):
         if not rows:
             raise SystemExit("같은 무리에 칩이 둘 이상 있어야 모의 블라인드가 된다")
         print(f"모의 블라인드 · 눈금 {args.scale} · 속도 배율 R {args.rate_range:g} · 경계 {args.split_ms:g}ms · 교정 칩 {sorted(curves)}")
-        print("| 칩 | 정답 | MAP | 68% | 95% | 정답∈68 | 정답∈95 |\n|---|---|---|---|---|---|---|")
+        print("| 칩 | 정답 | 중앙값 | 68% | 95% | 정답∈68 | 정답∈95 |\n|---|---|---|---|---|---|---|")
         for chip, cyc, mp, h68, h95, i68, i95 in rows:
             print(f"| {chip} | {cyc:,} | {mp[0]:,}-{mp[1]:,} | {fmt_ranges(h68)} | {fmt_ranges(h95)} | "
                   f"{'O' if i68 else 'X'} | {'O' if i95 else 'X'} |")
@@ -775,19 +775,18 @@ def main(argv=None):
 
     if not args.logs:
         ap.error("prep 세션 로그를 주거나 --loco")
-    erase, program = parse_prep_logs(args.logs)
+    erase, _ = parse_prep_logs(args.logs)
     ref, worn = observation(erase)
     runs = sum(1 for p in args.logs if PREP_ERASE.search(Path(p).read_text(encoding="utf-8", errors="replace")))
     r = invert(ref, worn, curves, fresh, args.scale, split, args.rate_range, runs if args.prep_indep else 1)
     out = [f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R {args.rate_range:g}",
            f"입력 B  마모 섹터 소거 {len(worn)}개 (prep {runs}회{' · 독립' if args.prep_indep else ''}): " + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
-           f"입력 C  {program_check(program, r['group'])}",
-           f"답      MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
+           f"답      중앙값 {r['median'][0]:,}-{r['median'][1]:,} · MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
     if r["outside_at_map"]:
         out.append(f"주의    MAP 구간 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
                    (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else ""))
     uids = {m for p in args.logs for m in PREP_UID.findall(Path(p).read_text(encoding="utf-8", errors="replace"))}
-    print("\n".join(screen(uids, erase, runs, ref, worn, r, args.rate_range, split, program_check(program, r["group"]))))
+    print("\n".join(screen(uids, erase, runs, ref, worn, r, args.rate_range, split)))
     if args.out:                                             # 기록은 화면이 아니라 위의 줄들 — 블라인드 기록의 형식을 바꾸지 않는다
         write_record(args.out, argv, args.logs, args.curves, out)
         print(f"기록 → {args.out}")

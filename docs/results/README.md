@@ -21,7 +21,7 @@
 
 `data/` 바로 아래: 몬테카를로 사전 등록(`monte_carlo_*`) · 단일 스윕(`sweep_*` — 7월 chip01 반복 5회 · G0 루프백) · 신품 전수
 집계표(`newchip_survey_2026-09.*`) · 블라인드 추정(`blind_chip06_2026-10.md` · `chip06_estimate_*.txt` — 개봉 전 커밋한 것 그대로) ·
-역산 모델 검증(`synthetic_recovery_*` · `chip17_loco_*`) · 온도 마모 런의 칩 위 온도(`temp_chip17_*`).
+역산 모델 검증(`synthetic_recovery_*` · `chip17_loco_*` · v3 전 탐색 `inverse_v3_probe_2026-10.md` — Δx · R · 대표값) · 온도 마모 런의 칩 위 온도(`temp_chip17_*`).
 
 이 구분은 2026-09-26 부터다. 그 전에 올린 `data/` 의 md 중 `newchip_survey_2026-09.md` 는 같은 날 나눴고, 나머지(7월·8월분)는
 짧은 유래 문서라 그대로 둔다.
