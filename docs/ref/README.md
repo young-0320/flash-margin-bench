@@ -14,3 +14,12 @@
 | ---- | ---- | ---- | ---- | ------ | -------------- |
 | `w25q64jv_datasheet_revc.pdf` | W25Q64JV Datasheet (3V 64M-bit Serial Flash) | **Revision C** (2016-06-03) | winbond.com | 2026-07-08 | JEDEC ID·명령셋(0x9F/0x03/0x0B/0x4B)·타이밍(tSE·tPP·tCLQV)·내구성 "Min. 100K per sector"·BP 보호비트 |
 | `zybo_z7_refmanual_rev20180221.pdf` | Zybo Z7 Board Reference Manual (보드 rev.B 대상) | **2018-02-21 개정** | digilent.com | 2026-07-08 | Pmod 종류(JB 고속/JE 200Ω)·핀 배정·JP5 부팅 모드 |
+
+## 선행 연구 조사 문서
+
+| 문서 | 범위 |
+| ---- | ---- |
+| `선행논문_조사.md` | 국내 — NAND · NOR 신뢰성 일반 |
+| `해외논문_조사.md` | 해외 — NAND 문턱전압(Vth) · 내부 접근 계열 |
+| `선행논문_재활용판별_NOR소거열화.md` | 같은 신호(소거 시간)의 재활용 플래시 판별(Sakib 2018 등) · NOR 소거 시간 열화 기전(LIU 2019). 확인 수준(본문 · 초록 · 검색만) 표기 (2026-10-05) |
+
