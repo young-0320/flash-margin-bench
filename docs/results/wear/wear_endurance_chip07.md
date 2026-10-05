@@ -6,6 +6,9 @@
 - **비교 대상**: 파일럿 [`wear_pilot_chip01.md`](wear_pilot_chip01.md) · 종단 1 [`wear_endurance_chip03.md`](wear_endurance_chip03.md)
 - **경위**: `docs/log/young/48.pilot_wear_handler_and_plan_approval.md` §16-§20
 
+> **2026-10-05 — chip07 만 점퍼선이 20cm 였다 (다른 칩 10cm, 한영웅 확인).** 아래 폭 해석(세션 사이 이동 · 계측 사건 · 75/45MHz 판정 불가)은
+> 다른 칩과 배선 조건이 달랐다는 단서 아래서 읽는다. 소거 · 프로그램 결과는 칩 내부 동작이라 영향이 작다 — `docs/chip_registry.md` 마킹 절
+
 ## 결론
 
 **chip07 은 chip03 과 같은 느린 무리답게 늙었다 — 소거는 완만했고 계단이 없었으며, 프로그램은 chip03 보다 더 일찍·더
