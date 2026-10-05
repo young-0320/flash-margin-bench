@@ -1,11 +1,15 @@
 # wear_inverse.py — 수명 역산 1차(현장) 모델: 개봉 prep 의 섹터별 소거 시간 → 마모 섹터 0-6 의 누적 P/E 사이클 x 의 구간
 #
+# 현재 버전: v3.2 · 최종 수정 2026-10-05 (버전을 올리면 아래 MODEL_VERSION 도 같이 — 기록 파일 머리말에 찍힌다)
+#   v1 09-30 (4칩 · R 2.0 · MAP) → v2 10-01 (+chip09) → v3 10-05 (7칩 · R 1.6 · 사후 중앙값 · 입력 C 삭제)
+#   → v3.1 10-05 (R 무리별: 빠른 1.6 · 느린 1.3) → v3.2 10-05 (r 적분을 격자 없이). 판별 사양: docs/spec/s5.lifetime_inverse_model.md
+#
 # 사용:
 #   uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [prep 로그 더]   # 블라인드 개봉
 #   uv run python host/analysis/wear_inverse.py --loco                                                   # 모의 블라인드
 #   옵션: --scale ms|ratio (기본 ratio — 규칙은 S-1 §15 2026-09-30 추기, 4칩 LOCO 로 확정) · --rate-range R (기본은 무리별 — 빠른 1.6 · 느린 1.3) · --split-ms 40 · --curves <glob>
 #         --synthetic N [--plot <png>]  합성 복원 (가정대로 만든 가짜 칩으로 포함률) · --prep-indep  시험용 우도 (기본 꺼짐)
-#         --out <경로>  추정 결과를 파일로도 — 머리말에 git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)
+#         --out <경로>  추정 결과를 파일로도 — 머리말에 모델 버전 · git_rev · 인자 · 입력 로그 sha256 · 교정 표 (블라인드 기록용)
 #   화면은 시연용(계획 화면 꼴 — 칩 · 측정 · 무리 · 교정 곡선 · 사후 분포 한 줄 · 판정 신품/저마모/중마모/고마모), --out 기록은
 #   입력 A·B · 답 줄 그대로다 (블라인드 기록 형식을 바꾸지 않는다 — 로그 48 [D48-69]. v3 에서 입력 C 줄을 빼고 답 줄 앞에 중앙값을 더했다 [D48-94])
 #
@@ -38,6 +42,7 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+MODEL_VERSION = "v3.2"                     # 기록 파일(--out) 머리말에 찍는 버전 — docs/spec/s5.lifetime_inverse_model.md §2
 REPO = Path(__file__).resolve().parents[2]
 CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv")   # 교정 = 접미사 없는 이름 (_65C · _ali · _nocal 은 밖)
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
@@ -815,6 +820,7 @@ def write_record(path, argv, logs, curves_glob, out):
         return subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()
     dirty = git("status", "--porcelain", "--", "host/analysis/wear_inverse.py")
     head = [f"# 생성   {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
+            f"# 모델   {MODEL_VERSION}",
             f"# 코드   git_rev {git('rev-parse', '--short', 'HEAD')}" + (" (wear_inverse.py 커밋 안 된 수정 있음)" if dirty else ""),
             "# 인자   " + " ".join(sys.argv[1:] if argv is None else argv),
             "# 입력"]
