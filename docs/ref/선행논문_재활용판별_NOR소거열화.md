@@ -14,7 +14,7 @@
 | 2 | Kumari · Talukder · Sakib · Ray · Rahman,*Independent detection of recycled flash memory: Challenges and solutions*                        | 2018 · IEEE HOST                                                                  | NAND (추정)                             | 1번의 학회판, 같은 그룹                                                                                   | 검색만                                                                                                                                                                                              |
 | 3 | Guo 외 (1번의 참고문헌 [7]) — 부분 프로그래밍으로 재활용 플래시 검출                                                                            | 미확인                                                                             | 미확인                                  | 같은 계보. 수명 5% 이상 사용 검출, 데이터베이스 필요(1번의 서술)                                          | 검색만 — 서지부터 찾을 것                                                                                                                                                                          |
 | 4 | Poudel · Ray · Milenkovic,*Flashmark: Watermarking of NOR Flash Memories for Counterfeit Detection*                                          | 2020 · DAC                                                                        | **NOR**                           | 같은 그룹. P/E 마모를 일부러 새겨 워터마크로 씀 — 「NOR 마모는 영구적이고 표준 인터페이스로 읽힌다」     | 초록                                                                                                                                                                                                |
-| 5 | 刘静(LIU Jing) · 谢元禄 · 霍长兴 · 呼红阳 · 张坤 · 毕津顺 · 刘明,*Optimization of Erase Time Degradation in 65nm NOR Flash Memory Chips* | 2019 · 电子科技大学学报(JUESTC) 48(4) · doi 10.3969/j.issn.1001-0548.2019.04.003 | **NOR** (SMIC 65nm 128Mb SPI NOR) | **우리 관찰을 칩 내부 동작으로 설명할 재료** — 섹터 소거의 4단계, 열화 기전, 같은 물리 블록의 간섭 | **본문 읽음** (2026-10-05, [www.juestc.uestc.edu.cn/en/article/doi/10.3969/j.issn.1001-0548.2019.04.003](https://www.juestc.uestc.edu.cn/en/article/doi/10.3969/j.issn.1001-0548.2019.04.003)) |
+| 5 | 刘璟(LIU Jing) · 谢元禄 · 霍长兴 · 呼红阳 · 张坤 · 毕津顺 · 刘明,*Optimization of Erase Time Degradation in 65nm NOR Flash Memory Chips* | 2019 · 电子科技大学学报(JUESTC) 48(4) · doi 10.3969/j.issn.1001-0548.2019.04.003 | **NOR** (SMIC 65nm 128Mb SPI NOR) | **우리 관찰을 칩 내부 동작으로 설명할 재료** — 섹터 소거의 4단계, 열화 기전, 같은 물리 블록의 간섭 | **본문 읽음** (2026-10-05, [www.juestc.uestc.edu.cn/en/article/doi/10.3969/j.issn.1001-0548.2019.04.003](https://www.juestc.uestc.edu.cn/en/article/doi/10.3969/j.issn.1001-0548.2019.04.003)) |
 | 6 | Grupp 외,*Characterizing flash memory: anomalies, observations, and applications*                                                              | 2009 · MICRO                                                                      | NAND · NOR                             | 배경 — 마모에 따른 지연시간 변화 특성평가                                                                | 검색만                                                                                                                                                                                              |
 | 7 | Desnoyers,*Empirical Evaluation of NAND Flash Memory Performance*                                                                              | 2009 · HotStorage                                                                 | NAND                                    | 배경 — 닳으면 소거 시간이 3배 이상                                                                       | 검색만                                                                                                                                                                                              |
 | 8 | NASA,*Flash Memory Reliability: Read, Program, and Erase Latency Versus Endurance Cycling*                                                     | 2011 · NTRS                                                                       | 미확인                                  | 배경 — 지연시간 대 내구도                                                                                | 검색만                                                                                                                                                                                              |
@@ -34,7 +34,8 @@
 1. 같은 품번이면 **신품 소거 시간 분포가 매우 좁다** — 「데이터시트 중앙값이 그 품번의 신품 값을 잘 대표한다」(5.3절 (1)). 근거는 같은 품번 칩 **3개**
 2. 조금만 써도 소거 시간이 **계단식으로 크게**(약 1ms) 뛰어, 신품 분포와 겹치지 않는다
 
-판정: 칩의 블록 소거 시간 CDF 와 신품 CDF 가 겹치는 정도(α)로 **확신도 = (1 − α) × 100%**. 답은 「재활용 / 정품」 **이진**이다.
+판정(4절 식 (1)): 신품 분포의 위쪽 끝을 문턱으로 두고, α = 쓴 칩의 블록 소거 시간이 그 문턱 아래로 떨어지는 비율, **확신도 = (1 − α) × 100%**.
+98% 이상이면 판정한다. 답은 「재활용 / 정품」 **이진**이다. 원문 `sakib2018_recycled_flash_timing_cryptography.pdf`.
 
 **우리에게 주는 것**
 
@@ -68,6 +69,8 @@
 > 같은 품번 SPI NOR 신품 15개는 26ms 에서 51ms 까지 두 배 차이가 났다 — 이 칩에서는 그 전제가 성립하지 않고, 답도 「썼다/안 썼다」 뿐이다.
 
 ## 5. LIU 외 2019 — NOR 섹터 소거가 왜 느려지나
+
+원문 `liu2019_nor_erase_time_degradation_juestc.pdf`.
 
 **한 일.** SMIC 65nm NOR 공정으로 **128Mb SPI NOR 칩**을 직접 설계 · 제작해, 섹터 소거 시간이 P/E 에 따라 느려지는 기전을 분석하고 줄이는 방법을
 제안 · 검증했다. 칩 수준 소거 열화 연구가 드물다는 것이 출발점이다.
