@@ -198,6 +198,47 @@ def plot_ratio(curves, out_png, xmax=100, mark=None):
     print(f"→ {out_png}")
 
 
+def plot_single(path, out_png):
+    """칩 하나의 섹터별 소거(위) · 프로그램(아래) 시간 — 교정 밖 칩도 그린다(chip10 JV). 선 p50 · 띠 p10-p90, 1k 구간."""
+    data = {"erase": defaultdict(list), "program": defaultdict(list)}
+    with open(path, newline="") as f:
+        for r in csv.DictReader(f):
+            for k in data:
+                data[k][int(r["sector"])].append((int(r["bin_start"]), float(r[f"{k}_us_p10"]) / 1e3,
+                                                  float(r[f"{k}_us_p50"]) / 1e3, float(r[f"{k}_us_p90"]) / 1e3))
+            chip = r["chip"]
+    plt.rcParams["font.family"] = "Noto Sans CJK JP"
+    fig, axes = plt.subplots(2, 1, figsize=(9, 7.2), sharex=True, dpi=150)
+    fig.set_facecolor(SURFACE)
+    for ax, k, title in zip(axes, ("erase", "program"), ("소거 시간", "프로그램 시간 (0x00 마모 루프)")):
+        ax.set_facecolor(SURFACE)
+        ax.grid(True, color=GRID, lw=0.7)
+        ax.set_axisbelow(True)
+        for side in ("left", "bottom"):
+            ax.spines[side].set_color(BASELINE)
+        for side in ("right", "top"):
+            ax.spines[side].set_visible(False)
+        ax.tick_params(colors=INK2, labelsize=8.5)
+        for sec, pts in sorted(data[k].items()):
+            x, lo, mid, hi = with_gaps(sorted(pts))
+            ax.fill_between(x, lo, hi, color=SECTOR_COLORS[sec], alpha=0.12, lw=0)
+            ax.plot(x, mid, color=SECTOR_COLORS[sec], lw=1.4, label=f"섹터 {sec}")
+        ax.set_title(title, color=INK, fontsize=10.5, loc="left")
+        ax.set_ylabel("ms", color=INK2, fontsize=9)
+    axes[0].set_ylim(bottom=0)
+    axes[1].set_xlabel("누적 P/E 사이클 (천 회)", color=INK2, fontsize=9)
+    axes[1].set_xlim(0, max(b for pts in data["erase"].values() for b, *_ in pts) / 1e3 + 1)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=7, frameon=False, fontsize=8.5, labelcolor=INK2)
+    fig.suptitle(f"{chip} — 섹터 0-6 소거 · 프로그램 시간, 1천 사이클 구간 (선 p50 · 띠 p10-p90)",
+                 color=INK, fontsize=11, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0.05, 1, 0.96))
+    Path(out_png).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, facecolor=SURFACE)
+    plt.close(fig)
+    print(f"→ {out_png}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="수명 역산 교정 표 → 칩별 소거 시간 곡선 그림")
     ap.add_argument("-o", "--out", default=str(REPO / "build" / "plots" / "wear_curves_2026-09.png"))
@@ -206,8 +247,11 @@ def main(argv=None):
     ap.add_argument("--ratio", action="store_true", help="칩별 신품 대비 배율 곡선 한 장 (무리별 두 칸, x 는 100k 까지)")
     ap.add_argument("--mark", type=float, help="--ratio 의 빠른 무리 칸에 가로 점선 (배율)")
     ap.add_argument("--mark-label", default="", help="그 점선의 글씨")
+    ap.add_argument("--single", metavar="CSV", help="칩 하나의 섹터별 소거 · 프로그램 두 칸 (-o 로 저장) — 교정 밖 칩도")
     args = ap.parse_args(argv)
-    if args.per_chip:
+    if args.single:
+        plot_single(args.single, args.out)
+    elif args.per_chip:
         plot_chips(load(args.curves), args.per_chip)
     elif args.ratio:
         plot_ratio(load(args.curves), args.out, mark=(args.mark, args.mark_label) if args.mark else None)
