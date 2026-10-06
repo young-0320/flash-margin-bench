@@ -198,7 +198,8 @@ def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
     for name, dest in files.items():
         print(f"  {name}  → docs/results/{dest}/")
     print(f"  inverse.txt (현장 역산 — 승격하지 않음)" if after else "  마모 뒤 newchip 없음 — 현장 역산 생략")
-    print(f"  교정: {'넣음' if calib else '뺌 (' + tag.lstrip('_') + ')'}")
+    print(f"  교정: {'--promote 하면 넣는다 (빼려면 --no-calib 으로 1단계를 다시)' if calib else '뺀다 (' + tag.lstrip('_') + ')'}"
+          " — 1단계는 아직 아무것도 승격하지 않았다")
     print(f"\ndata/README 보관 현황 제안: `sweep_{chip}_<UID>_{sweeps[0][:8]}-{sweeps[-1][:8]}` · `wear/` "
           + " · ".join(f"`{d.name}`" for d in found))
     print(f"\n훑어본 뒤: uv run python host/analysis/pe_end.py --chip {chip} --promote")
