@@ -115,7 +115,7 @@ def sweep_info(chip):
     info = {}
     for log in glob.glob(str(REPO / "data" / f"session_{chip}_*.log")):
         txt = Path(log).read_text(encoding="utf-8", errors="replace")
-        m, b, r = re.search(r"VALID (sweep_\S+\.csv)", txt), re.search(r"batch (\w+):", txt), re.search(r"-> (-?\d+) 스텝", txt)
+        m, b, r = re.search(r"\bVALID (sweep_\S+\.csv)", txt),re.search(r"batch (\w+):", txt), re.search(r"-> (-?\d+) 스텝", txt)
         if m:
             info[m[1]] = {"batch": b[1] if b else "", "recenter": int(r[1]) if r else ""}
     for js in glob.glob(str(REPO / "data" / f"sweep_{chip}_*.analysis.json")):

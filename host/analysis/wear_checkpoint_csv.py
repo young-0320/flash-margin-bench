@@ -43,7 +43,7 @@ def utc(stamp):
 def read_session_log(path):
     """세션 로그 한 개 → dict(batch, t, mode, mhz, sweep, erase{섹터: us}, program{섹터: us}). VALID 스윕이 없으면 None."""
     txt = Path(path).read_text(encoding="utf-8", errors="replace")
-    v = re.search(r"VALID (sweep_\S+\.csv)", txt)
+    v = re.search(r"\bVALID (sweep_\S+\.csv)", txt)         # \b — 「INVALID sweep_…_invalid.csv」(무효 런)는 잡지 않는다
     if not v:
         return None
     batch = Path(path).stem.rsplit("_", 1)[1]

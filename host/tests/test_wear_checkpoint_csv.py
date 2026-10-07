@@ -93,6 +93,21 @@ def test_five_row_kinds(tmp_path, monkeypatch):
     assert post_new["erase_us_p50"] == 500 and post_new["program_us_p50"] == 6700
 
 
+def test_invalid_run_is_not_a_session(tmp_path):
+    """「[1/1] INVALID sweep_…_invalid.csv」 안의 VALID 를 잡으면 무효 런이 세션이 되어 pe_end 가 bathtub_analysis 에서 멈췄다 (chip02 9/15)."""
+    data = tmp_path / "data"
+    data.mkdir()
+    good = session_log(data, T0, "newchip", 25, erase={s: 100 for s in range(128)})
+    batch = stamp(T0 - timedelta(days=1))
+    bad = data / f"session_{CHIP}_{UID}_{batch}.log"
+    bad.write_text(f"[00:00:00] batch {batch}: mode=newchip chip={CHIP} mhz=25 pl=None repeat=1\n"
+                   "[00:00:01] #PREP ERASE 0 25\n"
+                   f"[00:01:00] [1/1] INVALID sweep_{CHIP}_{UID}_{batch}_invalid.csv (2501 rows)\n"
+                   "[00:01:00] 1/1 완료 (invalid 1)\n", encoding="utf-8")
+    assert wcc.read_session_log(bad) is None
+    assert [s["sweep"] for s in wcc.session_logs(CHIP, data)] == [good]
+
+
 def test_missing_analysis_json_warns(tmp_path, monkeypatch):
     data = tmp_path / "data"
     data.mkdir()
