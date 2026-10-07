@@ -16,6 +16,7 @@
 | `w25q64fv_datasheet_revl.pdf` | W25Q64FV Datasheet (3V 64M-bit Serial Flash) — **우리 칩의 실제 세대** | **Revision L** (2013-10-07) | alldatasheet.com 재배포본 (Winbond 원본이 단종으로 안 보여서) | 2026-10-05 | 4KB 섹터 소거 tSE **typ 60ms(끝자리 IG) · 45ms(IQ · IF)** · max 400ms(76쪽) · 페이지 프로그램 tPP typ 0.7 · max 3ms — 기준선 ① 의 데이터시트 기준. 칩 마킹은 `../chip_registry.md` |
 | `sakib2018_recycled_flash_timing_cryptography.pdf` | Sakib 외, *Non-Invasive Detection Method for Recycled Flash Memory Using Timing Characteristics*, Cryptography 2(3):17 (MDPI, doi 10.3390/cryptography2030017) | 게재판 (2018-08-12) | mdpi.com (오픈 액세스) | 2026-10-05 | 가장 가까운 선행 연구 — 기준선 비교 ① 의 판정 식(4절 식 (1)) · 발표 1장 · 7장. 요약은 `선행논문_재활용판별_NOR소거열화.md` §1 |
 | `liu2019_nor_erase_time_degradation_juestc.pdf` | LIU Jing(刘璟) 외, *Optimization of Erase Time Degradation in 65nm NOR Flash Memory Chips*, 电子科技大学学报(JUESTC) 48(4) (doi 10.3969/j.issn.1001-0548.2019.04.003) | 게재판 (2019) | juestc.uestc.edu.cn | 2026-10-05 | NOR 섹터 소거의 내부 4단계와 열화 기전 — 계단 · 128KB 교란 · 두 무리의 가설 근거, 발표 예상 질문. 요약은 `선행논문_재활용판별_NOR소거열화.md` §5 |
+| `guo2017_ffd_fake_flash_detection_dac.pdf` | Guo · Xu · Tehranipoor · Forte, *FFD: A Framework for Fake Flash Detection*, DAC 2017 (doi 10.1145/3061639.3062249) | 게재판 (2017-06) | dl.acm.org | 2026-10-06 | 사용량 추정의 선례(부분 프로그래밍 · 신품 때 등록 전제 · 점 추정) — 「정량 추정 최초」 를 쓰지 않는 근거, 발표 예상 질문. 요약은 `선행논문_재활용판별_NOR소거열화.md` §3 |
 | `zybo_z7_refmanual_rev20180221.pdf` | Zybo Z7 Board Reference Manual (보드 rev.B 대상) | **2018-02-21 개정** | digilent.com | 2026-07-08 | Pmod 종류(JB 고속/JE 200Ω)·핀 배정·JP5 부팅 모드 |
 
 ## 선행 연구 조사 문서
@@ -24,5 +25,5 @@
 | ---- | ---- |
 | `선행논문_조사.md` | 국내 — NAND · NOR 신뢰성 일반 |
 | `해외논문_조사.md` | 해외 — NAND 문턱전압(Vth) · 내부 접근 계열 |
-| `선행논문_재활용판별_NOR소거열화.md` | 같은 신호(소거 시간)의 재활용 플래시 판별(Sakib 2018 등) · NOR 소거 시간 열화 기전(LIU 2019). 확인 수준(본문 · 초록 · 검색만) 표기 (2026-10-05) |
+| `선행논문_재활용판별_NOR소거열화.md` | 같은 신호(소거 시간)의 재활용 플래시 판별(Sakib 2018 등) · 사용량 추정 선례(FFD 2017) · NOR 소거 시간 열화 기전(LIU 2019). 확인 수준(본문 · 초록 · 검색만) 표기 (2026-10-05) |
 
