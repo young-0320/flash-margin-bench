@@ -355,3 +355,32 @@ Updated: 2026-09-20
 | 2026-10-05 | chip10 | DF685453E7791531 | 0~6 | +10000 | run_wear accept (session 1791175305) | cycle 90000→100000 |
 | 2026-10-05 | chip10 | DF685453E7791531 | 0~6 | +1 | run_wear checkpoint (session 1791175305) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
 | 2026-10-06 | chip10 | DF685453E7791531 | 0~127 | +1 | flash_prep (batch 20261006T002446Z) |  |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 512 | +1 | run_wear tally-erase (session 1791280528) | tally erase · 지운 값 a=1 b=1 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 1536 | +1 | run_wear tally-erase (session 1791280528) | tally erase · 지운 값 a=1 b=1 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +100 | run_wear accept (session 1791280572) | cycle 0→100 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 100 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +900 | run_wear accept (session 1791280572) | cycle 100→1000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +2000 | run_wear accept (session 1791280572) | cycle 1000→3000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 3000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +7000 | run_wear accept (session 1791280572) | cycle 3000→10000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 10000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 10000→20000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 20000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 20000→30000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 30000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 30000→40000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 40000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 40000→50000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 50000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 50000→60000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 60000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 60000→70000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 70000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 70000→80000 |
+| 2026-10-06 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 80000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-07 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 80000→90000 |
+| 2026-10-07 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 90000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-07 | chip02 | D1642C74E7134527 | 0~6 | +10000 | run_wear accept (session 1791280572) | cycle 90000→100000 |
+| 2026-10-07 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-07 | chip02 | D1642C74E7134527 | 0~127 | +1 | flash_prep (batch 20261007T034458Z) |  |
