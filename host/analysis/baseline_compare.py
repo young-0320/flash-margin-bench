@@ -187,9 +187,9 @@ def plot_estimate(pos, path):
     ax.set_ylim(0, 102)
     ax.set_ylabel("추정한 횟수 (천 회)", fontsize=9, color=INK2)
     ax.legend(frameon=False, fontsize=8.5, loc="upper left", labelcolor=INK2)
-    fig.suptitle("몇 번 썼나 — 우리 모델도 단순 회귀만큼 빗나가지만, 그 범위를 구간으로 말한다", fontsize=12.5, color=INK, x=0.01, ha="left")
+    fig.suptitle("몇 번 썼나 — 우리 모델이 단순 회귀보다 덜 빗나가고, 그 범위를 구간으로 말한다", fontsize=12.5, color=INK, x=0.01, ha="left")
     fig.text(0.01, 0.905, f"검은 선(정답)에 가까울수록 잘 맞힌 것 · 막대가 선을 품으면 구간이 맞은 것 (68% 구간 {sum(p[6] for p in pos)}/{len(pos)}) · "
-             "지점마다 교정 7칩을 하나씩 빼고 맞힌 값", fontsize=9, color=INK2, ha="left")
+             f"지점마다 교정 {len({p[0] for p in pos})}칩을 하나씩 빼고 맞힌 값", fontsize=9, color=INK2, ha="left")
     fig.tight_layout(rect=(0, 0, 1, 0.9))
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=160)
@@ -242,7 +242,7 @@ def main():
         print(f"| {chip} | {'빠른' if wi.group_of(ref, SPLIT_US) == 'fast' else '느린'} | {statistics.median(obs) / 1000:.1f} | "
               f"{typ:g}{'' if chip in SUFFIX else ' (끝자리 미확인)'} | {j[0]:.0%} | {upper(fresh_pool(sectors, chip, False), 1) / 1000:.1f} | {j[1]:.0%} | "
               f"{upper(fresh_pool(sectors, chip, True), 1):.2f} | {j[2]:.0%} |")
-    print("\n오경보: " + " · ".join(f"({n}) 15칩 {frac([f[i] for f in nflags.values()])} · 교정 7칩 "
+    print("\n오경보: " + " · ".join(f"({n}) {len(nflags)}칩 {frac([f[i] for f in nflags.values()])} · 교정 {len(curves)}칩 "
                                  f"{frac([f[i] for c, f in nflags.items() if c in curves])}" for i, n in enumerate("abc")))
     flip = [chip for chip, obs, _ in neg if chip not in SUFFIX and confidence(obs, DATASHEET_TYP_US["IQ"]) >= CONFIDENCE]
     print(f"끝자리 미확인 칩을 IQ(45ms)로 보면 (a) 가 「썼다」 로 바뀌는 칩: {' · '.join(flip) or '없음'}")
