@@ -225,6 +225,20 @@ def chip_speeds(curves, fresh, chips):
     return {c: float(s[idx[c]]) for c in chips}
 
 
+_SPEED_CACHE = {}
+
+
+def _speeds_cached(curves, fresh, chips):
+    """chip_speeds 를 같은 교정 집합에 한 번만 — LOCO 가 빠진 칩마다 12점을 돌릴 때 쌍 맞춤을 되풀이하지 않는다.
+    키는 칩 이름 · 신품값 · 곡선 dict 의 id 이고, 값에 그 dict 들의 참조를 함께 잡아 id 재사용을 막는다."""
+    chips = sorted(chips)
+    key = (tuple(chips), tuple(fresh[c] for c in chips), tuple(id(curves[c]) for c in chips))
+    hit = _SPEED_CACHE.get(key)
+    if hit is None:
+        hit = _SPEED_CACHE[key] = (chip_speeds(curves, fresh, chips), [curves[c] for c in chips])
+    return hit[0]
+
+
 def rate_from_speeds(speeds_by_group, grp):
     """v4 의 R — 무리 grp 의 ŝ_j 표준편차 σ_r 에서 exp(1.96·σ_r·√(1+1/M)). 무리에 칩이 하나면 두 무리를 합친 σ_r (가정).
     합친 뒤에도 자유도가 없으면 1 (r 적분 끔). → (R, σ_r, M)."""
@@ -328,7 +342,7 @@ def fit(curves, fresh, grp, scale, split_us, model=MODEL_VERSION, rate_range=Non
         raise SystemExit(f"{grp} 무리의 교정 칩이 없다")
     speeds, sigma_r = None, 0.0
     if m["align"]:
-        by_group = {g: chip_speeds(curves, fresh, [c for c in curves if group_of(fresh[c], split_us) == g]) for g in ("fast", "slow")}
+        by_group = {g: _speeds_cached(curves, fresh, [c for c in curves if group_of(fresh[c], split_us) == g]) for g in ("fast", "slow")}
         speeds = by_group[grp]
         if m["rate"] == "speeds":
             derived, sigma_r, _ = rate_from_speeds(by_group, grp)
