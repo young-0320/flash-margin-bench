@@ -1,8 +1,11 @@
 # wear_inverse.py — 수명 역산 1차(현장) 모델: 개봉 prep 의 섹터별 소거 시간 → 마모 섹터 0-6 의 누적 P/E 사이클 x 의 구간
 #
-# 현재 버전: v3.2 · 최종 수정 2026-10-05 (버전을 올리면 아래 MODEL_VERSION 도 같이 — 기록 파일 머리말에 찍힌다)
+# 현재 버전: v4 · 최종 수정 2026-10-08 (버전을 올리면 아래 MODEL_VERSION 도 같이 — 기록 파일 머리말에 찍힌다)
 #   v1 09-30 (4칩 · R 2.0 · MAP) → v2 10-01 (+chip09) → v3 10-05 (7칩 · R 1.6 · 사후 중앙값 · 입력 C 삭제)
-#   → v3.1 10-05 (R 무리별: 빠른 1.6 · 느린 1.3) → v3.2 10-05 (r 적분을 격자 없이). 버전별 사양: docs/spec/s5.lifetime_inverse_model.md
+#   → v3.1 10-05 (R 무리별: 빠른 1.6 · 느린 1.3) → v3.2 10-05 (r 적분을 격자 없이)
+#   → v4 10-08 (고른 값을 잰 값으로 — ① 셀 분포를 분위수 21개로 ② 증거량을 상관 ρ 로 ③ 교정 곡선을 칩 속도로 정렬
+#               ④ R 을 속도 흩어짐에서 유도 ⑤ LOCO 관측을 A 행 그대로 · 합격 띠를 미리). 버전별 사양: docs/spec/s5.lifetime_inverse_model.md
+#   --model v3.2 로 이전 모델을 그대로 돌린다 (교정 표는 --curves 로 그 버전의 칩만)
 #
 # 사용:
 #   uv run python host/analysis/wear_inverse.py data/session_chipNN_<uid>_<stamp>.log [prep 로그 더]   # 블라인드 개봉
@@ -17,14 +20,21 @@
 #   입력 A  섹터 32-127 소거 시간의 중앙값  = 이 칩의 신품값. 40ms 아래면 빠른 무리, 위면 느린 무리 — 교정 곡선은 같은 무리 칩만 쓴다
 #   입력 B  섹터 0-6 의 소거 시간 (prep 을 k 번 돌렸으면 7k 개)
 #   (입력 C — prep 프로그램 시간으로 무리를 교차 확인하던 줄은 v3 에서 뺐다. 다 쓴 느린 칩에서 헛울렸다 — 로그 48 [U48-16])
-#   교정    wear_curves CSV(1k 구간 × 섹터 × p10/p50/p90). 무리 안 칩 × 섹터 하나하나를 그 구간의 "구성원"으로 두고,
-#           구성원마다 p50 을 중심, (p90-p10)/2.56 을 폭으로 하는 정규분포를 놓는다
-#   계산    곡선 지점 M 마다 관측 B 가 나올 우도 = 관측별 (구성원 평균 밀도) 의 기하 평균 — 7개 관측은 같은 칩이라 독립으로 곱하지 않는다.
+#   교정    wear_curves CSV(1k 구간 × 섹터 × p10/p50/p90 · v4 는 5% 분위수 21개). 무리 안 칩 × 섹터 하나하나를 그 구간의 "구성원"으로 두고,
+#           v3: 구성원마다 p50 을 중심, (p90-p10)/2.56 을 폭으로 하는 정규분포 · v4: 분위수 사이 5% 씩의 조각별 균일 밀도(모양을 가정하지 않는다 —
+#           계단 셀의 빈 구간이 그대로 낮은 밀도가 된다). 분위수 밖은 1/(n+1)÷범위 (1,001번째 표본의 몫), 조각 폭 하한은 1µs (측정 해상도)
+#   정렬    v4: 교정 칩마다 속도 r̂_j(쌍별 pair_speed 를 최소제곱으로 칩당 하나, 무리 안 로그 합 0)를 두고, 공통 시계 c 에 칩 j 의 c/r̂_j 셀을
+#           구성원으로 넣는다 — 칩 속도 차가 혼합 폭과 r 적분에 두 번 들어가던 것을 r 한 곳으로 (보간 없이 가장 가까운 셀)
+#   계산    곡선 지점 M 마다 관측 B 가 나올 우도 = 관측별 (구성원 평균 밀도) 의 기하 평균 × 유효 관측 수 — 7개 관측은 같은 칩이라 독립으로 곱하지 않는다.
+#           v3: 유효 관측 수 1 (prep 전부를 관측 하나로) · v4: 섹터 간 상관 ρ_s · prep 간 상관 ρ_p 에서 n_eff = 1/(ρ_s/P + ρ_p/k + (1−ρ_s−ρ_p)/kP)
+#           (k 섹터 · P prep). ρ 는 --rho 로 A 행(P 연속 사이클 × 7섹터 표의 이원 분산 성분)과 prep 로그에서 재서 RHO 에 등록한다
 #   속도 r  같은 무리 안에서도 사이클당 손상량이 칩마다 다르다 — 곡선 모양은 같고 가로축만 r 배 늘어난다(chip01 대 chip04 약 1.4,
 #           chip03 대 chip07 약 1.25). 누적 사이클 x 인 칩은 교정 곡선의 M = x·r 지점처럼 보인다. r 은 [1/R, R] 에서 로그 균등으로
 #           적분한다(v3.2 부터 격자 없이 — 걸치는 곡선 구간을 전부 더한다, 로그 48 [D48-98]). R 의 규칙: 두 쌍의 로그 차이 평균 ÷ 1.13 = 개체 표준편차(약 0.25), 새 칩 하나 대 교정 칩 하나의 95% 범위
 #           = √2 × 1.96 × 표준편차 → R ≈ 2.0 (v1 · v2). v3 는 교정 7칩 LOCO 로 1.6 (로그 48 [D48-94]),
 #           v3.1 은 무리별 — 빠른 1.6 · 느린 1.3 (로그 48 [D48-95]) · 1 이면 끔
+#           v4: 정렬에 쓴 r̂_j 의 로그 표준편차 σ_r 에서 R = exp(1.96·σ_r·√(1+1/M)) — 새 칩 하나 대 교정 M개 평균. 고르는 값이 아니라
+#           유도되는 값이고, 무리에 칩이 하나면 두 무리를 합친 σ_r 을 쓴다(가정). --rate-range 를 주면 그 값이 이긴다
 #           x 의 사전은 1-100k 에 평평. → x 구간별 확률. 기호: 누적 P/E 사이클 = x (N 은 위상당 읽기 112 에만 쓴다, 로그 51 [D51-1])
 #   출력    사후 중앙값 구간(대표값, v3 — MAP 은 오른쪽 꼬리가 긴 사후에서 낮게 치우쳤다, 로그 48 [D48-94]) · 68% · 95% 최고밀도 집합
 #           (사이클 범위로 합쳐서). 100k 너머는 교정이 없어 답하지 않는다
@@ -34,15 +44,26 @@
 #         유일한 방법이다. 눈금(ms/ratio)은 이 결과가 더 좁고 정답을 더 자주 품는 쪽으로 고른다 — 규칙은 S-1 에 먼저 적었다
 
 import argparse
+import bisect
 import csv
 import glob
 import math
 import re
 import statistics
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from pathlib import Path
 
-MODEL_VERSION = "v3.2"                     # 기록 파일(--out) 머리말에 찍는 버전 — docs/spec/s5.lifetime_inverse_model.md §2
+MODEL_VERSION = "v4"                       # 기록 파일(--out) 머리말에 찍는 버전 — docs/spec/s5.lifetime_inverse_model.md §2
+MODELS = {                                 # 버전별로 달라지는 네 자리 (나머지는 공통). --model 로 고른다
+    "v3.2": {"cell": "gauss", "evidence": "one", "align": False, "rate": "fixed"},
+    "v4": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"},
+}
+RHO = {"sector": None, "prep": None}       # v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p). `--rho` 로 잰 값을 여기 등록한다.
+                                           # None 이면 v4 는 --rho-sector/--rho-prep 없이 돌지 않는다 (고른 값을 두지 않는다)
+Q_LEVELS = tuple(range(0, 101, 5))         # 교정 표의 분위수 열 (wear_curves.Q_LEVELS 와 같다)
+Q_FIELDS = tuple(f"erase_us_q{q:02d}" for q in Q_LEVELS)
+Q_N = 1000                                 # 셀의 표본 수 — 분위수 밖 바닥 밀도 1/(Q_N+1)÷범위 의 n
+Q_MIN_WIDTH_US = 1                         # 분위수 조각 폭의 하한 — A 행 소거 시간의 해상도 1µs
 REPO = Path(__file__).resolve().parents[2]
 CURVES_GLOB = str(REPO / "docs" / "results" / "data" / "wear_curves" / "wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv")   # 교정 = 접미사 없는 이름 (_65C · _ali · _nocal 은 밖)
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
@@ -65,14 +86,20 @@ GRADES = ((0.01, "신품"), (0.20, "저마모"), (0.60, "중마모"), (1.00, "�
 
 # ---------- 입력 ----------
 
+Cell = namedtuple("Cell", "p10 p50 p90 q")   # 교정 표의 한 칸 (µs). q 는 5% 분위수 21개, 표에 열이 없으면 None
+
+
 def load_curves(pattern=CURVES_GLOB):
-    """wear_curves CSV 들 → {chip: {bin_start: {sector: (p10, p50, p90)}}} (µs)."""
+    """wear_curves CSV 들 → {chip: {bin_start: {sector: Cell}}} (µs)."""
     curves = defaultdict(lambda: defaultdict(dict))
     for path in sorted(glob.glob(pattern)):
         with open(path, newline="", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                curves[r["chip"]][int(r["bin_start"])][int(r["sector"])] = (
-                    int(r["erase_us_p10"]), int(r["erase_us_p50"]), int(r["erase_us_p90"]))
+            rd = csv.DictReader(f)
+            has_q = all(k in rd.fieldnames for k in Q_FIELDS)
+            for r in rd:
+                curves[r["chip"]][int(r["bin_start"])][int(r["sector"])] = Cell(
+                    int(r["erase_us_p10"]), int(r["erase_us_p50"]), int(r["erase_us_p90"]),
+                    tuple(int(r[k]) for k in Q_FIELDS) if has_q else None)
     if not curves:
         raise SystemExit(f"교정 표가 없다: {pattern} — docs/results/data/wear_curves/wear_curves_2026-09.md 의 재현 명령으로 만든다")
     return curves
@@ -113,17 +140,17 @@ def group_of(fresh_us, split_us):
     return "fast" if fresh_us < split_us else "slow"
 
 
-def members(curves, fresh, chips, scale):
-    """무리 안 칩들의 구간별 구성원 목록 → {bin_start: [(mu, sigma), ...]} (선택한 눈금)."""
-    out = defaultdict(list)
-    for chip in chips:
-        div = fresh[chip] if scale == "ratio" else 1.0
-        for b, sectors in curves[chip].items():
-            for p10, p50, p90 in sectors.values():
-                mu = p50 / div
-                sigma = max((p90 - p10) / 2.5631 / div, SIGMA_FLOOR * mu)
-                out[b].append((mu, sigma))
-    return out
+class Gauss:
+    """v3 구성원 — 셀 하나를 정규분포로. mu = p50, sigma = (p90−p10)/2.5631 (하한 2%·mu). lo/hi 는 밴드 검사의 p10/p90."""
+    __slots__ = ("mu", "sigma", "lo", "hi")
+
+    def __init__(self, cell, div):
+        self.mu = cell.p50 / div
+        self.sigma = max((cell.p90 - cell.p10) / 2.5631 / div, SIGMA_FLOOR * self.mu)
+        self.lo, self.hi = self.mu - 1.2816 * self.sigma, self.mu + 1.2816 * self.sigma
+
+    def logpdf(self, x):
+        return _logpdf(x, self.mu, self.sigma)
 
 
 def _logpdf(x, mu, sigma):
@@ -131,31 +158,115 @@ def _logpdf(x, mu, sigma):
     return -0.5 * z * z - math.log(sigma) - 0.9189385332046727
 
 
+class Quant:
+    """v4 구성원 — 셀 하나를 분위수 21개 그대로. 이웃 분위수 사이 조각마다 5% 가 들어 있으니 밀도 = 0.05 ÷ 조각 폭.
+    조각 폭은 1µs 아래로 두지 않는다 (A 행 해상도). 분위수 밖은 1/(n+1) ÷ (q100−q00) — 1,001번째 표본이 거기 있을 몫."""
+    __slots__ = ("q", "logd", "logeps", "mu", "lo", "hi")
+
+    def __init__(self, cell, div):
+        if cell.q is None:
+            raise SystemExit("교정 표에 분위수 열(erase_us_q00…q100)이 없다 — wear_curves.py 로 표를 다시 만든다 (v4). 이전 표는 --model v3.2")
+        self.q = [v / div for v in cell.q]
+        step = 1.0 / (len(self.q) - 1)
+        self.logd = [math.log(step / max(b - a, Q_MIN_WIDTH_US / div)) for a, b in zip(self.q, self.q[1:])]
+        self.logeps = math.log(1.0 / (Q_N + 1) / max(self.q[-1] - self.q[0], Q_MIN_WIDTH_US / div))
+        self.mu, self.lo, self.hi = self.q[10], self.q[2], self.q[18]          # p50 · p10 · p90
+
+    def logpdf(self, x):
+        if x < self.q[0] or x > self.q[-1]:
+            return self.logeps
+        return self.logd[min(bisect.bisect_right(self.q, x) - 1, len(self.logd) - 1)]
+
+
+def source_bin(c, r):
+    """공통 시계의 사이클 c 에 해당하는, 속도 r 인 칩의 자기 1k 구간 시작 — r 배 빨리 늙는 칩은 c/r 번째에 그 상태다."""
+    return int((c / r - 1) // 1000) * 1000 + 1
+
+
+def members(curves, fresh, chips, scale, cell="gauss", speeds=None):
+    """무리 안 칩들의 구간별 구성원 목록 → {bin_start: [구성원, ...]} (선택한 눈금).
+
+    speeds({chip: ln r̂}) 를 주면 공통 시계로 정렬한다 — 공통 구간 B 마다 칩 j 의 (B 가운데)/r̂_j 셀을 넣는다. 보간하지 않는다:
+    이웃 셀의 분위수를 섞으면 계단 앞뒤 사이에 한 번도 안 나온 중간값이 생긴다."""
+    make = Quant if cell == "quantile" else Gauss
+    out = defaultdict(list)
+    for chip in chips:
+        div = fresh[chip] if scale == "ratio" else 1.0
+        if speeds is None:
+            for b, sectors in curves[chip].items():
+                out[b].extend(make(c, div) for c in sectors.values())
+        else:
+            r = math.exp(speeds[chip])
+            top = max(curves[chip]) + 999
+            for b in range(1, int(top * r) + 1, 1000):
+                src = source_bin(b + 499, r)
+                if src in curves[chip]:
+                    out[b].extend(make(c, div) for c in curves[chip][src].values())
+    return out
+
+
+def chip_speeds(curves, fresh, chips):
+    """무리 안 칩마다 로그 속도 ŝ_j — 쌍별 pair_speed(양방향 로그 평균)를 ŝ_a − ŝ_b = ln r_ab 로 두고 최소제곱, 합 0. 칩이 하나면 0."""
+    chips = sorted(chips)
+    if len(chips) < 2:
+        return {c: 0.0 for c in chips}
+    import numpy as np
+    idx = {c: i for i, c in enumerate(chips)}
+    rows, rhs = [[1.0] * len(chips)], [0.0]                   # 합 0
+    for i, a in enumerate(chips):
+        for b in chips[i + 1:]:
+            ab, ba = pair_speed(curves, fresh, a, b), pair_speed(curves, fresh, b, a)
+            if ab and ba:
+                row = [0.0] * len(chips)
+                row[idx[a]], row[idx[b]] = 1.0, -1.0
+                rows.append(row)
+                rhs.append((math.log(ab[0]) - math.log(ba[0])) / 2)
+    s = np.linalg.lstsq(np.array(rows), np.array(rhs), rcond=None)[0]
+    return {c: float(s[idx[c]]) for c in chips}
+
+
+def rate_from_speeds(speeds_by_group, grp):
+    """v4 의 R — 무리 grp 의 ŝ_j 표준편차 σ_r 에서 exp(1.96·σ_r·√(1+1/M)). 무리에 칩이 하나면 두 무리를 합친 σ_r (가정).
+    합친 뒤에도 자유도가 없으면 1 (r 적분 끔). → (R, σ_r, M)."""
+    own = speeds_by_group.get(grp, {})
+    groups = [own] if len(own) >= 2 else [g for g in speeds_by_group.values() if len(g) >= 2]
+    df = sum(len(g) - 1 for g in groups)                      # 무리마다 합이 0 이라 Σŝ² ÷ (M−1) 이 표본 분산
+    if df <= 0:
+        return 1.0, 0.0, len(own)
+    sigma = math.sqrt(sum(v * v for g in groups for v in g.values()) / df)
+    return math.exp(1.96 * sigma * math.sqrt(1 + 1 / max(len(own), 1))), sigma, len(own)
+
+
+def n_eff(k, preps, rho_s, rho_p):
+    """유효 관측 수 — k 섹터 × P prep 의 평균이 줄이는 분산의 역수. ρ_s = 같은 prep 안 섹터 간, ρ_p = 같은 섹터 prep 간 상관.
+    ρ_s = 1 · P = 1 이면 1 (v3 와 같다), 둘 다 0 이면 k·P (독립 곱)."""
+    return 1.0 / (rho_s / preps + rho_p / k + (1 - rho_s - rho_p) / (k * preps))
+
+
 def _logmeanexp(vals):
     m = max(vals)
     return m + math.log(sum(math.exp(v - m) for v in vals) / len(vals))
 
 
-def curve_loglik(obs, mem, runs=1):
-    """곡선 지점(bin_start)마다 관측 B 의 로그 우도.
+def curve_loglik(obs, mem, evidence=1):
+    """곡선 지점(bin_start)마다 관측 B 의 로그 우도 — 관측별 로그 점수의 평균 × 유효 관측 수(evidence).
 
-    관측 수로 나눠(기하 평균) prep 전부를 관측 하나로 친다(runs=1, 기본). 측정 잡음만 보면 따로 돌린 prep 은 독립이라
-    runs(prep 횟수)를 곱할 수 있지만, 처음 보는 칩에는 교정 곡선과의 차이가 있고 그것은 prep 을 반복해도 줄지 않는다 —
-    합성 복원에서 runs 를 곱하면 정체 칩을 뺀 prep 5회의 95% 구간이 82% 만 품었다(곱하지 않으면 96%). 그래서 기본은 1,
-    --prep-indep 는 시험용 (2026-10-01, 로그 48 [D48-58] · docs/results/data/synthetic_recovery_2026-10.md)."""
-    return {b: runs * sum(_logmeanexp([_logpdf(x, mu, s) for mu, s in ms]) for x in obs) / len(obs)
+    evidence 1 이면 prep 전부를 관측 하나로 친다(v3 기본). 측정 잡음만 보면 따로 돌린 prep 은 독립이라 prep 횟수를 곱할 수
+    있지만, 처음 보는 칩에는 교정 곡선과의 차이가 있고 그것은 prep 을 반복해도 줄지 않는다 — 합성 복원에서 곱하면 정체 칩을
+    뺀 prep 5회의 95% 구간이 82% 만 품었다(곱하지 않으면 96%) (2026-10-01, 로그 48 [D48-58]). v4 는 그 사이를 재서 넣는다 (n_eff)."""
+    return {b: evidence * sum(_logmeanexp([m.logpdf(x) for m in ms]) for x in obs) / len(obs)
             for b, ms in mem.items()}
 
 
-def posterior(obs, mem, rate_range=1.0, runs=1):
-    """관측 목록(선택한 눈금) → {x 구간 bin_start: 확률}. x(누적 사이클)는 1-MAX_CYCLE 에 평평한 사전.
+def posterior(obs, mem, rate_range=1.0, evidence=1):
+    """관측 목록(선택한 눈금) → {x 구간 bin_start: 확률}. x(누적 사이클)는 1-MAX_CYCLE 에 평평한 사전. evidence 는 유효 관측 수.
 
     속도 배율 r 을 [1/R, R] 로그 균등으로 적분한다: P(x) ∝ ∫ L(x·r) d ln r. 곡선 지점 M = x·r 로 바꾸면 d ln r = dM/M 이라,
     곡선 구간 [x/R, x·R] 에 걸치는 1k 구간을 빠짐없이 더하되 구간마다 ln(걸친 끝 ÷ 걸친 시작)을 곱한다 (v3.2 — r 을 41점만
     찍던 격자는 x 가 크면 곡선 구간을 건너뛰어 68% 구간이 빗살처럼 쪼개졌다, 로그 48 [D48-98]).
     곡선에 없는 지점(교정 범위 밖)은 0 — 그래서 큰 x 는 r 이 작은 쪽만 기여하고, 그것이 교정 범위가 주는 자연스러운 제약이다.
     rate_range ≤ 1 이면 r = 1 하나."""
-    ll = curve_loglik(obs, mem, runs)
+    ll = curve_loglik(obs, mem, evidence)
     m = max(ll.values())
     post = {}
     for xb in range(1, MAX_CYCLE + 1, 1000):
@@ -208,36 +319,73 @@ def ranges(bins, width=1000):
     return out
 
 
-def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, runs=1):
-    """입력 A·B → 결과 dict. 눈금 변환은 여기서만 한다."""
-    grp = group_of(ref_us, split_us)
-    if rate_range is None:                                    # 기본 — 무리별 R
-        rate_range = RATE_RANGE[grp]
+def fit(curves, fresh, grp, scale, split_us, model=MODEL_VERSION, rate_range=None):
+    """무리 grp 의 교정 → (구성원 {bin: [...]}, 교정 칩, R, 속도 {chip: ŝ} 또는 None, σ_r).
+    v4: 두 무리의 칩 속도를 내고(정렬 · σ_r), R 을 유도한다. rate_range 를 주면 그 값이 이긴다. v3: 구간 그대로 · 무리별 R 상수."""
+    m = MODELS[model]
     chips = [c for c in curves if group_of(fresh[c], split_us) == grp]
     if not chips:
         raise SystemExit(f"{grp} 무리의 교정 칩이 없다")
+    speeds, sigma_r = None, 0.0
+    if m["align"]:
+        by_group = {g: chip_speeds(curves, fresh, [c for c in curves if group_of(fresh[c], split_us) == g]) for g in ("fast", "slow")}
+        speeds = by_group[grp]
+        if m["rate"] == "speeds":
+            derived, sigma_r, _ = rate_from_speeds(by_group, grp)
+            rate_range = derived if rate_range is None else rate_range
+    if rate_range is None:                                    # v3 기본 — 무리별 R 상수
+        rate_range = RATE_RANGE[grp]
+    return members(curves, fresh, chips, scale, m["cell"], speeds), chips, rate_range, speeds, sigma_r
+
+
+def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, preps=1, prep_indep=False, model=MODEL_VERSION, rho=RHO):
+    """입력 A·B → 결과 dict. 눈금 변환은 여기서만 한다. preps 는 prep 횟수(관측 = 섹터 × preps)."""
+    m = MODELS[model]
+    grp = group_of(ref_us, split_us)
+    mem, chips, rate_range, speeds, sigma_r = fit(curves, fresh, grp, scale, split_us, model, rate_range)
     obs = [v / ref_us for v in worn_us] if scale == "ratio" else list(worn_us)
-    mem = members(curves, fresh, chips, scale)
-    post = posterior(obs, mem, rate_range, runs)
+    if m["evidence"] == "neff":
+        if rho["sector"] is None or rho["prep"] is None:
+            raise SystemExit("v4 의 ρ 가 등록되지 않았다 — `--rho` 로 재서 RHO 에 적거나 --rho-sector/--rho-prep 으로 준다")
+        evidence = n_eff(max(1, len(obs) // preps), preps, rho["sector"], rho["prep"])
+    else:
+        evidence = preps if prep_indep else 1
+    post = posterior(obs, mem, rate_range, evidence)
     top = max(post, key=post.get)
     # 밴드 검사는 r 을 빼고 곡선 위에서 가장 그럴듯한 지점(M*)의 구성원 p10 최소 ~ p90 최대로 한다
     ll = curve_loglik(obs, mem)
     mstar = max(ll, key=ll.get)
-    lo = min(mu - 1.2816 * s for mu, s in mem[mstar])
-    hi = max(mu + 1.2816 * s for mu, s in mem[mstar])
+    lo = min(mm.lo for mm in mem[mstar])
+    hi = max(mm.hi for mm in mem[mstar])
     outside = sum(1 for x in obs if not lo <= x <= hi)
     below = sum(1 for x in obs if x < lo)
     med = median_bin(post)
     return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "hpd68": ranges(hpd(post, 0.68)),
             "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post, "rate_range": rate_range,
-            "below_first": below if mstar == min(ll) else 0}       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
+            "below_first": below if mstar == min(ll) else 0,       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
+            "evidence": evidence, "speeds": speeds, "sigma_r": sigma_r}
 
 
-def rate_label(rate_range):
-    """R 표기 — None(기본)이면 무리별 값."""
+def rate_label(rate_range, model=MODEL_VERSION):
+    """R 표기 — None(기본)이면 v3 는 무리별 상수, v4 는 속도 흩어짐에서 유도."""
     if rate_range is None:
+        if MODELS[model]["rate"] == "speeds":
+            return "유도 (σ_r)"
         return f"빠른 {RATE_RANGE['fast']:g} · 느린 {RATE_RANGE['slow']:g}"
     return f"{rate_range:g}"
+
+
+def coverage_band(n, q):
+    """정답 n 점 · 명목 q 의 합격 띠 — 포함률이 정확히 q 여도 흔들리는 2σ(이항 근사). → (최소 적중, 최대 적중).
+    LOCO 를 돌리기 전에 정해 두는 값이다 (v4 — 포함률을 손잡이로 쓰지 않는다). 점들이 칩 몇 개에서 나와 독립이 아니라 띠는 실제보다 좁다."""
+    half = 1.96 * math.sqrt(n * q * (1 - q))
+    return max(0, math.ceil(n * q - half)), min(n, math.floor(n * q + half))
+
+
+def band_verdict(hits, n, q):
+    lo, hi = coverage_band(n, q)
+    word = "합격" if lo <= hits <= hi else ("과신" if hits < lo else "과소신")
+    return f"{int(q * 100)}% 띠 {lo}-{hi}/{n} → {word}" + (" (전부 적중 — 과소신 기록)" if word == "합격" and hits == n and q < 1 else "")
 
 
 def fmt_ranges(rs):
@@ -333,8 +481,9 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
 
 # ---------- 모의 블라인드 ----------
 
-def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
-    """교정 칩 하나씩 빼고 자기 p50 으로 맞힌다. 행마다 (칩, 정답, 사후 중앙값, 68%, 95%, 정답∈68, 정답∈95)."""
+def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0, model=MODEL_VERSION, rho=RHO):
+    """교정 칩 하나씩 빼고 자기 p50 으로 맞힌다. 행마다 (칩, 정답, 사후 중앙값, 68%, 95%, 정답∈68, 정답∈95).
+    정렬·σ_r 은 invert 가 빠진 칩 없는 rest 로 다시 낸다 (누수 없음)."""
     rows = []
     for chip in sorted(curves):
         rest = {c: v for c, v in curves.items() if c != chip}
@@ -345,8 +494,8 @@ def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
             b = (cyc - 1) // 1000 * 1000 + 1
             if b not in curves[chip]:
                 continue                                  # 공백 구간 (chip07 60k·80k)
-            worn = [p50 for _, p50, _ in curves[chip][b].values()]
-            r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range)
+            worn = [c.p50 for c in curves[chip][b].values()]
+            r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range, model=model, rho=rho)
             in68 = any(a <= cyc <= z for a, z in r["hpd68"])
             in95 = any(a <= cyc <= z for a, z in r["hpd95"])
             rows.append((chip, cyc, r["median"], r["hpd68"], r["hpd95"], in68, in95))
@@ -364,10 +513,13 @@ def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0):
 
 A_SESSIONS = {
     "chip01": (("1790091548", "1790212214"), ()),
+    "chip02": (("1791280572",), ()),
     "chip03": (("1790408609",), ()),
     "chip04": (("1790423530", "1790482991", "1790491294"), ((66654, 66671),)),
     "chip07": (("1790494073", "1790562456", "1790643103"), ()),
     "chip09": (("1790786787",), ()),
+    "chip15": (("1791078343", "1791123800"), ((69109, 69109),)),
+    "chip18": (("1790989701",), ()),
 }
 LONG_GAP = 1000                            # Δx 창 안에 이만큼 이어진 결측(모든 섹터 행 없음)이 있으면 그 점은 판정에서 뺀다
 SLOPE_MIN_FILL = 0.5                       # 교정 쪽 기울기 창에 행이 이 비율 아래면 그 지점의 구성원은 없는 것으로 친다
@@ -460,6 +612,66 @@ class ARows:
             out.append(statistics.median(rng.sample(vals, min(k, len(vals)))))
         return out
 
+    def full_cycles(self, b, length=1000):
+        """구간 [b, b+length) 에서 7섹터 행이 모두 있는 사이클 목록."""
+        import numpy as np
+        seg = self.e[:, b:b + length]
+        return [b + i for i in np.flatnonzero(~np.isnan(seg).any(axis=0))]
+
+    def sample_rows(self, b, preps, rng):
+        """v4 LOCO 관측 — 1k 구간 b 에서 사이클 preps 개를 뽑아 그 A 행(7섹터)을 그대로 (prep 순 · 섹터 순, 7·preps 개 µs).
+        같은 사이클의 7섹터를 함께 쓰므로 한 prep 안의 섹터 상관이 실전처럼 들어간다."""
+        cyc = self.full_cycles(b)
+        return [float(self.e[s, c]) for c in rng.sample(cyc, min(preps, len(cyc))) for s in WORN]
+
+    def prep_tables(self, preps, per_bin, rng, lo=1, hi=MAX_CYCLE):
+        """ρ 측정용 — 1k 구간마다 연속 사이클 preps 개 × 7섹터 표를 per_bin 개 (시작 사이클은 무작위). 연속이라 추세는 무시할 만하다."""
+        tables = []
+        for b in range(lo, hi + 1, 1000):
+            cyc = set(self.full_cycles(b))
+            starts = [c for c in cyc if all(c + i in cyc for i in range(preps))]
+            for a in rng.sample(starts, min(per_bin, len(starts))):
+                tables.append([[float(self.e[s, a + i]) for s in WORN] for i in range(preps)])
+        return tables
+
+
+def load_arows(chips):
+    """있는 칩만 A 행을 읽는다 → ({chip: ARows}, [(chip, 이유)]). 세션 미등록·파일 없음은 빼고 이유를 돌려준다."""
+    out, missing = {}, []
+    for c in chips:
+        try:
+            out[c] = ARows.load(c)
+        except SystemExit as e:
+            missing.append((c, str(e)))
+    return out, missing
+
+
+def variance_components(table):
+    """P×k 표(행 prep · 열 섹터) → (ρ_s, ρ_p). 이원 랜덤효과 적률 추정 — 행 효과 몫이 같은 prep 안 상관 ρ_s,
+    열 효과 몫이 같은 섹터 prep 간 상관 ρ_p. 음수 분산은 0 으로."""
+    import numpy as np
+    t = np.asarray(table, float)
+    P, k = t.shape
+    gm, rm, cm = t.mean(), t.mean(axis=1), t.mean(axis=0)
+    ms_r = k * ((rm - gm) ** 2).sum() / (P - 1)
+    ms_c = P * ((cm - gm) ** 2).sum() / (k - 1)
+    ms_e = ((t - rm[:, None] - cm[None, :] + gm) ** 2).sum() / ((P - 1) * (k - 1))
+    v_r, v_c = max((ms_r - ms_e) / k, 0.0), max((ms_c - ms_e) / P, 0.0)
+    tot = v_r + v_c + ms_e
+    return v_r / tot, v_c / tot
+
+
+def rho_from_preps(erase, preps):
+    """prep 로그 P 개의 섹터 0-6 소거 시간 → (ρ_s, ρ_p). 섹터마다 값이 정확히 P 개여야 한다."""
+    if preps < 2 or any(len(erase.get(s, [])) != preps for s in WORN):
+        raise SystemExit(f"prep 로그가 둘 이상이고 섹터 0-6 마다 소거 값이 {preps}개여야 한다 (prep 로그 {preps}개)")
+    return variance_components([[erase[s][p] for s in WORN] for p in range(preps)])
+
+
+def _q(vals, p):
+    v = sorted(vals)
+    return v[min(len(v) - 1, int(p * len(v)))]
+
 
 def posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx):
     """posterior 에 기울기 우도를 곱한 것. slope_obs = (기울기, σ) 는 눈금 적용 뒤, slope_members = [(ARows, 분모)]."""
@@ -496,8 +708,9 @@ def posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx):
 
 
 def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_k=3, seed=0, reps=20, dx=0,
-               arows=None, cycles=LOCO_CYCLES):
-    """부속 연구의 모의 블라인드. 행 = dict(칩, 무리, 정답, 반복, MAP, 사후 중앙값, 68%, 95%, 포함 여부) · 뺀 점 = [(칩, 정답, 이유)]."""
+               arows=None, cycles=LOCO_CYCLES, model=MODEL_VERSION, rho=RHO):
+    """모의 블라인드 (부속 연구 · v4 의 등록 LOCO). 행 = dict(칩, 무리, 정답, 반복, MAP, 사후 중앙값, 68%, 95%, 포함 여부) · 뺀 점 = [(칩, 정답, 이유)].
+    obs_mode: p50 = 구간 p50 7개 · single = 섹터마다 사이클 prep_k 개의 중앙값 · rows = A 행 prep_k 개 그대로(7·prep_k 개, v4 등록 방식)."""
     import random
     rows, skipped = [], []
     for chip in sorted(curves):
@@ -505,6 +718,9 @@ def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_
         grp = group_of(fresh[chip], split_us)
         cal = [c for c in rest if group_of(fresh[c], split_us) == grp]
         if not cal:
+            continue
+        if obs_mode in ("single", "rows") and chip not in arows:
+            skipped.append((chip, 0, "A 행 세션이 A_SESSIONS 에 없거나 data/wear 에 없다"))
             continue
         for cyc in cycles:
             b = (cyc - 1) // 1000 * 1000 + 1
@@ -522,13 +738,15 @@ def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_
                 div = fresh[chip] if scale == "ratio" else 1.0
                 slope_obs = (w[0] / div, w[1] / div)
                 slope_members = [(arows[c], fresh[c] if scale == "ratio" else 1.0) for c in cal]
-            n_rep = reps if obs_mode == "single" else 1
+            n_rep = reps if obs_mode in ("single", "rows") else 1
             rng = random.Random(f"{seed}:{chip}:{cyc}")
             for rep in range(n_rep):
                 if obs_mode == "single":
                     worn = arows[chip].sample_obs(b, prep_k, rng)
+                elif obs_mode == "rows":
+                    worn = arows[chip].sample_rows(b, prep_k, rng)
                 else:
-                    worn = [p50 for _, p50, _ in curves[chip][b].values()]
+                    worn = [c.p50 for c in curves[chip][b].values()]
                 if dx:
                     obs = [v / fresh[chip] for v in worn] if scale == "ratio" else list(worn)
                     mem = members(rest, fresh, cal, scale)
@@ -536,7 +754,8 @@ def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_
                     top, med = max(post, key=post.get), median_bin(post)
                     h68, h95 = ranges(hpd(post, 0.68)), ranges(hpd(post, 0.95))
                 else:
-                    r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range)
+                    r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range,
+                               preps=prep_k if obs_mode == "rows" else 1, model=model, rho=rho)
                     top, med, h68, h95 = r["map"][0], r["median"][0], r["hpd68"], r["hpd95"]
                 rows.append({"chip": chip, "group": grp, "x": cyc, "rep": rep, "map": top, "med": med, "h68": h68, "h95": h95,
                              "in68": any(a <= cyc <= z for a, z in h68), "in95": any(a <= cyc <= z for a, z in h95),
@@ -568,6 +787,10 @@ def print_study(rows, skipped, label):
     print("| 조건 | 부분 | 점 | 정답∈68 | 정답∈95 | 68% 바깥 폭 중앙값 | 바깥 폭/추정 중앙값 | 90분위 | 추정/정답 중앙값 (추정 = 사후 중앙값) |")
     print("|---|---|---|---|---|---|---|---|---|")
     line("전체", rows)
+    if rows:
+        m = study_metrics(rows)
+        print("합격 띠 (점 수 기준 2σ · 반복은 평균): " + " · ".join(
+            band_verdict(round(m[k] * m["n_pts"]), m["n_pts"], q) for k, q in (("in68", 0.68), ("in95", 0.95))))
     for g, name in (("fast", "빠른 무리"), ("slow", "느린 무리")):
         line(name, [r for r in rows if r["group"] == g])
     for lo, hi, name in BUCKETS:
@@ -637,13 +860,22 @@ def rate_rule(curves, fresh, split_us):
 SYN_LEVELS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.68, 0.8, 0.9, 0.95)
 
 
-def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo=False, runs_fix=True):
+def _quantile_draw(q, u):
+    """분위수 21개를 CDF 로 보고 u ∈ [0, 1] 를 역변환 — 조각 안은 직선."""
+    pos = u * (len(q) - 1)
+    i = min(int(pos), len(q) - 2)
+    return q[i] + (pos - i) * (q[i + 1] - q[i])
+
+
+def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo=False, runs_fix=True, model=MODEL_VERSION, rho=RHO):
     """합성 복원 — 모델 가정대로 가짜 칩을 만들고 추론이 참값을 복원하는지 n 번. → {level: 포함률}.
 
-    생성: 무리를 고르고 x ~ U(1, MAX_CYCLE)(사전과 같다) · r ~ 로그균등 [1/R, R] · 곡선 지점 M = x·r 에 구간이 있는 그 무리의
-    교정 칩 하나를 정체로. prep 마다 섹터 0-6 을 그 칩 그 섹터의 N(p50, (p90-p10)/2.56) 에서 뽑는다 — 한 prep 의 섹터들은 같은
-    칩·같은 r 을 공유한다. loo 면 정체 칩을 교정에서 빼고 추론한다. runs_fix=False 는 우도 수정 전(prep 전부를 관측 하나로)."""
+    생성: 무리를 고르고 정체 칩 하나 · x ~ U(1, MAX_CYCLE)(사전과 같다) · r ~ 로그균등 [1/R, R] (R 은 교정 집합에서 모델대로) ·
+    곡선 지점 M = x·r 의 그 칩 셀에서 prep 마다 섹터 0-6 을 뽑는다. v3: N(p50, (p90-p10)/2.56). v4: 셀의 분위수 21개에서 역변환 —
+    prep 공통 성분(ρ_s)과 섹터 공통 성분(ρ_p)을 가우스 코퓰러로 넣어 한 prep 의 섹터들, 같은 섹터의 prep 들이 실전처럼 상관된다.
+    loo 면 정체 칩을 교정에서 빼고 추론한다. runs_fix=False 는 v3 의 우도 수정 전(prep 전부를 관측 하나로)."""
     import random
+    m = MODELS[model]
     rng = random.Random(seed)
     groups = defaultdict(list)
     for c in sorted(curves):
@@ -652,27 +884,36 @@ def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo
     done = 0
     while done < n:
         grp = rng.choice(sorted(groups))
-        x = rng.randint(1, MAX_CYCLE)
-        R = RATE_RANGE[grp] if rate_range is None else rate_range
-        r = R ** rng.uniform(-1, 1) if R > 1 else 1.0
-        mb = int((x * r - 1) // 1000) * 1000 + 1
-        cands = [c for c in groups[grp] if mb in curves[c]]
-        if not cands:
-            continue
-        chip = rng.choice(cands)
+        chip = rng.choice(groups[grp])
         cal = [c for c in groups[grp] if not (loo and c == chip)]
         if not cal:
             continue
+        mem, _, R, _, _ = fit({c: curves[c] for c in cal}, fresh, grp, scale, split_us, model, rate_range)
+        x = rng.randint(1, MAX_CYCLE)
+        r = R ** rng.uniform(-1, 1) if R > 1 else 1.0
+        mb = int((x * r - 1) // 1000) * 1000 + 1
+        if mb not in curves[chip]:
+            continue
         sec = curves[chip][mb]
         worn = []
-        for _ in range(prep_k):
-            for p10, p50, p90 in sec.values():
-                sd = max((p90 - p10) / 2.5631, SIGMA_FLOOR * p50)
-                worn.append(rng.gauss(p50, sd))
+        if m["cell"] == "quantile":
+            rs, rp = rho["sector"], rho["prep"]
+            zs = {s: rng.gauss(0, 1) for s in sec}                           # 섹터 공통 — prep 간 상관
+            for _ in range(prep_k):
+                zp = rng.gauss(0, 1)                                          # prep 공통 — 섹터 간 상관
+                for s, cell in sec.items():
+                    z = math.sqrt(rs) * zp + math.sqrt(rp) * zs[s] + math.sqrt(max(0.0, 1 - rs - rp)) * rng.gauss(0, 1)
+                    worn.append(_quantile_draw(cell.q, 0.5 * (1 + math.erf(z / math.sqrt(2)))))
+            evidence = n_eff(len(sec), prep_k, rs, rp)
+        else:
+            for _ in range(prep_k):
+                for cell in sec.values():
+                    sd = max((cell.p90 - cell.p10) / 2.5631, SIGMA_FLOOR * cell.p50)
+                    worn.append(rng.gauss(cell.p50, sd))
+            evidence = prep_k if runs_fix else 1
         div = fresh[chip] if scale == "ratio" else 1.0
         obs = [v / div for v in worn]
-        mem = members({c: curves[c] for c in cal}, fresh, cal, scale)
-        post = posterior(obs, mem, R, prep_k if runs_fix else 1)
+        post = posterior(obs, mem, R, evidence)
         for lv in SYN_LEVELS:
             if any(a <= x <= z for a, z in ranges(hpd(post, lv))):
                 hit[lv] += 1
@@ -723,8 +964,13 @@ def main(argv=None):
     ap.add_argument("--rate-range", type=float, default=None, help=f"속도 배율 r 의 범위 R — 주면 두 무리에 같이 쓴다 (기본은 무리별 {rate_label(None)}). 1 이면 끔")
     ap.add_argument("--split-ms", type=float, default=40.0, help="빠른/느린 무리 경계, 신품 소거 ms (기본 40)")
     ap.add_argument("--curves", default=CURVES_GLOB, help="교정 표 glob")
-    ap.add_argument("--loco-obs", choices=("p50", "single"), default="p50", help="부속 연구: 모의 블라인드 관측 (기본 p50 = 등록된 방식)")
-    ap.add_argument("--prep-k", type=int, default=3, help="부속 연구: single 관측의 섹터당 사이클 수 (기본 3)")
+    ap.add_argument("--model", choices=tuple(MODELS), default=MODEL_VERSION, help=f"모델 버전 (기본 {MODEL_VERSION}) — v3.2 는 이전 모델 그대로")
+    ap.add_argument("--rho-sector", type=float, default=None, help="v4: 같은 prep 안 섹터 간 상관 ρ_s (기본은 RHO 등록값)")
+    ap.add_argument("--rho-prep", type=float, default=None, help="v4: 같은 섹터 prep 간 상관 ρ_p (기본은 RHO 등록값)")
+    ap.add_argument("--rho", action="store_true", help="v4 측정: 교정 칩 A 행(연속 사이클 --prep-k 개 × 7섹터 표)과, 주면 prep 로그들에서 ρ_s · ρ_p 를 재서 찍는다")
+    ap.add_argument("--loco-obs", choices=("p50", "single", "rows"), default="p50",
+                    help="모의 블라인드 관측 — p50(v3 등록 방식) · single(섹터당 사이클 --prep-k 개의 중앙값) · rows(A 행 --prep-k 개 그대로, v4 등록 방식)")
+    ap.add_argument("--prep-k", type=int, default=3, help="single · rows 관측의 prep 수(사이클 수) · --rho 의 표 행 수 (기본 3)")
     ap.add_argument("--seed", type=int, default=0, help="부속 연구: 난수 seed (기본 0)")
     ap.add_argument("--reps", type=int, default=20, help="부속 연구: single 관측 반복 횟수 (기본 20)")
     ap.add_argument("--dx", type=int, choices=(0, 1000, 2000, 3000, 5000, 10000), default=0, help="부속 연구: 두 번째 dose Δx (기본 0 = 등록된 방식)")
@@ -738,13 +984,47 @@ def main(argv=None):
 
     curves, fresh = load_curves(args.curves), load_fresh()
     split = args.split_ms * 1000
+    rho = {"sector": RHO["sector"] if args.rho_sector is None else args.rho_sector,
+           "prep": RHO["prep"] if args.rho_prep is None else args.rho_prep}
+    model = args.model
 
     if args.rate_rule:
         R, sigma, pairs = rate_rule(curves, fresh, split)
         print(f"R 규칙 · 교정 칩 {sorted(curves)} · 경계 {args.split_ms:g}ms")
         for a, b, r, rmse, n in pairs:
             print(f"  {a} 대 {b}: r {r:.3f} (|ln r| {abs(math.log(r)):.3f}) · 맞춤 rmse {rmse:.3f} · {n}점")
-        print(f"  개체 표준편차 σ {sigma:.3f} → R = exp(√2·1.96·σ) = {R:.2f}")
+        print(f"  개체 표준편차 σ {sigma:.3f} → R = exp(√2·1.96·σ) = {R:.2f}  (v1-v2 규칙 · 정렬 전)")
+        by_group = {g: chip_speeds(curves, fresh, [c for c in curves if group_of(fresh[c], split) == g]) for g in ("fast", "slow")}
+        for g, sp in by_group.items():
+            R4, s4, M = rate_from_speeds(by_group, g)
+            print(f"  v4 {g}: 칩 속도 r̂ " + " · ".join(f"{c} {math.exp(v):.3f}" for c, v in sorted(sp.items()))
+                  + f" → σ_r {s4:.3f} · M {M} · R = exp(1.96·σ_r·√(1+1/M)) = {R4:.2f}")
+        return
+
+    if args.rho:
+        arows, missing = load_arows(sorted(curves))
+        for chip, why in missing:
+            print(f"  {chip}: A 행 없음 — {why}")
+        import random
+        print(f"ρ 측정 · 표 = 연속 사이클 {args.prep_k}개 × 7섹터 · 구간당 20개 · seed {args.seed}")
+        print("| 칩 | 표 수 | ρ_s 중앙값 (p10-p90) | ρ_p 중앙값 (p10-p90) |\n|---|---|---|---|")
+        all_s, all_p = [], []
+        for chip in sorted(arows):
+            comps = [variance_components(t) for t in arows[chip].prep_tables(args.prep_k, 20, random.Random(f"{args.seed}:{chip}"))]
+            if not comps:
+                continue
+            rs, rp = [c[0] for c in comps], [c[1] for c in comps]
+            all_s += rs
+            all_p += rp
+            print(f"| {chip} | {len(comps)} | {statistics.median(rs):.2f} ({_q(rs, 0.1):.2f}-{_q(rs, 0.9):.2f}) | "
+                  f"{statistics.median(rp):.2f} ({_q(rp, 0.1):.2f}-{_q(rp, 0.9):.2f}) |")
+        if all_s:
+            print(f"| 전체 | {len(all_s)} | {statistics.median(all_s):.2f} ({_q(all_s, 0.1):.2f}-{_q(all_s, 0.9):.2f}) | "
+                  f"{statistics.median(all_p):.2f} ({_q(all_p, 0.1):.2f}-{_q(all_p, 0.9):.2f}) |")
+        if args.logs:
+            erase, _ = parse_prep_logs(args.logs)
+            rs, rp = rho_from_preps(erase, len(args.logs))
+            print(f"prep 로그 {len(args.logs)}개 (표 하나): ρ_s {rs:.2f} · ρ_p {rp:.2f} — 마모 루프의 값과 비슷한지 본다")
         return
 
     if args.synthetic:
@@ -752,10 +1032,12 @@ def main(argv=None):
         for title, loo in (("교정에 정체 칩 포함", False), ("정체 칩을 교정에서 뺌", True)):
             series = {}
             for label, k, fix in (("기본 · prep 5회", 5, False), ("기본 · prep 1회", 1, False), ("prep 독립 · prep 5회", 5, True)):
-                series[label] = synthetic(curves, fresh, args.scale, split, args.rate_range, k, args.synthetic, args.seed, loo, fix)
+                if fix and MODELS[model]["evidence"] == "neff":
+                    continue                                  # v4 는 n_eff 하나 — 독립/비독립 비교가 없다
+                series[label] = synthetic(curves, fresh, args.scale, split, args.rate_range, k, args.synthetic, args.seed, loo, fix, model, rho)
             results.append((title, series))
         lv = SYN_LEVELS
-        print(f"합성 복원 · 눈금 {args.scale} · R {rate_label(args.rate_range)} · N {args.synthetic} · seed {args.seed} · 교정 칩 {sorted(curves)}")
+        print(f"합성 복원 · {model} · 눈금 {args.scale} · R {rate_label(args.rate_range, model)} · N {args.synthetic} · seed {args.seed} · 교정 칩 {sorted(curves)}")
         print("| 조건 | " + " | ".join(f"{int(v * 100)}%" for v in lv) + " |\n|---|" + "---|" * len(lv))
         for title, series in results:
             for label, cov in series.items():
@@ -765,12 +1047,18 @@ def main(argv=None):
         return
 
     if args.loco and (args.study or args.loco_obs != "p50" or args.dx):
-        arows = {c: ARows.load(c) for c in sorted(curves)} if (args.loco_obs == "single" or args.dx) else None
-        label = f"{args.loco_obs}" + (f" k={args.prep_k}" if args.loco_obs == "single" else "") + f" · Δx {args.dx:,}"
+        arows = None
+        if args.loco_obs != "p50" or args.dx:
+            arows, missing = load_arows(sorted(curves))
+            for chip, why in missing:
+                print(f"  {chip}: A 행 없음 — {why}")
+            if args.dx:
+                arows = {c: ARows.load(c) for c in sorted(curves)}   # Δx 는 전 칩이 있어야 한다
+        label = f"{args.loco_obs}" + (f" k={args.prep_k}" if args.loco_obs != "p50" else "") + f" · Δx {args.dx:,}"
         rows, skipped = loco_study(curves, fresh, args.scale, split, args.rate_range, args.loco_obs, args.prep_k,
-                                   args.seed, args.reps, args.dx, arows)
-        print(f"부속 연구 · 모의 블라인드 · 눈금 {args.scale} · R {rate_label(args.rate_range)} · 관측 {label}"
-              + (f" · seed {args.seed} · 반복 {args.reps}" if args.loco_obs == "single" else ""))
+                                   args.seed, args.reps, args.dx, arows, model=model, rho=rho)
+        print(f"모의 블라인드 · {model} · 눈금 {args.scale} · R {rate_label(args.rate_range, model)} · 관측 {label}"
+              + (f" · seed {args.seed} · 반복 {args.reps}" if args.loco_obs != "p50" else ""))
         print_study(rows, skipped, label)
         if args.dx:
             print(f"창 기울기 ≤ 0 인 1k 구간 (Δx {args.dx:,}, 0-100k):")
@@ -781,17 +1069,18 @@ def main(argv=None):
         return
 
     if args.loco:
-        rows = loco(curves, fresh, args.scale, split, rate_range=args.rate_range)
+        rows = loco(curves, fresh, args.scale, split, rate_range=args.rate_range, model=model, rho=rho)
         if not rows:
             raise SystemExit("같은 무리에 칩이 둘 이상 있어야 모의 블라인드가 된다")
-        print(f"모의 블라인드 · 눈금 {args.scale} · 속도 배율 R {rate_label(args.rate_range)} · 경계 {args.split_ms:g}ms · 교정 칩 {sorted(curves)}")
+        print(f"모의 블라인드 · {model} · 눈금 {args.scale} · 속도 배율 R {rate_label(args.rate_range, model)} · 경계 {args.split_ms:g}ms · 교정 칩 {sorted(curves)}")
         print("| 칩 | 정답 | 중앙값 | 68% | 95% | 정답∈68 | 정답∈95 |\n|---|---|---|---|---|---|---|")
         for chip, cyc, mp, h68, h95, i68, i95 in rows:
             print(f"| {chip} | {cyc:,} | {mp[0]:,}-{mp[1]:,} | {fmt_ranges(h68)} | {fmt_ranges(h95)} | "
                   f"{'O' if i68 else 'X'} | {'O' if i95 else 'X'} |")
         w68 = [sum(z - a + 1 for a, z in h68) for *_, h68, _, _, _ in rows]
-        print(f"정답∈68 {sum(r[5] for r in rows)}/{len(rows)} · 정답∈95 {sum(r[6] for r in rows)}/{len(rows)} · "
-              f"68% 폭 중앙값 {statistics.median(w68):,.0f} 사이클")
+        h68n, h95n = sum(r[5] for r in rows), sum(r[6] for r in rows)
+        print(f"정답∈68 {h68n}/{len(rows)} · 정답∈95 {h95n}/{len(rows)} · 68% 폭 중앙값 {statistics.median(w68):,.0f} 사이클")
+        print("합격 띠 (2σ): " + band_verdict(h68n, len(rows), 0.68) + " · " + band_verdict(h95n, len(rows), 0.95))
         return
 
     if not args.logs:
@@ -799,9 +1088,13 @@ def main(argv=None):
     erase, _ = parse_prep_logs(args.logs)
     ref, worn = observation(erase)
     runs = sum(1 for p in args.logs if PREP_ERASE.search(Path(p).read_text(encoding="utf-8", errors="replace")))
-    r = invert(ref, worn, curves, fresh, args.scale, split, args.rate_range, runs if args.prep_indep else 1)
-    out = [f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R {r['rate_range']:g}",
-           f"입력 B  마모 섹터 소거 {len(worn)}개 (prep {runs}회{' · 독립' if args.prep_indep else ''}): " + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
+    r = invert(ref, worn, curves, fresh, args.scale, split, args.rate_range, runs, args.prep_indep, model, rho)
+    v4 = MODELS[model]["evidence"] == "neff"
+    out = [f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R "
+           + (f"{r['rate_range']:.2f} (σ_r {r['sigma_r']:.3f})" if v4 else f"{r['rate_range']:g}"),
+           f"입력 B  마모 섹터 소거 {len(worn)}개 (prep {runs}회{' · 독립' if args.prep_indep else ''}"
+           + (f" · ρ_s {rho['sector']:g} · ρ_p {rho['prep']:g} · n_eff {r['evidence']:.2f}" if v4 else "") + "): "
+           + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
            f"답      중앙값 {r['median'][0]:,}-{r['median'][1]:,} · MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
     if r["outside_at_map"]:
         out.append(f"주의    곡선 최우 지점(r 없이) 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
@@ -809,18 +1102,18 @@ def main(argv=None):
     uids = {m for p in args.logs for m in PREP_UID.findall(Path(p).read_text(encoding="utf-8", errors="replace"))}
     print("\n".join(screen(uids, erase, runs, ref, worn, r, r["rate_range"], split)))
     if args.out:                                             # 기록은 화면이 아니라 위의 줄들 — 블라인드 기록의 형식을 바꾸지 않는다
-        write_record(args.out, argv, args.logs, args.curves, out)
+        write_record(args.out, argv, args.logs, args.curves, out, model)
         print(f"기록 → {args.out}")
 
 
-def write_record(path, argv, logs, curves_glob, out):
+def write_record(path, argv, logs, curves_glob, out, model=MODEL_VERSION):
     """추정 결과 + 재현에 필요한 것(코드 · 인자 · 입력 · 교정 표)을 한 파일에. 블라인드에서 결과 커밋이 곧 기록이다."""
     import datetime, hashlib, subprocess, sys
     def git(*a):
         return subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()
     dirty = git("status", "--porcelain", "--", "host/analysis/wear_inverse.py")
     head = [f"# 생성   {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
-            f"# 모델   {MODEL_VERSION}",
+            f"# 모델   {model}",
             f"# 코드   git_rev {git('rev-parse', '--short', 'HEAD')}" + (" (wear_inverse.py 커밋 안 된 수정 있음)" if dirty else ""),
             "# 인자   " + " ".join(sys.argv[1:] if argv is None else argv),
             "# 입력"]
