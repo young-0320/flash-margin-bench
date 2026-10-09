@@ -55,3 +55,13 @@ def test_cli_writes_csv(tmp_path, capsys):
     assert text[0] == ",".join(wc.FIELDS)
     assert text[1].startswith("chip99,1,1000,3,6,40001,40004,40006,6900,6900,6900")
     assert "n<1000 인 구간 1개" in capsys.readouterr().out
+
+
+def test_quantile_columns_are_the_sorted_cell(tmp_path):
+    """v4 — 셀마다 5% 간격 분위수 21개. q00 = 최솟값 · q50 = p50 · q100 = 최댓값, 단조."""
+    d = write_session(tmp_path, "q", [a_line(c, 0, 1000 + c, 7000) for c in range(1, 1001)])
+    rows, _ = wc.load_sessions([d])
+    r = wc.bin_table("chipQ", rows)[0]
+    q = [r[f] for f in wc.Q_FIELDS]
+    assert len(q) == 21 and q == sorted(q) and (q[0], q[10], q[-1]) == (1001, r["erase_us_p50"], 2000)
+    assert wc.FIELDS[-21:] == wc.Q_FIELDS and wc.Q_FIELDS[1] == "erase_us_q05" and wc.Q_FIELDS[-1] == "erase_us_q100"

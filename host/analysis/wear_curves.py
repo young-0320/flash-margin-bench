@@ -13,7 +13,8 @@
 #   · --drop-cycles a-b 로 명시한 사이클은 뺀다 (chip04 66,654-66,671 SPI 접촉 불량). 값으로 거르지
 #     않는다 — 어떤 행을 왜 뺐는지는 짝 md 에 사람이 적는다
 # 출력 CSV 한 행 = (구간, 섹터). n 은 그 칸의 A 행 수 — 1,000 미만이면 공백·결측이 있는 구간이다.
-#   chip,bin_start,bin_end,sector,n,erase_us_p10,erase_us_p50,erase_us_p90,program_us_p10,program_us_p50,program_us_p90
+#   chip,bin_start,bin_end,sector,n,erase_us_p10,erase_us_p50,erase_us_p90,program_us_p10,program_us_p50,program_us_p90,
+#   erase_us_q00,erase_us_q05,…,erase_us_q100   (v4 — 소거 시간 5% 간격 분위수 21개. 역산 모델이 셀의 분포 모양을 그대로 쓴다)
 
 import argparse
 import csv
@@ -26,9 +27,11 @@ sys.path.insert(0, str(REPO / "host" / "tests"))
 import host_side as hs                                      # noqa: E402
 
 BIN = 1000
+Q_LEVELS = tuple(range(0, 101, 5))                          # 0, 5, …, 100 — 5% 간격 분위수 21개 (v4 셀 분포)
+Q_FIELDS = tuple(f"erase_us_q{q:02d}" for q in Q_LEVELS)    # erase_us_q00 … erase_us_q100
 FIELDS = ("chip", "bin_start", "bin_end", "sector", "n",
           "erase_us_p10", "erase_us_p50", "erase_us_p90",
-          "program_us_p10", "program_us_p50", "program_us_p90")
+          "program_us_p10", "program_us_p50", "program_us_p90", *Q_FIELDS)
 
 
 def load_sessions(session_dirs, drop=()):
@@ -70,7 +73,8 @@ def bin_table(chip, rows):
         tp = [x[1] for x in cells[(k, s)]]
         out.append({"chip": chip, "bin_start": k * BIN + 1, "bin_end": (k + 1) * BIN, "sector": s, "n": len(te),
                     "erase_us_p10": pct(te, 0.1), "erase_us_p50": pct(te, 0.5), "erase_us_p90": pct(te, 0.9),
-                    "program_us_p10": pct(tp, 0.1), "program_us_p50": pct(tp, 0.5), "program_us_p90": pct(tp, 0.9)})
+                    "program_us_p10": pct(tp, 0.1), "program_us_p50": pct(tp, 0.5), "program_us_p90": pct(tp, 0.9),
+                    **{f: pct(te, q / 100) for f, q in zip(Q_FIELDS, Q_LEVELS)}})
     return out
 
 
