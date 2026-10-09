@@ -385,3 +385,43 @@ Updated: 2026-09-20
 | 2026-10-07 | chip02 | D1642C74E7134527 | 0~6 | +1 | run_wear checkpoint (session 1791280572) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
 | 2026-10-07 | chip02 | D1642C74E7134527 | 0~127 | +1 | flash_prep (batch 20261007T034458Z) |  |
 | 2026-10-07 | chip16 | D165906063442A33 | 0~127 | +1 | flash_prep (batch 20261007T034756Z) |  |
+| 2026-10-04 | chip14 | DF678C14CF384F30 | 0~6 | +100 | run_wear accept (session 1791089978) | cycle 0→100 |
+| 2026-10-04 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791089978) | 체크포인트 100 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 1 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 2 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 3 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 4 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 5 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 6 | ±1 | run_wear resume (session 1791201309) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +300 | run_wear accept (session 1791201358) | cycle 100→400 · error |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0 | ±1 | run_wear resume (session 1791201933) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 1 | ±1 | run_wear resume (session 1791201933) | reerase · ±1 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | -1 | run_wear accept (ledger correction, session 1791201358/1791201933) | erase_fail@400, tally=300·host_log=400 — 완료 확정 상한 399로 보정 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | -1 | 수기 정정 (session 1791201358/1791201933) | erase_fail@400, tally=300·host_log=400 — 완료 확정 상한 399로 보정 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | 수기 정정 (session 1791201933) | 직전 -1 정정 행 중복 입력 상쇄 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +601 | run_wear accept (session 1791204058) | cycle 399→1000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 1000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +2000 | run_wear accept (session 1791204058) | cycle 1000→3000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 3000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +7000 | run_wear accept (session 1791204058) | cycle 3000→10000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 10000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 10000→20000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 20000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 20000→30000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 30000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 30000→40000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 40000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 40000→50000 |
+| 2026-10-05 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 50000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 50000→60000 |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 60000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 60000→70000 |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 70000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 70000→80000 |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 80000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 80000→90000 |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 90000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +10000 | run_wear accept (session 1791204058) | cycle 90000→100000 |
+| 2026-10-06 | chip14 | DF678C14CF384F30 | 0~6 | +1 | run_wear checkpoint (session 1791204058) | 체크포인트 100000 — 소거+PRBS (측정용, 마모 카운터에는 안 센다) |
+| 2026-10-07 | chip14 | DF678C14CF384F30 | 0~127 | +1 | flash_prep (batch 20261007T013209Z) |  |
