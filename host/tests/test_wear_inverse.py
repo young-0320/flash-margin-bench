@@ -13,7 +13,7 @@ import wear_inverse as wi                                    # noqa: E402
 
 FRESH = {"fastA": 30_000, "fastB": 34_000, "slowA": 48_000, "slowB": 50_000}
 V3 = {"model": "v3.2"}
-RHO4 = {"sector": 0.5, "prep": 0.3}                          # v4 시험용 ρ (등록값이 아니다)
+RHO4 = {"sector": 0.5, "prep": 0.3, "chip": 0.2}             # v4 시험용 ρ (등록값이 아니다)
 _ND = statistics.NormalDist()
 
 
@@ -255,6 +255,17 @@ def test_n_eff_ends_and_middle():
     assert abs(wi.n_eff(7, 5, 0.0, 0.0) - 35.0) < 1e-12
     assert abs(wi.n_eff(7, 1, 0.5, 0.0) - 7 / (1 + 6 * 0.5)) < 1e-12
     assert abs(wi.n_eff(7, 5, 0.5, 0.3) - 1 / (0.5 / 5 + 0.3 / 7 + 0.2 / 35)) < 1e-12
+    assert abs(wi.n_eff(7, 5, 0.5, 0.3, 0.2) - 1 / (0.2 + 0.8 * (0.5 / 5 + 0.3 / 7 + 0.2 / 35))) < 1e-12
+    assert wi.n_eff(100, 100, 0.0, 0.0, 0.3) < 1 / 0.3 + 1e-9 and wi.n_eff(7, 1, 1.0, 0.0, 0.0) == 1.0   # 칩 효과는 늘려도 안 준다
+
+
+def test_icc_oneway_recovers_planted_chip_share():
+    """ρ_chip — 표마다 공통 성분(분산 c)과 표 안 잡음(분산 1−c)을 심으면 c 가 돌아온다. 공통 성분이 없으면 0."""
+    import random
+    rng = random.Random(3)
+    for c in (0.0, 0.3, 0.7):
+        tables = [[z + rng.gauss(0, math.sqrt(1 - c)) for _ in range(7)] for z in (rng.gauss(0, math.sqrt(c)) for _ in range(3000))]
+        assert abs(wi.icc_oneway(tables) - c) < 0.04
 
 
 def test_variance_components_recover_planted_rho():
@@ -329,14 +340,16 @@ def test_v4_invert_brackets_truth_with_measured_knobs(tmp_path):
     curves = wi.load_curves(synth_curves(tmp_path))
     worn = [int((30_000 + 0.6 * 45_500) * (1 + 0.004 * s)) for s in range(7)]
     with pytest.raises(SystemExit, match="ρ"):
-        wi.invert(31_000, worn, curves, FRESH, "ms", 40_000, None, rho={"sector": None, "prep": None})
+        wi.invert(31_000, worn, curves, FRESH, "ms", 40_000, None, rho={"sector": None, "prep": None, "chip": None})
+    with pytest.raises(SystemExit, match="ρ"):
+        wi.invert(31_000, worn, curves, FRESH, "ms", 40_000, None, rho={"sector": 0.5, "prep": 0.3, "chip": None})
     r = wi.invert(31_000, worn, curves, FRESH, "ms", 40_000, None, rho=RHO4)
     assert r["group"] == "fast" and any(a <= 45_500 <= z for a, z in r["hpd95"])
-    assert abs(r["evidence"] - wi.n_eff(7, 1, 0.5, 0.3)) < 1e-12
+    assert abs(r["evidence"] - wi.n_eff(7, 1, 0.5, 0.3, 0.2)) < 1e-12
     assert set(r["speeds"]) == {"fastA", "fastB"} and abs(sum(r["speeds"].values())) < 1e-9
     assert r["rate_range"] > 1 and r["sigma_r"] > 0            # 유도된 R
     r2 = wi.invert(31_000, worn * 3, curves, FRESH, "ms", 40_000, 2.0, preps=3, rho=RHO4)
-    assert r2["rate_range"] == 2.0 and abs(r2["evidence"] - wi.n_eff(7, 3, 0.5, 0.3)) < 1e-12
+    assert r2["rate_range"] == 2.0 and abs(r2["evidence"] - wi.n_eff(7, 3, 0.5, 0.3, 0.2)) < 1e-12
     assert any(a <= 45_500 <= z for a, z in r2["hpd95"])
 
 
@@ -372,5 +385,5 @@ def test_v4_synthetic_draws_from_quantiles_with_correlation(tmp_path):
 def test_v4_is_the_default_and_v3_is_reachable():
     assert wi.MODEL_VERSION == "v4" and set(wi.MODELS) == {"v3.2", "v4"}
     assert wi.MODELS["v4"] == {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"}
-    assert wi.RHO == {"sector": None, "prep": None}            # 측정 전 — 등록하면 이 시험을 그 값으로 바꾼다
+    assert wi.RHO == {"sector": 0.00, "prep": 0.78, "chip": 0.29}   # 2026-10-09 등록값 (inverse_v4_eval_2026-10.md) — 다시 재면 여기도 바꾼다
     assert wi.rate_label(None) == "유도 (σ_r)" and wi.rate_label(None, "v3.2").startswith("빠른 1.6")

@@ -27,7 +27,8 @@
 #           구성원으로 넣는다 — 칩 속도 차가 혼합 폭과 r 적분에 두 번 들어가던 것을 r 한 곳으로 (보간 없이 가장 가까운 셀)
 #   계산    곡선 지점 M 마다 관측 B 가 나올 우도 = 관측별 (구성원 평균 밀도) 의 기하 평균 × 유효 관측 수 — 7개 관측은 같은 칩이라 독립으로 곱하지 않는다.
 #           v3: 유효 관측 수 1 (prep 전부를 관측 하나로) · v4: 섹터 간 상관 ρ_s · prep 간 상관 ρ_p 에서 n_eff = 1/(ρ_s/P + ρ_p/k + (1−ρ_s−ρ_p)/kP)
-#           (k 섹터 · P prep). ρ 는 --rho 로 A 행(P 연속 사이클 × 7섹터 표의 이원 분산 성분)과 prep 로그에서 재서 RHO 에 등록한다
+#           (k 섹터 · P prep) 에 칩 효과 ρ_chip(7섹터·모든 prep 에 공통이라 안 주는 몫)을 더한 것 — n_eff 함수. ρ_s · ρ_p 는 --rho 로 A 행
+#           (P 연속 사이클 × 7섹터 표의 이원 분산 성분)과 prep 로그에서, ρ_chip 은 칩을 하나씩 빼고 나머지 정렬 혼합과 비교한 잔차에서 재서 RHO 에 등록한다
 #   속도 r  같은 무리 안에서도 사이클당 손상량이 칩마다 다르다 — 곡선 모양은 같고 가로축만 r 배 늘어난다(chip01 대 chip04 약 1.4,
 #           chip03 대 chip07 약 1.25). 누적 사이클 x 인 칩은 교정 곡선의 M = x·r 지점처럼 보인다. r 은 [1/R, R] 에서 로그 균등으로
 #           적분한다(v3.2 부터 격자 없이 — 걸치는 곡선 구간을 전부 더한다, 로그 48 [D48-98]). R 의 규칙: 두 쌍의 로그 차이 평균 ÷ 1.13 = 개체 표준편차(약 0.25), 새 칩 하나 대 교정 칩 하나의 95% 범위
@@ -58,8 +59,12 @@ MODELS = {                                 # 버전별로 달라지는 네 자�
     "v3.2": {"cell": "gauss", "evidence": "one", "align": False, "rate": "fixed"},
     "v4": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"},
 }
-RHO = {"sector": None, "prep": None}       # v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p). `--rho` 로 잰 값을 여기 등록한다.
-                                           # None 이면 v4 는 --rho-sector/--rho-prep 없이 돌지 않는다 (고른 값을 두지 않는다)
+RHO = {"sector": 0.00, "prep": 0.78, "chip": 0.29}   # v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p) · 칩 효과(ρ_chip — 이 칩이
+                                           # 교정 혼합에서 7섹터 공통으로 벗어나는 몫, 섹터·prep 을 늘려도 안 준다). `--rho` 로 잰 값을 여기 등록한다.
+                                           # 등록 2026-10-09 (한영웅): `--rho --prep-k 5` · 교정 8칩 A 행 · seed 0 — ρ_s 0.00 (전체 중앙값) · ρ_p 0.78 (전체 중앙값) ·
+                                           # ρ_chip 0.29 (전체 3,890표; 빠른 0.33 · 느린 0.03 은 발견으로만 — 무리별 등록은 하지 않는다). chip06 개봉 prep 5회는
+                                           # ρ_s 0.00 · ρ_p 0.72 로 마모 루프와 같다. 수치: docs/results/data/inverse_v4_eval_2026-10.md
+                                           # None 이면 v4 는 --rho-sector/--rho-prep/--rho-chip 없이 돌지 않는다 (고른 값을 두지 않는다)
 Q_LEVELS = tuple(range(0, 101, 5))         # 교정 표의 분위수 열 (wear_curves.Q_LEVELS 와 같다)
 Q_FIELDS = tuple(f"erase_us_q{q:02d}" for q in Q_LEVELS)
 Q_N = 1000                                 # 셀의 표본 수 — 분위수 밖 바닥 밀도 1/(Q_N+1)÷범위 의 n
@@ -251,10 +256,13 @@ def rate_from_speeds(speeds_by_group, grp):
     return math.exp(1.96 * sigma * math.sqrt(1 + 1 / max(len(own), 1))), sigma, len(own)
 
 
-def n_eff(k, preps, rho_s, rho_p):
-    """유효 관측 수 — k 섹터 × P prep 의 평균이 줄이는 분산의 역수. ρ_s = 같은 prep 안 섹터 간, ρ_p = 같은 섹터 prep 간 상관.
-    ρ_s = 1 · P = 1 이면 1 (v3 와 같다), 둘 다 0 이면 k·P (독립 곱)."""
-    return 1.0 / (rho_s / preps + rho_p / k + (1 - rho_s - rho_p) / (k * preps))
+def n_eff(k, preps, rho_s, rho_p, rho_chip=0.0):
+    """유효 관측 수 — k 섹터 × P prep 의 평균이 줄이는 분산의 역수. 관측 하나가 교정 곡선에서 벗어나는 분산을 넷으로 나눈다:
+    ρ_chip = 칩 효과(7섹터·모든 prep 에 공통 — 아무리 늘려도 안 준다) · 나머지 1−ρ_chip 은 칩 안 몫이고 그 안에서 ρ_s = 같은 prep 안 섹터 간,
+    ρ_p = 같은 섹터 prep 간 상관(칩 안 표에서 잰 값이라 칩 안 몫에 대한 비율). ρ_chip 0 · ρ_s 1 · P 1 이면 1 (v3 와 같다), 전부 0 이면 k·P.
+    ρ_chip 이 c 면 n_eff 는 1/c 를 못 넘는다 — 「7번 재도 그 칩이 평균적인 칩이 되진 않는다」."""
+    w = 1 - rho_chip
+    return 1.0 / (rho_chip + w * (rho_s / preps + rho_p / k + (1 - rho_s - rho_p) / (k * preps)))
 
 
 def _logmeanexp(vals):
@@ -359,9 +367,9 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, prep
     mem, chips, rate_range, speeds, sigma_r = fit(curves, fresh, grp, scale, split_us, model, rate_range)
     obs = [v / ref_us for v in worn_us] if scale == "ratio" else list(worn_us)
     if m["evidence"] == "neff":
-        if rho["sector"] is None or rho["prep"] is None:
-            raise SystemExit("v4 의 ρ 가 등록되지 않았다 — `--rho` 로 재서 RHO 에 적거나 --rho-sector/--rho-prep 으로 준다")
-        evidence = n_eff(max(1, len(obs) // preps), preps, rho["sector"], rho["prep"])
+        if rho["sector"] is None or rho["prep"] is None or rho.get("chip") is None:
+            raise SystemExit("v4 의 ρ 가 등록되지 않았다 — `--rho` 로 재서 RHO 에 적거나 --rho-sector/--rho-prep/--rho-chip 으로 준다")
+        evidence = n_eff(max(1, len(obs) // preps), preps, rho["sector"], rho["prep"], rho["chip"])
     else:
         evidence = preps if prep_indep else 1
     post = posterior(obs, mem, rate_range, evidence)
@@ -682,6 +690,43 @@ def rho_from_preps(erase, preps):
     return variance_components([[erase[s][p] for s in WORN] for p in range(preps)])
 
 
+def chip_effect_tables(curves, fresh, arows, split_us, scale, per_bin, rng):
+    """ρ_chip 측정용 — 교정 칩 j 마다 자기 1k 구간 b 의 A 행 한 줄(7섹터)을, 나머지 칩들의 정렬된 혼합(공통 시계 b·r̂_j 의 구성원 p50 중앙값)과
+    비교한 로그 잔차 7개를 한 표로. 구간마다 per_bin 줄. 칩 안 표로는 칩 효과가 평균에 묻혀 보이지 않으니, 칩을 하나씩 빼고 나머지와 비교해야 보인다.
+    속도 r̂ 는 전체 교정에서 한 번(측정이지 블라인드가 아니다). → [(chip, [잔차 7개]), ...]"""
+    tables = []
+    for grp in ("fast", "slow"):
+        chips = [c for c in sorted(curves) if group_of(fresh[c], split_us) == grp]
+        if len(chips) < 2:
+            continue
+        speeds = chip_speeds(curves, fresh, chips)
+        for j in chips:
+            if j not in arows:
+                continue
+            mem = members(curves, fresh, [c for c in chips if c != j], scale, "gauss", speeds)
+            rj, div = math.exp(speeds[j]), fresh[j] if scale == "ratio" else 1.0
+            for b in range(1, MAX_CYCLE + 1, 1000):
+                cb = int(((b + 499) * rj - 1) // 1000) * 1000 + 1          # 공통 시계의 구간
+                if b not in curves[j] or cb not in mem:
+                    continue
+                ref = math.log(statistics.median(m.mu for m in mem[cb]))
+                vals = arows[j].sample_rows(b, per_bin, rng)
+                for i in range(0, len(vals), len(WORN)):
+                    tables.append((j, [math.log(v / div) - ref for v in vals[i:i + len(WORN)]]))
+    return tables
+
+
+def icc_oneway(tables):
+    """표(집단)마다 k 개 값 → 집단 간 분산의 몫 (일원 랜덤효과 적률 추정, 음수는 0). chip_effect_tables 의 잔차에 쓰면 ρ_chip."""
+    k, n = len(tables[0]), len(tables)
+    means = [statistics.fmean(t) for t in tables]
+    gm = statistics.fmean(means)
+    ms_b = k * sum((m - gm) ** 2 for m in means) / (n - 1)
+    ms_w = sum((v - m) ** 2 for t, m in zip(tables, means) for v in t) / (n * (k - 1))
+    vb = max((ms_b - ms_w) / k, 0.0)
+    return vb / (vb + ms_w) if vb + ms_w > 0 else 0.0
+
+
 def _q(vals, p):
     v = sorted(vals)
     return v[min(len(v) - 1, int(p * len(v)))]
@@ -885,7 +930,8 @@ def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo
     """합성 복원 — 모델 가정대로 가짜 칩을 만들고 추론이 참값을 복원하는지 n 번. → {level: 포함률}.
 
     생성: 무리를 고르고 정체 칩 하나 · x ~ U(1, MAX_CYCLE)(사전과 같다) · r ~ 로그균등 [1/R, R] (R 은 교정 집합에서 모델대로) ·
-    곡선 지점 M = x·r 의 그 칩 셀에서 prep 마다 섹터 0-6 을 뽑는다. v3: N(p50, (p90-p10)/2.56). v4: 셀의 분위수 21개에서 역변환 —
+    곡선 지점 M = x·r 의 그 칩 셀에서 prep 마다 섹터 0-6 을 뽑는다. v4 는 M 이 공통 시계라 정체 칩의 자기 시계 M/r̂_j 의 셀을 쓴다
+    (정렬 모델이 그 칩의 셀을 공통 시계 b·r̂_j 에 두므로 — 자기 시계 그대로 쓰면 유효 속도 r·r̂_j 가 [1/R, R] 을 벗어난다). v3: N(p50, (p90-p10)/2.56). v4: 셀의 분위수 21개에서 역변환 —
     prep 공통 성분(ρ_s)과 섹터 공통 성분(ρ_p)을 가우스 코퓰러로 넣어 한 prep 의 섹터들, 같은 섹터의 prep 들이 실전처럼 상관된다.
     loo 면 정체 칩을 교정에서 빼고 추론한다. runs_fix=False 는 v3 의 우도 수정 전(prep 전부를 관측 하나로)."""
     import random
@@ -894,6 +940,7 @@ def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo
     groups = defaultdict(list)
     for c in sorted(curves):
         groups[group_of(fresh[c], split_us)].append(c)
+    own_speed = {g: chip_speeds(curves, fresh, cs) for g, cs in groups.items()} if m["align"] else None   # 정체 칩의 r̂_j (전체 무리에서)
     hit = defaultdict(int)
     done = 0
     while done < n:
@@ -905,20 +952,23 @@ def synthetic(curves, fresh, scale, split_us, rate_range, prep_k, n, seed=0, loo
         mem, _, R, _, _ = fit({c: curves[c] for c in cal}, fresh, grp, scale, split_us, model, rate_range)
         x = rng.randint(1, MAX_CYCLE)
         r = R ** rng.uniform(-1, 1) if R > 1 else 1.0
-        mb = int((x * r - 1) // 1000) * 1000 + 1
+        own = x * r / math.exp(own_speed[grp][chip]) if own_speed else x * r      # 공통 시계 x·r → 정체 칩의 자기 시계
+        mb = int((own - 1) // 1000) * 1000 + 1
         if mb not in curves[chip]:
             continue
         sec = curves[chip][mb]
         worn = []
         if m["cell"] == "quantile":
-            rs, rp = rho["sector"], rho["prep"]
+            rs, rp, rc = rho["sector"], rho["prep"], rho["chip"]
+            w = 1 - rc
+            zc = math.sqrt(rc) * rng.gauss(0, 1)                             # 칩 공통 — 섹터·prep 전부에
             zs = {s: rng.gauss(0, 1) for s in sec}                           # 섹터 공통 — prep 간 상관
             for _ in range(prep_k):
                 zp = rng.gauss(0, 1)                                          # prep 공통 — 섹터 간 상관
                 for s, cell in sec.items():
-                    z = math.sqrt(rs) * zp + math.sqrt(rp) * zs[s] + math.sqrt(max(0.0, 1 - rs - rp)) * rng.gauss(0, 1)
+                    z = zc + math.sqrt(w * rs) * zp + math.sqrt(w * rp) * zs[s] + math.sqrt(max(0.0, w * (1 - rs - rp))) * rng.gauss(0, 1)
                     worn.append(_quantile_draw(cell.q, 0.5 * (1 + math.erf(z / math.sqrt(2)))))
-            evidence = n_eff(len(sec), prep_k, rs, rp)
+            evidence = n_eff(len(sec), prep_k, rs, rp, rc)
         else:
             for _ in range(prep_k):
                 for cell in sec.values():
@@ -981,7 +1031,9 @@ def main(argv=None):
     ap.add_argument("--model", choices=tuple(MODELS), default=MODEL_VERSION, help=f"모델 버전 (기본 {MODEL_VERSION}) — v3.2 는 이전 모델 그대로")
     ap.add_argument("--rho-sector", type=float, default=None, help="v4: 같은 prep 안 섹터 간 상관 ρ_s (기본은 RHO 등록값)")
     ap.add_argument("--rho-prep", type=float, default=None, help="v4: 같은 섹터 prep 간 상관 ρ_p (기본은 RHO 등록값)")
-    ap.add_argument("--rho", action="store_true", help="v4 측정: 교정 칩 A 행(연속 사이클 --prep-k 개 × 7섹터 표)과, 주면 prep 로그들에서 ρ_s · ρ_p 를 재서 찍는다")
+    ap.add_argument("--rho-chip", type=float, default=None, help="v4: 칩 효과의 몫 ρ_chip (기본은 RHO 등록값)")
+    ap.add_argument("--rho", action="store_true", help="v4 측정: 교정 칩 A 행(연속 사이클 --prep-k 개 × 7섹터 표)과, 주면 prep 로그들에서 ρ_s · ρ_p 를, "
+                    "칩을 하나씩 빼고 나머지 정렬 혼합과 비교한 잔차에서 ρ_chip 을 재서 찍는다")
     ap.add_argument("--loco-obs", choices=("p50", "single", "rows"), default="p50",
                     help="모의 블라인드 관측 — p50(v3 등록 방식) · single(섹터당 사이클 --prep-k 개의 중앙값) · rows(A 행 --prep-k 개 그대로, v4 등록 방식)")
     ap.add_argument("--prep-k", type=int, default=3, help="single · rows 관측의 prep 수(사이클 수) · --rho 의 표 행 수 (기본 3)")
@@ -999,7 +1051,8 @@ def main(argv=None):
     curves, fresh = load_curves(args.curves), load_fresh()
     split = args.split_ms * 1000
     rho = {"sector": RHO["sector"] if args.rho_sector is None else args.rho_sector,
-           "prep": RHO["prep"] if args.rho_prep is None else args.rho_prep}
+           "prep": RHO["prep"] if args.rho_prep is None else args.rho_prep,
+           "chip": RHO["chip"] if args.rho_chip is None else args.rho_chip}
     model = args.model
 
     if args.rate_rule:
@@ -1039,6 +1092,19 @@ def main(argv=None):
             erase, _ = parse_prep_logs(args.logs)
             rs, rp = rho_from_preps(erase, len(args.logs))
             print(f"prep 로그 {len(args.logs)}개 (표 하나): ρ_s {rs:.2f} · ρ_p {rp:.2f} — 마모 루프의 값과 비슷한지 본다")
+        tables = chip_effect_tables(curves, fresh, arows, split, args.scale, args.prep_k, random.Random(f"{args.seed}:chip"))
+        if tables:
+            print(f"ρ_chip 측정 · 칩을 하나씩 빼고 나머지 정렬 혼합과 비교한 A 행 잔차(로그 · 7섹터) · 구간당 {args.prep_k}줄 · 눈금 {args.scale}")
+            print("| 무리 | 표 수 | ρ_chip | 칩별 잔차 평균 (7섹터 평균의 중앙값) |\n|---|---|---|---|")
+            for g, name in (("fast", "빠른"), ("slow", "느린"), (None, "전체")):
+                sub = [(c, t) for c, t in tables if g is None or group_of(fresh[c], split) == g]
+                if len(sub) < 2:
+                    continue
+                by = defaultdict(list)
+                for c, t in sub:
+                    by[c].append(statistics.fmean(t))
+                print(f"| {name} | {len(sub)} | {icc_oneway([t for _, t in sub]):.2f} | "
+                      + " · ".join(f"{c} {statistics.median(v):+.3f}" for c, v in sorted(by.items())) + " |")
         return
 
     if args.synthetic:
@@ -1107,7 +1173,7 @@ def main(argv=None):
     out = [f"입력 A  기준(32-127) 소거 중앙값 {ref / 1000:.1f}ms → {r['group']} 무리 (교정 {r['chips']}) · 눈금 {args.scale} · R "
            + (f"{r['rate_range']:.2f} (σ_r {r['sigma_r']:.3f})" if v4 else f"{r['rate_range']:g}"),
            f"입력 B  마모 섹터 소거 {len(worn)}개 (prep {runs}회{' · 독립' if args.prep_indep else ''}"
-           + (f" · ρ_s {rho['sector']:g} · ρ_p {rho['prep']:g} · n_eff {r['evidence']:.2f}" if v4 else "") + "): "
+           + (f" · ρ_s {rho['sector']:g} · ρ_p {rho['prep']:g} · ρ_chip {rho['chip']:g} · n_eff {r['evidence']:.2f}" if v4 else "") + "): "
            + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
            f"답      중앙값 {r['median'][0]:,}-{r['median'][1]:,} · MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
     if r["outside_at_map"]:
