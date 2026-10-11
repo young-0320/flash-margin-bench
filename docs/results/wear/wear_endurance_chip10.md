@@ -4,6 +4,9 @@
 - **수치**: [`data/wear/wear_endurance_chip10_2026-10.md`](../data/wear/wear_endurance_chip10_2026-10.md) (+ 동명 CSV) — 표를 다시 싣지 않고 거기를 인용한다
 - **사전 등록**: `docs/spec/s1.wear_bench_spec.md` §15 — H1′·H2′(2026-09-26) · H6(2026-09-27). 교정 편입은 곡선을 본 뒤 정하기로 했다(로그 48 [D48-97])
 - **범위**: **chip10 한 칩의 소거 · 프로그램 시간만 본다.** 다른 칩과의 비교는 보류했다(2026-10-06, 로그 48 §50)
+  > **2026-10-12 — 두 번째 JV 가 왔다 ([`wear_endurance_chip14.md`](wear_endurance_chip14.md), 로그 53 [D53-5]).** chip14(`25Q64JVSIQ` `1749`)가 같은 모양으로
+  > 늙었다(계단 없음 · 100k 2.65배 · 프로그램 1.03) — 「JV 둘」 비교는 그 문서에. 7섹터가 84ms 를 넘고도 계단이 없어, 이 문서 §2 의 「H6 판정 밖」 은 JV 에선
+  > 「성립 안 함」 으로 올라간다
 - **경위**: `docs/log/young/48.pilot_wear_handler_and_plan_approval.md` §50
 
 ## 결론

@@ -28,6 +28,10 @@
 없음). chip10 은 다른 칩(W25Q64FV)과 세대가 다른 **W25Q64JV** 라(마킹 `25Q64JVSIQ` `1850`) 교정에 넣지 않았다 — 로그 48 §50 · [U48-21]. 수치는
 `../wear/wear_endurance_chip10_2026-10.md` §2, 섹터별 소거 · 프로그램 그림은 `../../plots/wear_curves_chip10_nocal_2026-10.png`(`plot_wear_curves.py --single`).
 
+`wear_curves_chip14_nocal_2026-10.csv` 는 두 번째 JV — chip14(마킹 `25Q64JVSIQ` `1749`)를 박지민이 보드 B 에서 상온 0 → 100k 마모한 표다(세션
+`1791089978` · `1791201358` · `1791204058`, A 행 700,000 · 뺀 사이클 없음). 2026-10-12 `--no-calib` 별개 승격(로그 48 [U48-22] · 로그 53 [D53-5]) —
+chip10 과 「JV 둘」. 계단 없음 · 100k 2.65배 · 프로그램 1.03 으로 chip10 과 같은 모양. 수치는 `../wear/wear_endurance_chip14_2026-10.md` §2
+
 ## 교정 밖 — 온도 칩
 
 `wear_curves_chip17_65C_2026-10.csv` 는 chip17 을 **칩 위 약 65°C** 에서 0 → 100k 마모한 같은 묶음의 표다(박지민 보드 B, 세션
@@ -78,6 +82,7 @@ uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교�
 uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plots/wear_curves_2026-09.png
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
 uv run python host/analysis/pe_end.py --chip chip16 --temp                # → build/pe_end/chip16/wear_curves_chip16_64C_2026-10.csv, --promote 로 승격 (교정 밖 · 설정 65°C, 2026-10-12)
+uv run python host/analysis/pe_end.py --chip chip14 --no-calib            # → build/pe_end/chip14/wear_curves_chip14_nocal_2026-10.csv, --promote 로 승격 (교정 밖 · JV 둘, 2026-10-12)
 ```
 
 각 명령이 stdout 에 읽은 행 수 · 깨진 행 수 · `n<1000` 구간을 찍는다. 그 줄을 아래 표에 옮긴다.
