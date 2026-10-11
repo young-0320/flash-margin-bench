@@ -34,6 +34,11 @@
 `1790851785` · `1790879592`, A 행 700,000 · 뺀 사이클 없음). 이름의 `_65C` 접미사가 교정 glob 에 걸리지 않게
 한다 — **교정 칩이 아니다**. 수치는 `../wear/wear_endurance_chip17_2026-10.md` §2, 교정에 넣었을 때의 LOCO 는 `../chip17_loco_2026-10.md`.
 
+`wear_curves_chip16_64C_2026-10.csv` 는 chip16 을 **히터 설정 65°C(센서 사이클 가중 평균 63.9°C)** 에서 0 → 100k 마모한 표다(박지민 보드 B, 세션
+`1791434740` · `1791523150`, A 행 700,000 · 뺀 사이클 없음, `pe_end.py --temp` 산출). 상온 교정으로 등록됐던 칩인데 65°C 설정으로 돌아와 영웅님이
+2026-10-12 온도 축 · 교정 밖으로 정했다(로그 53 [D53-4]) — `_64C` 접미사가 교정 glob 에서 뺀다. 수치는 `../wear/wear_endurance_chip16_2026-10.md` §2,
+교정에 넣었을 때의 LOCO 는 `../chip16_loco_2026-10.md`(상온 8칩 68% 75 → 74 · 95% 91 → 93 · R 2.97 → 2.92). 곡선 모양은 상온 빠른 무리(chip01)와 겹친다.
+
 ## 열
 
 | 열 | 뜻 |
@@ -72,6 +77,7 @@ uv run python host/analysis/pe_end.py --chip chip15 --drop-cycles 69109-69109   
 uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 CSV 마다 → build/plots/wear_curves_<chip>_2026-09.png
 uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plots/wear_curves_2026-09.png
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
+uv run python host/analysis/pe_end.py --chip chip16 --temp                # → build/pe_end/chip16/wear_curves_chip16_64C_2026-10.csv, --promote 로 승격 (교정 밖 · 설정 65°C, 2026-10-12)
 ```
 
 각 명령이 stdout 에 읽은 행 수 · 깨진 행 수 · `n<1000` 구간을 찍는다. 그 줄을 아래 표에 옮긴다.
