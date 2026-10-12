@@ -180,14 +180,15 @@ def plot(chips, fresh, out_png, xmax=100_000):
         axes[0][j].set_title(title, color=pwc.INK, fontsize=10.5, loc="left")
         for c in members:
             rows = sorted((cyc, r) for cyc, r in chips[c]["rows"].items() if cyc <= xmax)
-            base = float(chips[c]["rows"][100]["width_1e2_ps"])
+            base_cyc = 100 if 100 in chips[c]["rows"] else min(chips[c]["rows"])   # chip06 은 100 점이 없다(블라인드 · 호스트 로그 유실) → 첫 점
+            base = float(chips[c]["rows"][base_cyc]["width_1e2_ps"])
             cut = next((cyc for cyc, r in rows if "계측 사건" in (r.get("note") or "")), None)
             x = [cyc / 1e3 for cyc, _ in rows]
             dw = [float(r["width_1e2_ps"]) - base if r["width_1e2_ps"] and (cut is None or cyc < cut) else math.nan for cyc, r in rows]
             pg = [float(r["program_us_p50"]) / 1e3 if r["program_us_p50"] else math.nan for _, r in rows]
             rested = [k for k, (_, r) in enumerate(rows) if (r.get("note") or "").startswith("휴지 뒤")]
             temp = chips[c]["temp"]
-            label = c + (f" ({temp}°C)" if temp else "") + (" — 300k 중 100k 까지" if chips[c]["pilot"] else "")
+            label = c + (f" ({temp}°C)" if temp else "") + (" — 300k 중 100k 까지" if chips[c]["pilot"] else "") + (f" (폭 기준 {base_cyc:,})" if base_cyc != 100 else "")
             for i, ys in ((0, dw), (1, pg)):
                 ax = axes[i][j]
                 ax.plot(x, ys, color=COLORS.get(c, pwc.MUTED), lw=1.8, marker="o", ms=3.4, ls=(0, (4, 2)) if temp else "-", label=label)
