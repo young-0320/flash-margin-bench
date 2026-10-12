@@ -135,7 +135,7 @@ def group(chip):
 
 
 CHIP_COLORS = {"chip04": "#2a78d6", "chip01": "#eb6834", "chip09": "#1baf7a", "chip03": "#eda100", "chip07": "#e87ba4",
-               "chip18": "#006300", "chip15": "#d0453a"}       # 칸마다 --pairs all 통과 (빠른 칸 4색 · 2026-10-04 · 느린 칸 3색 · 2026-10-05)
+               "chip18": "#006300", "chip15": "#d0453a", "chip06": "#eda100"}   # 칸마다 --pairs all 통과 (빠른 칸 4색 · 2026-10-04 · 느린 칸 3색 · 2026-10-05) · chip06 노랑은 영웅님 지정(빠른 칸 안에서만 비교, 2026-10-12)
 
 
 def plot_ratio(curves, out_png, xmax=100, mark=None):
