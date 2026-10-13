@@ -2,7 +2,7 @@
 
 > 수치와 규칙만 둔다. 모델과 판정은 역산 해석 문서(작성 예정)에서 한다.
 
-- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07 · 교정 chip09 · 새 배치 chip18(0 → 100k, 2026-10-04) · 느린 무리 chip15(0 → 100k, 2026-10-05) · 블라인드였던 chip06(100 → 12k 보드 B · 12k → 100k 보드 A, 2026-10-12)의 마모 루프 A 행(사이클 × 섹터 7개의
+- **무엇**: 파일럿 chip01(0 → 300k)과 종단 chip03·chip04·chip07 · 교정 chip09 · 새 배치 chip18(0 → 100k, 2026-10-04) · 느린 무리 chip15(0 → 100k, 2026-10-05) · 블라인드였던 chip06(100 → 12k 보드 B · 12k → 200k 보드 A, 2026-10-12 · 10-13)의 마모 루프 A 행(사이클 × 섹터 7개의
   소거·프로그램 시간)을 **1,000사이클 구간 × 섹터**로 묶은 분위수 표. 칩당 CSV 한 장 `wear_curves_<chip>_2026-09.csv`.
   수명 역산 모델(S-1 §15 두 층 역산)이 읽는 유일한 교정 입력이다 — A.txt(666MB, 리포 밖)를 다시 열지 않는다
 - **왜 이 묶음인가**: 결과 문서 네 편의 §3-§5 가 같은 묶음(`(cycle−1)//1000` 구간 · 섹터 중앙값)으로 계단·프로그램 상승을
@@ -66,7 +66,7 @@ chip10 과 「JV 둘」. 계단 없음 · 100k 2.65배 · 프로그램 1.03 으�
 | chip04 | `1790423530` · `1790482991` · `1790491294` | **66,654-66,671** | SPI 접촉 불량 — 소거 8µs · 프로그램 130µs 행 120개. 66,601-66,653 은 두 번 돌아 재개 세션 값 (`../wear/wear_endurance_chip04_2026-09.md` §8) |
 | chip07 | `1790494073` · `1790562456` · `1790643103` | 없음 | 52,671-60,000 · 76,170-80,000 은 호스트 사망으로 A 행 자체가 없다 → 그 구간은 표에 없거나 `n` 이 작다 (`../wear/wear_endurance_chip07_2026-09.md` §6) |
 | chip18 | `1790989701` | 없음 | 끊김 · 재개 없는 첫 종단 (`../wear/wear_endurance_chip18_2026-10.md`) |
-| chip06 | `1790788847` · `1791740291` | 없음 | 블라인드 0 → 100 의 호스트 로그 유실(장부 수기 복구) → 1-100 의 A 행 없음. 100 → 12k 는 보드 B(박지민, 체크포인트 1k · 3k · 10k · 12k), 12k → 100k 는 보드 A — 둘 다 정상 종료 (`../wear/wear_endurance_chip06_2026-10.md`) |
+| chip06 | `1790788847` · `1791740291` · `1791800419` | 없음 | 블라인드 0 → 100 의 호스트 로그 유실(장부 수기 복구) → 1-100 의 A 행 없음. 100 → 12k 는 보드 B(박지민, 체크포인트 1k · 3k · 10k · 12k), 12k → 100k · 100k → 200k 는 보드 A — 셋 다 정상 종료. 유일하게 200k 까지 닳은 교정 칩(100k 너머 구간은 답 범위 100k 의 현행 모델에서는 M = x·r 의 곡선 지점으로만 쓰인다) (`../wear/wear_endurance_chip06_2026-10.md`) |
 | chip15 | `1791078343` · `1791123800` | **69,109** | USB 흔들림 — 섹터 6 소거 8µs 가짜 행 1개 뒤 `wip_timeout`. tally 69,100 · A 로그 69,109 → resume 채택 69,109 로 재개(두 번 돈 사이클 없음). 사이클 단위로 빼므로 7행 (`../wear/wear_endurance_chip15_2026-10.md` §5) |
 
 ## 재현
@@ -84,7 +84,7 @@ uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plo
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
 uv run python host/analysis/pe_end.py --chip chip16 --temp                # → build/pe_end/chip16/wear_curves_chip16_64C_2026-10.csv, --promote 로 승격 (교정 밖 · 설정 65°C, 2026-10-12)
 uv run python host/analysis/pe_end.py --chip chip14 --no-calib            # → build/pe_end/chip14/wear_curves_chip14_nocal_2026-10.csv, --promote 로 승격 (교정 밖 · JV 둘, 2026-10-12)
-uv run python host/analysis/pe_end.py --chip chip06                       # → build/pe_end/chip06/wear_curves_chip06_2026-10.csv, --promote 로 승격 (교정 9칩째, 2026-10-12)
+uv run python host/analysis/pe_end.py --chip chip06                       # → build/pe_end/chip06/wear_curves_chip06_2026-10.csv, --promote 로 승격 (교정 9칩째, 2026-10-12 · 200k 까지 2026-10-14)
 ```
 
 각 명령이 stdout 에 읽은 행 수 · 깨진 행 수 · `n<1000` 구간을 찍는다. 그 줄을 아래 표에 옮긴다.
@@ -101,4 +101,4 @@ uv run python host/analysis/pe_end.py --chip chip06                       # → 
 | chip18 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-10-04 |
 | chip15 | 699,993 (cycle 1-100,000, 69,109 의 7행을 뺌) | 0 | 1개: 69,001-70,000 (뺀 사이클) | 2026-10-05 |
 | 8칩 재생성 (분위수 21열) | 위 행들과 같음 · chip02 700,000 (cycle 1-100,000) | 0 | 위와 같음 | 2026-10-09 |
-| chip06 | 699,300 (cycle 101-100,000) | 0 | 1개: 1-1,000 (섹터당 n 900 — 1-100 로그 유실) | 2026-10-12 |
+| chip06 | 1,399,300 (cycle 101-200,000) | 0 | 1개: 1-1,000 (섹터당 n 900 — 1-100 로그 유실) | 2026-10-14 |
