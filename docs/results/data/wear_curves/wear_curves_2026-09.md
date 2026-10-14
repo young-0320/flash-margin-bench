@@ -76,7 +76,7 @@ uv run python host/analysis/wear_curves.py --chip chip01 data/wear/1790091548 da
 uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
-uv run python host/analysis/wear_curves.py --chip chip09 data/wear/1790786787 -o docs/results/data/wear_curves/wear_curves_chip09_2026-09.csv
+uv run python host/analysis/pe_end.py --chip chip09                       # → build/pe_end/chip09/wear_curves_chip09_2026-10.csv (세션 1790786787 · 1791904816), --promote 로 승격 (200k 까지, 2026-10-14)
 uv run python host/analysis/pe_end.py --chip chip18                       # → build/pe_end/chip18/wear_curves_chip18_2026-10.csv, --promote 로 승격
 uv run python host/analysis/pe_end.py --chip chip15 --drop-cycles 69109-69109   # → build/pe_end/chip15/wear_curves_chip15_2026-10.csv, --promote 로 승격
 uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 CSV 마다 → build/plots/wear_curves_<chip>_2026-09.png
@@ -97,7 +97,7 @@ uv run python host/analysis/pe_end.py --chip chip06                       # → 
 | chip03 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-09-30 |
 | chip04 | 699,874 (cycle 1-100,000) | 0 | 1개: 66,001-67,000 (섹터당 n 982) | 2026-09-30 |
 | chip07 | 621,872 (cycle 1-100,000) | 0 | 2개: 52,001-53,000 (n 670, 섹터 6 669) · 76,001-77,000 (n 169). 53,001-60,000 · 77,001-80,000 구간 10개는 표에 없음 | 2026-09-30 |
-| chip09 | 700,000 (cycle 1-100,000) | 0 | 없음. 파일 이름의 2026-09 는 교정 묶음 이름(마모는 2026-09-30 - 10-01) | 2026-10-01 |
+| chip09 | 1,400,000 (cycle 1-200,000) | 0 | 없음 | 2026-10-14 (200k 연장, 이름 `_2026-09` → `_2026-10`) |
 | chip18 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-10-04 |
 | chip15 | 699,993 (cycle 1-100,000, 69,109 의 7행을 뺌) | 0 | 1개: 69,001-70,000 (뺀 사이클) | 2026-10-05 |
 | 8칩 재생성 (분위수 21열) | 위 행들과 같음 · chip02 700,000 (cycle 1-100,000) | 0 | 위와 같음 | 2026-10-09 |
