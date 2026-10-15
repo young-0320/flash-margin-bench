@@ -62,7 +62,7 @@ chip10 과 「JV 둘」. 계단 없음 · 100k 2.65배 · 프로그램 1.03 으�
 | 칩 | 세션 (시간 순) | 뺀 사이클 | 근거 |
 |---|---|---|---|
 | chip01 | `1790091548` · `1790212214` | 없음 | 122,164 `wip_timeout`(타이머 넘침) 뒤 재개. 섹터 6 재소거 ±1 은 A 행이 아니다 (`../wear/wear_pilot_chip01_2026-09.md`) |
-| chip03 | `1790408609` | 없음 | 정상 종료 (`../wear/wear_endurance_chip03_2026-09.md`) |
+| chip03 | `1790408609` · `1791990254` | 없음 | 둘 다 정상 종료 (`../wear/wear_endurance_chip03_2026-10.md`). 100k → 200k 연장(10/14-15) — 느린 무리 첫 200k, 계단 없이 미끄럼 |
 | chip04 | `1790423530` · `1790482991` · `1790491294` | **66,654-66,671** | SPI 접촉 불량 — 소거 8µs · 프로그램 130µs 행 120개. 66,601-66,653 은 두 번 돌아 재개 세션 값 (`../wear/wear_endurance_chip04_2026-09.md` §8) |
 | chip07 | `1790494073` · `1790562456` · `1790643103` | 없음 | 52,671-60,000 · 76,170-80,000 은 호스트 사망으로 A 행 자체가 없다 → 그 구간은 표에 없거나 `n` 이 작다 (`../wear/wear_endurance_chip07_2026-09.md` §6) |
 | chip18 | `1790989701` | 없음 | 끊김 · 재개 없는 첫 종단 (`../wear/wear_endurance_chip18_2026-10.md`) |
@@ -73,7 +73,7 @@ chip10 과 「JV 둘」. 계단 없음 · 100k 2.65배 · 프로그램 1.03 으�
 
 ```bash
 uv run python host/analysis/wear_curves.py --chip chip01 data/wear/1790091548 data/wear/1790212214
-uv run python host/analysis/wear_curves.py --chip chip03 data/wear/1790408609
+uv run python host/analysis/pe_end.py --chip chip03                       # → build/pe_end/chip03/wear_curves_chip03_2026-10.csv (세션 1790408609 · 1791990254), --promote 로 승격 (200k 까지, 2026-10-16)
 uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 data/wear/1790482991 data/wear/1790491294 --drop-cycles 66654-66671
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
 uv run python host/analysis/pe_end.py --chip chip09                       # → build/pe_end/chip09/wear_curves_chip09_2026-10.csv (세션 1790786787 · 1791904816), --promote 로 승격 (200k 까지, 2026-10-14)
@@ -94,7 +94,7 @@ uv run python host/analysis/pe_end.py --chip chip06                       # → 
 | 칩 | A 행 | 깨진 행 | `n<1000` 구간 | 실행일 |
 |---|---|---|---|---|
 | chip01 | 2,100,000 (cycle 1-300,000) | 0 | 없음 | 2026-09-30 |
-| chip03 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-09-30 |
+| chip03 | 1,400,000 (cycle 1-200,000) | 0 | 없음 | 2026-10-16 (200k 연장, 이름 `_2026-09` → `_2026-10`) |
 | chip04 | 699,874 (cycle 1-100,000) | 0 | 1개: 66,001-67,000 (섹터당 n 982) | 2026-09-30 |
 | chip07 | 621,872 (cycle 1-100,000) | 0 | 2개: 52,001-53,000 (n 670, 섹터 6 669) · 76,001-77,000 (n 169). 53,001-60,000 · 77,001-80,000 구간 10개는 표에 없음 | 2026-09-30 |
 | chip09 | 1,400,000 (cycle 1-200,000) | 0 | 없음 | 2026-10-14 (200k 연장, 이름 `_2026-09` → `_2026-10`) |
