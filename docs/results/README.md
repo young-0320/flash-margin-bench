@@ -15,7 +15,7 @@
 
 | 폴더 | 무엇 |
 |---|---|
-| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09, chip03 추가 예정) |
+| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03, chip15 추가 예정) |
 | `data/wear/` | 마모 체크포인트 요약 — 칩마다 CSV + md (chip01 · 03 · 04 · 07 · 09 · 10 · 12 · 15 · 17 · 18). 칩 × 체크포인트 한눈 표 `wear_checkpoint_table_2026-10.md` 와 폭 변화·프로그램 칩 간 그림 `plots/wear_checkpoint_width_program_2026-10.png` (둘 다 `wear_checkpoint_table.py` 산출) |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출). 교정 = 접미사 없는 `wear_curves_<chip>_<YYYY-MM>.csv`, 교정에 안 넣는 칩은 접미사로 glob 에서 뺀다(chip17 `_65C` · chip16 `_64C` · chip12 `_ali` · `pe_end.py --no-calib` 은 `_nocal`) |
 
@@ -30,14 +30,14 @@
 
 - [`newchip_survey.md`](newchip_survey.md) — 신품 전수 측정(S-2) n=9: 소거 시간 개체차, 재장착 σ 13.86ps, chip10 개체 특성, 앵커 chip02 고장
 - [`wear_pilot_chip01.md`](wear/wear_pilot_chip01.md) — P/E 파일럿 chip01 0 → 300k: 폭 불변(H1), 소거 5.2배(H2), 섹터별 계단
-- [`wear_endurance_chip03.md`](wear/wear_endurance_chip03.md) — 종단 chip03 0 → 100k: 폭 불변(H1′), 프로그램 20k 부터(H2′ 거짓), 계단 없음, 근접 대조군 128KB 교란
+- [`wear_endurance_chip03.md`](wear/wear_endurance_chip03.md) — 종단 chip03 0 → 100k: 폭 불변(H1′), 프로그램 20k 부터(H2′ 거짓), 계단 없음, 근접 대조군 128KB 교란 (100k → 200k 는 `wear_endurance_200k.md` §6)
 - [`wear_endurance_chip04.md`](wear/wear_endurance_chip04.md) — 종단 chip04 0 → 100k: 폭 불변(H1′), 프로그램 불변(H2′ 참), 7섹터 계단 25-47k·높이 18.5-22.7ms·착지 약 111ms(H6 참), H4 거짓, 128KB 교란 가장 큼
 - [`wear_endurance_chip07.md`](wear/wear_endurance_chip07.md) — 종단 chip07 0 → 100k: 계단 없음(예측 참), 프로그램 5k 부터 2.1배(H2′ 거짓), 폭 25MHz 불변(계측 사건 전후 사후 처리 · 75/45MHz 판정 불가), 60k·80k 결측, 128KB 소거 교란 재현, prep 프로그램 시간은 A 행과 눈금이 다름
 - [`wear_endurance_chip12.md`](wear/wear_endurance_chip12.md) — 구매처 미검증 chip12(알리익스프레스) 0 → 100k: 같은 칩으로 보지 않는다 — 소거 2.58배로 빠른 무리만큼 늘었지만 계단 없음, 프로그램은 그대로(느린 무리와 다름), 폭 불변(재장착 단차 약 30ps 포함), 기준 섹터 0.99, 현장 역산은 판정 보류(입력 C 불일치 · 밴드 밖)
 - [`wear_endurance_chip14.md`](wear/wear_endurance_chip14.md) — W25Q64JV 두 번째(마킹 `25Q64JVSIQ` `1749`) chip14 0 → 100k, chip10 과 「JV 둘」: 소거 계단 없이 100k 2.65배(7섹터 모두 84ms 를 넘고도 계단 없음 — H6 는 FV 규칙), 프로그램 1.03, 폭 12점 중 11점 3σ 안(90k 는 창 이동 자리) · 교정 밖 · FV 모델 현장 역산 59-60k(JV 둘 다 약 0.6배로 낮게 봄) · 근접 대조군 1.10 기록
 - [`wear_endurance_chip10.md`](wear/wear_endurance_chip10.md) — W25Q64JV(마킹 `25Q64JVSIQ` `1850`, 다른 칩은 FV) chip10 0 → 100k, 한 칩만: 소거 계단 없이 100k 2.55배(85-87ms 포화 가설), 프로그램 1.11배로 늦게 가속(H2′ 거짓), 폭 불변(H1′ 참), 대조군 교란 없음, FV 모델은 사용량을 약 절반으로 봄 — 교정 밖 · 다른 칩과 비교 보류
 - [`wear_endurance_chip18.md`](wear/wear_endurance_chip18.md) — 새 배치 chip18(빠른 무리) 0 → 100k: 옛 로트 빠른 무리 띠 안 — 소거 100k 3.68배, 5/7섹터 53-100k 계단(H6 참 · 높이 19.7-23.1ms), 프로그램·폭 불변(H1′·H2′ 참), 교정 편입 — 넣기 전 현장 역산은 MAP 54k 로 낮게 봄, 교정 6칩 LOCO 68% 60/70 · 95% 70/70
-- [`wear_endurance_200k.md`](wear/wear_endurance_200k.md) — 빠른 무리 chip06 · chip09 100k → 200k 연장(역산 답 범위 150k 너머용): 100k 안에 계단이 없던 12섹터 전부 110k-158k 에 약 21ms 계단(H3 안), 160k-200k 는 두 칩 다 104-109ms 평탄, 폭 200k 까지 3σ 안, 프로그램 chip06 1.9배 · chip09 1.01 로 갈림, H6 ② 착지 띠는 직전 + 21ms 로 수정 제안, 다음은 느린 무리 chip03
+- [`wear_endurance_200k.md`](wear/wear_endurance_200k.md) — chip06 · chip09(빠른) · chip03(느린) 100k → 200k 연장(역산 답 범위 150k 너머용): 빠른 두 칩은 100k 안에 계단이 없던 12섹터 전부 110k-158k 에 약 21ms 계단(H3 안) · 160k-200k 104-109ms 평탄 · 프로그램 1.9배 / 1.01 로 갈림 · H6 ② 착지 띠는 직전 + 21ms, 느린 chip03 은 같은 85-93ms 에서 출발해 계단 없이 미끄럼(한 구간 상승 5-12ms · 분포 폭 20-25ms · 배율 1.74 → 2.10, 10/14 예측 틀림) — 계단의 유무가 두 무리를 가름, 폭 셋 다 200k 까지 3σ 안, 다음은 chip15
 - [`wear_endurance_chip15.md`](wear/wear_endurance_chip15.md) — 새 배치 chip15(느린 무리) 0 → 100k: 옛 로트 느린 무리처럼 — 소거 100k 1.75배(chip03 1.74 와 겹침), 계단 없음(H6 판정 불가), 프로그램 24-37k 부터 7섹터 함께 +21%(H2′ 거짓 · 느린 무리 세 칩째), 폭 25MHz 불변(H1′ 참), 69,109 USB 사건(결측 없음), 교정 편입 — 넣기 전 현장 역산 MAP 62k(95% 안) · 입력 C 경고 헛울림, 교정 7칩 LOCO 68% 72/82 · 95% 82/82
 - [`wear_temperature_chip17.md`](wear/wear_temperature_chip17.md) — 온도 마모 chip17 칩 위 65°C 0 → 100k: 폭 불변(H1′ 참), 소거는 상온 빠른 무리보다 덜 늘어 100k 2.44배(상온 2.80-3.97) — 65°C 효과는 개체차와 구별 불가·계단 없음(H6 수준 미달), 프로그램 +20%(H2′ 거짓), 상온 모델 v2 는 사용량을 0.15-0.35배로 낮게 봄(LOCO 68% 2/12) → 교정에 넣지 않음
 - [`wear_temperature_chip16.md`](wear/wear_temperature_chip16.md) — 온도 마모 chip16 히터 설정 65°C(센서 평균 64°C) 0 → 100k: 폭 불변(H1′ 참), 소거는 chip17 과 반대로 상온 빠른 무리의 빠른 쪽(100k 4.34배 · 계단 있음 · 프로그램 불변), 상온 v4 모델이 10/12 맞힘 — 온도 로그가 히터 상태와 안 맞아 칩 온도 미확인 · 교정 밖 [D53-4]
