@@ -6,6 +6,7 @@
 - **비교 대상**: 같은 느린 무리 [`wear_endurance_chip03.md`](wear_endurance_chip03.md) · [`wear_endurance_chip07.md`](wear_endurance_chip07.md) ·
   같은 새 배치 빠른 무리 [`wear_endurance_chip18.md`](wear_endurance_chip18.md)
 - **경위**: `docs/log/young/48.pilot_wear_handler_and_plan_approval.md` §40
+- **2026-10-17 추기**: 100k → 200k 연장(세션 `1792080192`)의 해석은 [`wear_endurance_200k.md`](wear_endurance_200k.md) §7 — chip03 과 같이 계단 없이 미끄러졌고, 예측(미끄럼 · 배율 약 2.1)과 맞았다(2.25)
 
 ## 결론
 
