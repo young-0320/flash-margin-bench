@@ -67,7 +67,7 @@ chip10 과 「JV 둘」. 계단 없음 · 100k 2.65배 · 프로그램 1.03 으�
 | chip07 | `1790494073` · `1790562456` · `1790643103` | 없음 | 52,671-60,000 · 76,170-80,000 은 호스트 사망으로 A 행 자체가 없다 → 그 구간은 표에 없거나 `n` 이 작다 (`../wear/wear_endurance_chip07_2026-09.md` §6) |
 | chip18 | `1790989701` | 없음 | 끊김 · 재개 없는 첫 종단 (`../wear/wear_endurance_chip18_2026-10.md`) |
 | chip06 | `1790788847` · `1791740291` · `1791800419` | 없음 | 블라인드 0 → 100 의 호스트 로그 유실(장부 수기 복구) → 1-100 의 A 행 없음. 100 → 12k 는 보드 B(박지민, 체크포인트 1k · 3k · 10k · 12k), 12k → 100k · 100k → 200k 는 보드 A — 셋 다 정상 종료. 유일하게 200k 까지 닳은 교정 칩(100k 너머 구간은 답 범위 100k 의 현행 모델에서는 M = x·r 의 곡선 지점으로만 쓰인다) (`../wear/wear_endurance_chip06_2026-10.md`) |
-| chip15 | `1791078343` · `1791123800` | **69,109** | USB 흔들림 — 섹터 6 소거 8µs 가짜 행 1개 뒤 `wip_timeout`. tally 69,100 · A 로그 69,109 → resume 채택 69,109 로 재개(두 번 돈 사이클 없음). 사이클 단위로 빼므로 7행 (`../wear/wear_endurance_chip15_2026-10.md` §5) |
+| chip15 | `1791078343` · `1791123800` · `1792080192` | **69,109** | USB 흔들림 — 섹터 6 소거 8µs 가짜 행 1개 뒤 `wip_timeout`. tally 69,100 · A 로그 69,109 → resume 채택 69,109 로 재개(두 번 돈 사이클 없음). 사이클 단위로 빼므로 7행 (`../wear/wear_endurance_chip15_2026-10.md` §5). 100k → 200k 연장(10/15-16, 세 번째 세션) — 느린 무리 두 장째, 계단 없이 미끄럼 |
 
 ## 재현
 
@@ -78,7 +78,7 @@ uv run python host/analysis/wear_curves.py --chip chip04 data/wear/1790423530 da
 uv run python host/analysis/wear_curves.py --chip chip07 data/wear/1790494073 data/wear/1790562456 data/wear/1790643103
 uv run python host/analysis/pe_end.py --chip chip09                       # → build/pe_end/chip09/wear_curves_chip09_2026-10.csv (세션 1790786787 · 1791904816), --promote 로 승격 (200k 까지, 2026-10-14)
 uv run python host/analysis/pe_end.py --chip chip18                       # → build/pe_end/chip18/wear_curves_chip18_2026-10.csv, --promote 로 승격
-uv run python host/analysis/pe_end.py --chip chip15 --drop-cycles 69109-69109   # → build/pe_end/chip15/wear_curves_chip15_2026-10.csv, --promote 로 승격
+uv run python host/analysis/pe_end.py --chip chip15 --drop-cycles 69109-69109   # → build/pe_end/chip15/wear_curves_chip15_2026-10.csv, --promote 로 승격 (200k 까지, 2026-10-17 — --drop-cycles 는 연장 뒤에도 매번)
 uv run python host/analysis/plot_wear_curves.py --per-chip build/plots   # 교정 CSV 마다 → build/plots/wear_curves_<chip>_2026-09.png
 uv run python host/analysis/plot_wear_curves.py   # 9월 4칩 2×2 → build/plots/wear_curves_2026-09.png
 uv run python host/analysis/wear_curves.py --chip chip17 data/wear/1790851785 data/wear/1790879592 -o docs/results/data/wear_curves/wear_curves_chip17_65C_2026-10.csv   # 교정 밖 (65°C)
@@ -99,6 +99,6 @@ uv run python host/analysis/pe_end.py --chip chip06                       # → 
 | chip07 | 621,872 (cycle 1-100,000) | 0 | 2개: 52,001-53,000 (n 670, 섹터 6 669) · 76,001-77,000 (n 169). 53,001-60,000 · 77,001-80,000 구간 10개는 표에 없음 | 2026-09-30 |
 | chip09 | 1,400,000 (cycle 1-200,000) | 0 | 없음 | 2026-10-14 (200k 연장, 이름 `_2026-09` → `_2026-10`) |
 | chip18 | 700,000 (cycle 1-100,000) | 0 | 없음 | 2026-10-04 |
-| chip15 | 699,993 (cycle 1-100,000, 69,109 의 7행을 뺌) | 0 | 1개: 69,001-70,000 (뺀 사이클) | 2026-10-05 |
+| chip15 | 1,399,993 (cycle 1-200,000, 69,109 의 7행을 뺌) | 0 | 1개: 69,001-70,000 (뺀 사이클) | 2026-10-17 (200k 연장) |
 | 8칩 재생성 (분위수 21열) | 위 행들과 같음 · chip02 700,000 (cycle 1-100,000) | 0 | 위와 같음 | 2026-10-09 |
 | chip06 | 1,399,300 (cycle 101-200,000) | 0 | 1개: 1-1,000 (섹터당 n 900 — 1-100 로그 유실) | 2026-10-14 |
