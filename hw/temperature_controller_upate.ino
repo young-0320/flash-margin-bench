@@ -64,7 +64,7 @@ constexpr float PLAUSIBLE_MAX_C = 100.0f;
 
 // Conservative first-run values. 128/255 is about 50% maximum average power.
 // Raise PWM_LIMIT only after a supervised staged test has shown acceptable overshoot.
-constexpr uint8_t PWM_LIMIT = 128;
+constexpr uint8_t PWM_LIMIT = 220;
 constexpr uint8_t PWM_RISE_LIMIT_PER_STEP = 12;
 constexpr uint8_t PWM_FALL_LIMIT_PER_STEP = 6;
 
