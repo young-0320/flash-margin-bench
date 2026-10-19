@@ -22,7 +22,7 @@
 | `sweep_chip01_20260708T*`                       | 7월 실칩 (2024.2 세대)                  | 게재 4번의 원본. `164931Z`가 게재분                                                       |
 | `sweep_chip01_20260823T130847Z`                 | 8/23 W5-D 드리프트 1차                  | 판정 보류분                                                                                |
 | `sweep_chip0N_<UID>_2026091*`·`2026092*`      | 9월 신품 전수 측정 (S-2, 2025.2 세대)   | 집계는 `docs/results/data/newchip_survey_2026-09.md`. chip05는 측정 불가라 파일이 없고, chip10은 재장착 3회분 |
-| `sweep_chip2N_<UID>_20261015*` · `session_chip2N_*` | 10/16 3차 구매분 신품 전수 측정 (chip21-23, 보드 A · newchip 1회씩) — 나머지 7개는 뒤이어 | 집계는 같은 `newchip_survey_2026-09.md` §1 2026-10-15 행 |
+| `sweep_chip2N_<UID>_20261015*`·`20261019*` · `session_chip2N_*` | 10/16 3차 구매분 신품 전수 측정 (chip21-23, 보드 A · newchip 1회씩) · 10/19 chip24 · 25(newchip + sweep 재측정 1회씩, chip25 슬립 무효 1회는 build/ 에만) — 26-30 은 뒤이어 | 집계는 같은 `newchip_survey_2026-09.md` §1 2026-10-15 행 |
 | `sweep_chip01_<UID>_2026092[2-6]*`             | 9/22-26 P/E 파일럿 (체크포인트 12점 + x=0 newchip 2런 + 300k 의 45·75MHz) | 집계는 `docs/results/data/wear/wear_pilot_chip01_2026-09.md`. `build/data/` 에서 복사 |
 | `sweep_chip04_<UID>_2026092[67]*`             | 9/26-27 종단 chip04 (보드 B · 박지민 — 체크포인트 13점 + 복구 점 + 마모 전·100k 의 45·75MHz + newchip) | 집계는 `docs/results/data/wear/wear_endurance_chip04_2026-09.md`. 박지민이 보낸 묶음에서 복사 (9/29 · 9/30) |
 | `sweep_chip01_<UID>_20260916T1{10148,13611}Z` | 9/16 chip01 스윕 2런 (박지민 리그 · 115200) | 박지민이 9/30 보낸 묶음. 집계하지 않았다 |
