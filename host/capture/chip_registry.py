@@ -3,7 +3,7 @@
 
 정본은 md 표 자체다. 별도 CSV/JSON을 두지 않는다 (로그 20 §4 H5 — 문서와 목록이
 어긋나는 실패를 기각). 대신 파서를 빡빡하게 한다:
-  UID 정확히 16 hex · 라벨 chip01~chip30 · UID 중복 없음 · 라벨 중복 없음
+  UID 정확히 16 hex · 라벨 chip01~chip40 · UID 중복 없음 · 라벨 중복 없음
   0행 파싱 → "등록 칩 없음"이 아니라 파서 고장 (비어 있음을 정상으로 받지 않는다)
 하나라도 어기면 SystemExit (비영 종료).
 
@@ -23,7 +23,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / "docs" / "chip_registry.md"
 
-LABELS = tuple(f"chip{i:02d}" for i in range(1, 31))   # 2026-09-30 상한 10 → 20 · 2026-10-16 20 → 30 (칩 추가 구매)
+LABELS = tuple(f"chip{i:02d}" for i in range(1, 41))   # 2026-09-30 상한 10 → 20 · 2026-10-16 20 → 30 · 2026-10-20 30 → 40 (4차 구매 10칩)
 UID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 PLACEHOLDER_RE = re.compile(r"^\*\(.*\)\*$")   # *(D 트랙에서 확보)* 류 = 공란 취급
 
@@ -60,7 +60,7 @@ def _parse_lines(lines):
             raise RegistryError(f"열 부족: {ln.strip()!r}")
         label, cell = c[0], c[1]
         if label not in LABELS:
-            raise RegistryError(f"라벨 {label!r} 은 chip01~chip30 이 아님")
+            raise RegistryError(f"라벨 {label!r} 은 chip01~chip40 이 아님")
         if label in rows:
             raise RegistryError(f"라벨 중복: {label}")
         if cell == "" or PLACEHOLDER_RE.match(cell):
@@ -104,7 +104,7 @@ def register(label, uid, first_measured, path=REGISTRY):
     다른 값이 이미 있는 행은 건드리지 않고 SystemExit. 같은 값이면 no-op."""
     uid = normalize_uid(uid)
     if label not in LABELS:
-        raise RegistryError(f"라벨 {label!r} 은 chip01~chip30 이 아님")
+        raise RegistryError(f"라벨 {label!r} 은 chip01~chip40 이 아님")
     path = Path(path)
     lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
     rows = _parse_lines(lines)
