@@ -15,13 +15,13 @@
 
 | 폴더 | 무엇 |
 |---|---|
-| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03 · 15 · 21) |
+| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03 · 15 · 21 · 07) |
 | `data/wear/` | 마모 체크포인트 요약 — 칩마다 CSV + md (chip01 · 03 · 04 · 07 · 09 · 10 · 12 · 15 · 17 · 18). 칩 × 체크포인트 한눈 표 `wear_checkpoint_table_2026-10.md` 와 폭 변화·프로그램 칩 간 그림 `plots/wear_checkpoint_width_program_2026-10.png` (둘 다 `wear_checkpoint_table.py` 산출) |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출). 교정 = 접미사 없는 `wear_curves_<chip>_<YYYY-MM>.csv`, 교정에 안 넣는 칩은 접미사로 glob 에서 뺀다(chip17 `_65C` · chip16 `_64C` · chip12 `_ali` · `pe_end.py --no-calib` 은 `_nocal`) |
 
 `data/` 바로 아래: 몬테카를로 사전 등록(`monte_carlo_*`) · 단일 스윕(`sweep_*` — 7월 chip01 반복 5회 · G0 루프백) · 신품 전수
 집계표(`newchip_survey_2026-09.*`) · 블라인드 추정(`blind_chip06_2026-10.md` · `chip06_estimate_*.txt` — 개봉 전 커밋한 것 그대로) ·
-역산 모델 검증(`synthetic_recovery_*` · `chip17_loco_*` · `chip16_loco_*` · v3 전 탐색 `inverse_v3_probe_2026-10.md` — Δx · R · 대표값 · v4 부분 탐색 `inverse_v4_probe_2026-10.md` — 정렬 · R 유도 · n_eff · v4 등록 측정 `inverse_v4_eval_2026-10.md` — ρ · LOCO · 합성 · 칩별 · v4.1 측정 `inverse_v4_1_eval_2026-10.md` — chip06 을 더한 9칩으로 같은 측정 · v4.3 5장 판 `inverse_v4_3_eval_2026-10.md` — 100k 너머 곡선 5장, 68% 개선 · 점 추정 절단 편향 확인) · 기준선 비교(`baseline_compare_2026-10.md`) · 온도 마모 런의 칩 위 온도(`temp_chip17_*`).
+칩별 0 → 100k 추이 표(`wear_curves/wear_erase_trajectory_2026-10.md` · `wear_program_trajectory_2026-10.md` — 빠른 · 느린 무리, 1k 구간 중앙값과 배율) · 역산 모델 검증(`synthetic_recovery_*` · `chip17_loco_*` · `chip16_loco_*` · v3 전 탐색 `inverse_v3_probe_2026-10.md` — Δx · R · 대표값 · v4 부분 탐색 `inverse_v4_probe_2026-10.md` — 정렬 · R 유도 · n_eff · v4 등록 측정 `inverse_v4_eval_2026-10.md` — ρ · LOCO · 합성 · 칩별 · v4.1 측정 `inverse_v4_1_eval_2026-10.md` — chip06 을 더한 9칩으로 같은 측정 · v4.3 5장 판 `inverse_v4_3_eval_2026-10.md` — 100k 너머 곡선 5장, 68% 개선 · 점 추정 절단 편향 확인) · 기준선 비교(`baseline_compare_2026-10.md`) · 온도 마모 런의 칩 위 온도(`temp_chip17_*`).
 
 이 구분은 2026-09-26 부터다. 그 전에 올린 `data/` 의 md 중 `newchip_survey_2026-09.md` 는 같은 날 나눴고, 나머지(7월·8월분)는
 짧은 유래 문서라 그대로 둔다.

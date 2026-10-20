@@ -1,4 +1,4 @@
-# wear_endurance_chip07_2026-09 — 종단 마모 chip07 · 0 → 100,000 사이클 수치
+# wear_endurance_chip07_2026-10 — 종단 마모 chip07 · 0 → 100,000 사이클 수치
 
 > 수치와 표만 둔다. 해석·판정은 [`../../wear/wear_endurance_chip07.md`](../../wear/wear_endurance_chip07.md).
 
@@ -180,6 +180,29 @@ newchip prep 을 `#PREP PROGRAM <섹터> <µs>`(16페이지 WIP 합, 전송 시�
 
 단위 ms. 대조군 무리별 prep 프로그램 중앙값은 근접 6.75 · 블록 1 6.75 · 블록 2-7 6.73 · 원격 6.73.
 
+## 9. 100k → 200k 연장 (2026-10-19 - 10-21)
+
+- **세션**: `1792429510`(103,600 → 178,137, 10/20 02:05 → 18:33 KST, `wip_timeout`@178,137 로 구간 FAIL) · `1792494559`(178,800 → 200,000, 10/20 20:09 → 10/21 01:20 KST, 정상 종료).
+  보드 A · 921600 · 10cm 점퍼선(§ 10/19 재측정 뒤). 시작은 10/19 14:18 세션 `1792387087` — 체크포인트 전 PC 전원 상실로 A 행 없음
+- **A 행 결손 두 곳** (곡선 구간은 직선으로 이어 그린다):
+  - 100,000-103,600 (3,600 사이클) — 10/19 15:01 PC 전원 상실(journal 에 종료 기록 없음). tally 103,600 · resume(섹터 4-6 재소거 ±1) · 장부 정정 행 +3,600
+  - 178,137-178,800 (663 사이클) — wip_timeout(접촉) 뒤 재장착, 접촉 확인용으로 띄운 accept 가 START 를 냈고 그 호스트를 kill(작업 실수). tally 178,800 ·
+    resume(섹터 0 재소거 ±1) · 장부 정정 행 +663
+  - 곡선 CSV 에서 103,001-104,000 · 178,001-179,000 은 n 400 · 337, 100,001-103,000 은 구간 없음. 체크포인트 10점은 전부 있다
+
+| x (구간 끝) | 소거 p50 섹터 중앙값 (ms) | ÷ 신품 47.0 | 프로그램 p50 섹터 중앙값 (ms) |
+|---|---|---|---|
+| 1,000 | 51.4 | 1.09 | 6.74 |
+| 10,000 | 55.6 | 1.18 | 7.44 |
+| 50,000 | 65.9 | 1.40 | 10.81 |
+| 100,000 | 74.8 | 1.59 | 14.52 |
+| 150,000 | 83.6 | 1.78 | 16.66 |
+| 200,000 | 89.7 | 1.91 | 19.47 |
+
+- 100k 뒤 7섹터 최대 1구간 상승 3.1-4.7ms · p10-p90 최대 8.1-12.1ms — 계단 없이 미끄럼. 200k 구간 섹터 86.9-94.7ms, 105ms 를 넘은 섹터 없음
+- 프로그램 7섹터 100k 14.2-14.9 → 200k 18.5-21.1ms
+- 폭(25MHz, 10cm 선) 110k-170k 39,734-39,741 · 180k 39,717 · 190k 39,716 · 200k 39,707ps — 재장착(10/20 20:00) 뒤 −20ps 한 번, 3σ 안
+
 ## 재현
 
 ```bash
@@ -191,6 +214,9 @@ uv run python host/run/run_wear.py accept --chip chip07 --cycle <채택값>
 uv run python host/run/run_sweep_chip.py --mode sweep --mhz 25 --chip chip07    # 100k 뒤 반복 (P/E 0) · 9/30 선 복구 뒤 25·75·45MHz
 vitis -s ps/scripts/build_flash_prep.py                                          # #PREP PROGRAM 을 내는 prep (9/30)
 uv run python host/run/run_sweep_chip.py --mode newchip --mhz 25 --chip chip07  # 100k 뒤, 사다리 다음에
+uv run python host/run/run_wear.py resume --chip chip07 --host-log-max 100000 && uv run python host/run/run_wear.py accept --chip chip07 --cycle 103600 --to 200000 --checkpoints 110000,120000,130000,140000,150000,160000,170000,180000,190000,200000 --confirm-first 0
+uv run python host/run/run_wear.py resume --chip chip07 --from-session build/logs/wear/1792429510 && uv run python host/run/run_wear.py accept --chip chip07 --cycle 178800 --to 200000 --checkpoints 180000,190000,200000 --confirm-first 0
+uv run python host/analysis/pe_end.py --chip chip07 && uv run python host/analysis/pe_end.py --chip chip07 --promote --overwrite   # 2026-10-21, _2026-09 → _2026-10 git mv 뒤
 ```
 
 - §1 의 폭은 각 `.analysis.json`, 소거·프로그램은 세션 폴더 `checkpoints.csv` 에서 옮겼다. §2 는 각 스윕의 세션 로그
