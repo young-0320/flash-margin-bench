@@ -15,7 +15,7 @@
 
 | 폴더 | 무엇 |
 |---|---|
-| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03 · 15 · 21 · 07) |
+| `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03 · 15 · 21 · 07 · 02) |
 | `data/wear/` | 마모 체크포인트 요약 — 칩마다 CSV + md (chip01 · 03 · 04 · 07 · 09 · 10 · 12 · 15 · 17 · 18). 칩 × 체크포인트 한눈 표 `wear_checkpoint_table_2026-10.md` 와 폭 변화·프로그램 칩 간 그림 `plots/wear_checkpoint_width_program_2026-10.png` (둘 다 `wear_checkpoint_table.py` 산출) |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출). 교정 = 접미사 없는 `wear_curves_<chip>_<YYYY-MM>.csv`, 교정에 안 넣는 칩은 접미사로 glob 에서 뺀다(chip17 `_65C` · chip16 `_64C` · chip12 `_ali` · `pe_end.py --no-calib` 은 `_nocal`) |
 
@@ -41,5 +41,6 @@
 - [`wear_endurance_chip15.md`](wear/wear_endurance_chip15.md) — 새 배치 chip15(느린 무리) 0 → 100k: 옛 로트 느린 무리처럼 — 소거 100k 1.75배(chip03 1.74 와 겹침), 계단 없음(H6 판정 불가), 프로그램 24-37k 부터 7섹터 함께 +21%(H2′ 거짓 · 느린 무리 세 칩째), 폭 25MHz 불변(H1′ 참), 69,109 USB 사건(결측 없음), 교정 편입 — 넣기 전 현장 역산 MAP 62k(95% 안) · 입력 C 경고 헛울림, 교정 7칩 LOCO 68% 72/82 · 95% 82/82 (100k → 200k 는 `wear_endurance_200k.md` §7)
 - [`wear_temperature_chip17.md`](wear/wear_temperature_chip17.md) — 온도 마모 chip17 칩 위 65°C 0 → 100k: 폭 불변(H1′ 참), 소거는 상온 빠른 무리보다 덜 늘어 100k 2.44배(상온 2.80-3.97) — 65°C 효과는 개체차와 구별 불가·계단 없음(H6 수준 미달), 프로그램 +20%(H2′ 거짓), 상온 모델 v2 는 사용량을 0.15-0.35배로 낮게 봄(LOCO 68% 2/12) → 교정에 넣지 않음
 - [`wear_temperature_chip16.md`](wear/wear_temperature_chip16.md) — 온도 마모 chip16 히터 설정 65°C(센서 평균 64°C) 0 → 100k: 폭 불변(H1′ 참), 소거는 chip17 과 반대로 상온 빠른 무리의 빠른 쪽(100k 4.34배 · 계단 있음 · 프로그램 불변), 상온 v4 모델이 10/12 맞힘 — 온도 로그가 히터 상태와 안 맞아 칩 온도 미확인 · 교정 밖 [D53-4]
+- [`wear_temperature_85C.md`](wear/wear_temperature_85C.md) — 설정 85°C chip24(빠른) · chip22(느린) 0 → 100k: chip24 는 상온 빠른 띠 한가운데(3.47배 · 계단 · 프로그램 불변 · 상온 모델 12/12), chip22 는 상온 느린 띠 위(1.90배 · 68% 3/12 · 95% 12/12) — 65 · 85°C 네 칩 합쳐 개체 산포 안, 상온 모델 95% 47/48 · 68% 22/48, 온도 축 없음
 - [`blind_chip06.md`](blind_chip06.md) — 블라인드 chip06 정답 12,000: 판정용 v2 가 68%·95% 구간에 품음(49번째 백분위), 기준 ①② 통과 · ③ 불통과, 교정 4칩 v1 은 68% 밖
 - [`baseline_compare.md`](baseline_compare.md) — 기준선 비교(10-07 판 — 교정 8칩 LOCO 94점 · 신품 15칩): 선행식 이진 판별은 데이터시트 기준 검출 64/94(빠른 무리 2만 회 이하 2/20) · 정규화 뒤 74/94(빠른 무리 13/20) · 오경보 0, 단순 회귀 오차 중앙값 10,000 대 현행 모델 7,500 — 점 추정도 현행이 덜 빗나가고(느린 무리만 회귀가 낫다) 차이의 본체는 구간(68% 67/94 · 95% 93/94)
