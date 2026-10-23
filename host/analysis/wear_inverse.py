@@ -60,7 +60,7 @@ MODELS = {                                 # 버전별로 달라지는 네 자�
     "v4": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"},
     "v4.3": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds", "point": "mean"},   # 브랜치 inverse-v4.3-ceiling: 대표값 = 사후 평균
 }                                          # (v4.3.2 — 로그 52 §15, docs/results/data/inverse_v4_3_ceiling_2026-10.md). 교정은 A_SESSIONS · glob 이 정한다
-RHO = {"sector": 0.00, "prep": 0.78, "chip": 0.29}   # v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p) · 칩 효과(ρ_chip — 이 칩이
+RHO = {"sector": 0.00, "prep": 0.78, "chip": 0.21}   # v4.3 재측정 (2026-10-21 6장 판 `--rho --prep-k 5`, 4,450표 — 빠른 0.24 · 느린 0.01). v4 등록값은 0.29 · v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p) · 칩 효과(ρ_chip — 이 칩이
                                            # 교정 혼합에서 7섹터 공통으로 벗어나는 몫, 섹터·prep 을 늘려도 안 준다). `--rho` 로 잰 값을 여기 등록한다.
                                            # 등록 2026-10-09 (한영웅): `--rho --prep-k 5` · 교정 8칩 A 행 · seed 0 — ρ_s 0.00 (전체 중앙값) · ρ_p 0.78 (전체 중앙값) ·
                                            # ρ_chip 0.29 (전체 3,890표; 빠른 0.33 · 느린 0.03 은 발견으로만 — 무리별 등록은 하지 않는다). chip06 개봉 prep 5회는
@@ -386,7 +386,7 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, prep
     med = median_bin(post)
     mean = int(sum((b + 499.5) * p for b, p in post.items()) - 1) // 1000 * 1000 + 1   # 사후 평균이 든 1k 구간
     pb = mean if m.get("point") == "mean" else med
-    return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "mean": (mean, mean + 999), "point": (pb, pb + 999), "hpd68": ranges(hpd(post, 0.68)),
+    return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "mean": (mean, mean + 999), "point": (pb, pb + 999), "point_kind": "평균" if m.get("point") == "mean" else "중앙값", "hpd68": ranges(hpd(post, 0.68)),
             "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post, "rate_range": rate_range,
             "below_first": below if mstar == min(ll) else 0,       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
             "evidence": evidence, "speeds": speeds, "sigma_r": sigma_r}
@@ -492,7 +492,7 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
            rule,
            "  확률" + " " * 7 + sparkline(r["post"], top),
            " " * 13 + axis + "   누적 P/E",
-           _row("추정 결과", f"{a:,}-{b:,} 회 (사후 " + ("평균" if "point" in r and r["point"] != r["median"] or MODELS.get(MODEL_VERSION, {}).get("point") == "mean" else "중앙값") + " 활용)"),
+           _row("추정 결과", f"{a:,}-{b:,} 회 (사후 {r.get('point_kind', '중앙값')} 활용)"),
            _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
            _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
            _row("정격 대비", f"{rated} 중 {used} 사용 ({upper})")]

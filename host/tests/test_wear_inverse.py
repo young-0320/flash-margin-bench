@@ -387,5 +387,5 @@ def test_v4_is_the_default_and_v3_is_reachable():
     assert wi.MODEL_VERSION == "v4.3" and set(wi.MODELS) == {"v3.2", "v4", "v4.3"}
     assert wi.MODELS["v4.3"] == {**wi.MODELS["v4"], "point": "mean"}
     assert wi.MODELS["v4"] == {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"}
-    assert wi.RHO == {"sector": 0.00, "prep": 0.78, "chip": 0.29}   # 2026-10-09 등록값 (inverse_v4_eval_2026-10.md) — 다시 재면 여기도 바꾼다
+    assert wi.RHO == {"sector": 0.00, "prep": 0.78, "chip": 0.21}   # v4.3 재측정(6장 판) — v4 등록값 0.29   # 2026-10-09 등록값 (inverse_v4_eval_2026-10.md) — 다시 재면 여기도 바꾼다
     assert wi.rate_label(None) == "유도 (σ_r)" and wi.rate_label(None, "v3.2").startswith("빠른 1.6")
