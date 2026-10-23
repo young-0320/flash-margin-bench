@@ -31,8 +31,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import wear_checkpoint_csv as wcc                           # noqa: E402
 
 SURVEY_CSV = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
+
+
+def latest(folder, prefix):
+    """<prefix>_YYYY-MM.csv 중 가장 최근 달 — 승격 때 이름의 달이 바뀐다(chip03 · 07 · 09 는 2026-10)."""
+    found = sorted(folder.glob(f"{prefix}_20[0-9][0-9]-[0-9][0-9].csv"))
+    return found[-1] if found else folder / f"{prefix}_2026-09.csv"
 CURVES_DIR = REPO / "docs" / "results" / "data" / "wear_curves"
 ROOM_FAST = ("chip01", "chip04", "chip09")                 # 상온 빠른 무리 교정 칩
+ROOM_SLOW = ("chip03", "chip07", "chip15")                 # 상온 느린 무리 교정 칩 (2026-10-23 — 느린 무리 온도 칩 chip22 부터)
+SPLIT_US = 40_000                                          # 무리 경계 (S-5)
 KST = timedelta(hours=9)
 BAND = (63.0, 67.0)                                         # 「65±2°C 안」 비율의 띠
 
@@ -167,7 +175,13 @@ def main(argv=None):
 
     segs, cps = timeline(a.sessions)
     t, temp, target, state = load_temp(a.temp)
+    global BAND
+    run_tg = [float(x) for x, s in zip(target, state) if s == "RUN"]
+    sp = max(set(run_tg), key=run_tg.count) if run_tg else 65.0     # 로그의 설정값(RUN 중 최빈) — 2026-10-23 부터 65 · 85°C 둘
+    BAND = (sp - 2, sp + 2)                                    # 「설정 ±2°C 안」 띠 (열 이름 in_63_67_pct 는 65°C 때 이름 그대로 둔다)
+    sp_lab = f"{sp:g}°C"
     fresh = fresh_values()
+    room = ROOM_FAST if fresh.get(a.chip, 0) < SPLIT_US else ROOM_SLOW   # 같은 무리의 상온 교정 칩과 겹쳐 그린다
     sw = sweep_info(a.chip)
 
     # ── 구간·측정·전체 온도 ──
@@ -289,8 +303,9 @@ def main(argv=None):
                     xytext=(14 if right else -150, (4 if right else 14 + 14 * k)), textcoords="offset points", fontsize=8, color=INK2,
                     arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.8))
     first68 = next((i for i in range(len(t)) if state[i] == "RUN" and target[i] >= 68), None)
-    ax.annotate("설정 65°C — 제어가 출렁여 짧게 58°C 까지", (tk[0] + timedelta(minutes=40), 58.9), fontsize=8, color=INK2)
-    if first68 is not None:
+    if a.chip == "chip17":                                        # chip17 의 사건 주석 (다른 칩에는 없다)
+        ax.annotate("설정 65°C — 제어가 출렁여 짧게 58°C 까지", (tk[0] + timedelta(minutes=40), 58.9), fontsize=8, color=INK2)
+    if first68 is not None and a.chip == "chip17":
         ax.annotate("설정 68°C — 히터 출력 상한(86%)에 붙어 약 65.4°C 에서 평형", (tk[first68] + timedelta(hours=2), 68.4),
                     fontsize=8, color=INK2)
     ax.set_ylim(ylo, 71.5)
@@ -328,9 +343,8 @@ def main(argv=None):
     w100 = next(r["width_1e2_ps"] for r in crows if r["cycle"] == 100)
     ax.axhspan(-42, 42, color=GRID, alpha=0.7, lw=0)
     ax.annotate("재장착 3σ (±42ps)", (101, 42), xytext=(0, -11), textcoords="offset points", ha="right", fontsize=8, color=INK2)
-    for chip in ROOM_FAST:
-        p = REPO / "docs" / "results" / "data" / "wear" / (f"wear_pilot_{chip}_2026-09.csv" if chip == "chip01"
-                                                           else f"wear_endurance_{chip}_2026-09.csv")
+    for chip in room:
+        p = latest(REPO / "docs" / "results" / "data" / "wear", f"wear_pilot_{chip}" if chip == "chip01" else f"wear_endurance_{chip}")
         if not p.exists():
             continue
         with open(p, newline="") as f:
@@ -340,11 +354,11 @@ def main(argv=None):
             base = dict(pts).get(100, pts[0][1])
             xs, ys = zip(*sorted(set(pts)))
             ax.plot([x / 1e3 for x in xs], [y - base for y in ys], color=MUTED, lw=1, alpha=0.8,
-                    label="상온 빠른 무리 (chip01 · chip04)" if chip == "chip01" else None)
+                    label=("상온 빠른 무리" if room is ROOM_FAST else "상온 느린 무리") if chip == room[0] else None)
     cx = [r["cycle"] / 1e3 for r in crows if r["cycle"] >= 100]
     cy = [r["width_1e2_ps"] - w100 for r in crows if r["cycle"] >= 100]
-    ax.plot(cx, cy, color=HOT, lw=2, marker="o", ms=4.5, mec=SURFACE, mew=1.2, label=f"{a.chip} (65°C)")
-    ax.annotate(f"{a.chip} (65°C)", (cx[-1], cy[-1]), xytext=(4, 0), textcoords="offset points", va="center",
+    ax.plot(cx, cy, color=HOT, lw=2, marker="o", ms=4.5, mec=SURFACE, mew=1.2, label=f"{a.chip} ({sp_lab})")
+    ax.annotate(f"{a.chip} ({sp_lab})", (cx[-1], cy[-1]), xytext=(4, 0), textcoords="offset points", va="center",
                 fontsize=8.5, color=INK)
     ax.legend(loc="lower left", frameon=False, fontsize=8.5, labelcolor=INK2, ncol=2)
     ax.set_ylabel("폭 변화 (ps, 100 사이클 대비)", color=INK2, fontsize=9)
@@ -353,8 +367,8 @@ def main(argv=None):
 
     if a.curves:
         ax = axes[2]
-        for chip in ROOM_FAST:
-            p = CURVES_DIR / f"wear_curves_{chip}_2026-09.csv"
+        for chip in room:
+            p = latest(CURVES_DIR, f"wear_curves_{chip}")
             x, y = ratio_curve(p, fresh[chip])
             m = x <= 100000
             ax.plot(x[m] / 1e3, y[m], color=MUTED, lw=1.2, alpha=0.85,
@@ -362,9 +376,9 @@ def main(argv=None):
             ax.annotate(f"{chip} (상온)", (x[m][-1] / 1e3, y[m][-1]), xytext=(4, 0), textcoords="offset points",
                         va="center", fontsize=8, color=MUTED)
         x, y = ratio_curve(a.curves, fresh[a.chip])
-        ax.plot(x / 1e3, y, color=HOT, lw=2.2, label=f"{a.chip} (65°C)")
+        ax.plot(x / 1e3, y, color=HOT, lw=2.2, label=f"{a.chip} ({sp_lab})")
         ax.legend(loc="upper left", frameon=False, fontsize=8.5, labelcolor=INK2)
-        ax.annotate(f"{a.chip} (65°C)", (x[-1] / 1e3, y[-1]), xytext=(4, 0), textcoords="offset points", va="center",
+        ax.annotate(f"{a.chip} ({sp_lab})", (x[-1] / 1e3, y[-1]), xytext=(4, 0), textcoords="offset points", va="center",
                     fontsize=8.5, color=INK)
         ax.set_ylabel("소거 시간 ÷ 신품값", color=INK2, fontsize=9)
         ax.set_title("소거 시간 배율 — 섹터 0-6 의 1k 구간 p50 중앙값 ÷ 신품값(상온 newchip)", color=INK, fontsize=10.5, loc="left")
@@ -381,7 +395,7 @@ def main(argv=None):
             print(f"  {r['label']}: 평균 {r.get('mean_c')} °C · sd {r.get('sd_c', '')} · 63-67 안 {r.get('in_63_67_pct', '')}%")
     if a.curves:
         x17, y17 = ratio_curve(a.curves, fresh[a.chip])
-        ref = {c: ratio_curve(CURVES_DIR / f"wear_curves_{c}_2026-09.csv", fresh[c]) for c in ROOM_FAST}
+        ref = {c: ratio_curve(latest(CURVES_DIR, f"wear_curves_{c}"), fresh[c]) for c in room}
         for xe in (10000, 50000, 100000):
             r17 = float(y17[x17 == xe][0])
             others = {c: float(v[1][v[0] == xe][0]) for c, v in ref.items() if xe in v[0]}
