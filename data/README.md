@@ -22,6 +22,7 @@
 | `sweep_chip01_20260708T*`                       | 7월 실칩 (2024.2 세대)                  | 게재 4번의 원본. `164931Z`가 게재분                                                       |
 | `sweep_chip01_20260823T130847Z`                 | 8/23 W5-D 드리프트 1차                  | 판정 보류분                                                                                |
 | `sweep_chip0N_<UID>_2026091*`·`2026092*`      | 9월 신품 전수 측정 (S-2, 2025.2 세대)   | 집계는 `docs/results/data/newchip_survey_2026-09.md`. chip05는 측정 불가라 파일이 없고, chip10은 재장착 3회분 |
+| `sweep_chip22_<UID>_2026101[78]*` · `sweep_chip24_<UID>_2026102[01]*` · `temp_chip2[234]_*` | 85°C 온도 마모 chip22 · 24(0 → 100k + 사다리 · newchip) · chip23(0 → 26.5k) — 박지민 묶음 · 온도 로그(파일명 65C 는 실제 85°C) | 집계 `docs/results/data/wear/wear_endurance_chip2[24]_2026-10.md` · `temp_chip2[24]_2026-10.md`. chip23 원본은 build/inbox |
 | `sweep_chip2N_<UID>_20261015*`·`20261019*` · `session_chip2N_*` | 10/16 3차 구매분 신품 전수 측정 (chip21-23, 보드 A · newchip 1회씩) · 10/19 chip24 · 25(newchip + sweep 재측정 1회씩, chip25 슬립 무효 1회는 build/ 에만) — 26-30 은 뒤이어 | 집계는 같은 `newchip_survey_2026-09.md` §1 2026-10-15 행 |
 | `sweep_chip21_<UID>_2026101[6-9]*`             | 10/16-19 chip21 0 → 200k (보드 A — 체크포인트 23점, 한 세션). 신품 느린 무리 · 빠른 노화(chip12 형) | 집계는 `docs/results/data/wear/wear_endurance_chip21_2026-10.md`. `pe_end.py` 가 `build/` 에서 복사 (10/19) |
 | `sweep_chip01_<UID>_2026092[2-6]*`             | 9/22-26 P/E 파일럿 (체크포인트 12점 + x=0 newchip 2런 + 300k 의 45·75MHz) | 집계는 `docs/results/data/wear/wear_pilot_chip01_2026-09.md`. `build/data/` 에서 복사 |
