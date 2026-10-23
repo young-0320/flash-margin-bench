@@ -54,12 +54,13 @@ import statistics
 from collections import defaultdict, namedtuple
 from pathlib import Path
 
-MODEL_VERSION = "v4"                       # 기록 파일(--out) 머리말에 찍는 버전 — docs/spec/s5.lifetime_inverse_model.md §2
+MODEL_VERSION = "v4.3"                     # 기록 파일(--out) 머리말에 찍는 버전 — docs/spec/s5.lifetime_inverse_model.md §2
 MODELS = {                                 # 버전별로 달라지는 네 자리 (나머지는 공통). --model 로 고른다
     "v3.2": {"cell": "gauss", "evidence": "one", "align": False, "rate": "fixed"},
     "v4": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds"},
-}
-RHO = {"sector": 0.00, "prep": 0.78, "chip": 0.29}   # v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p) · 칩 효과(ρ_chip — 이 칩이
+    "v4.3": {"cell": "quantile", "evidence": "neff", "align": True, "rate": "speeds", "point": "mean"},   # 브랜치 inverse-v4.3-ceiling: 대표값 = 사후 평균
+}                                          # (v4.3.2 — 로그 52 §15, docs/results/data/inverse_v4_3_ceiling_2026-10.md). 교정은 A_SESSIONS · glob 이 정한다
+RHO = {"sector": 0.00, "prep": 0.78, "chip": 0.21}   # v4.3 재측정 (2026-10-21 6장 판 `--rho --prep-k 5`, 4,450표 — 빠른 0.24 · 느린 0.01). v4 등록값은 0.29 · v4 상관 — 같은 prep 안 섹터 간(ρ_s) · 같은 섹터 prep 간(ρ_p) · 칩 효과(ρ_chip — 이 칩이
                                            # 교정 혼합에서 7섹터 공통으로 벗어나는 몫, 섹터·prep 을 늘려도 안 준다). `--rho` 로 잰 값을 여기 등록한다.
                                            # 등록 2026-10-09 (한영웅): `--rho --prep-k 5` · 교정 8칩 A 행 · seed 0 — ρ_s 0.00 (전체 중앙값) · ρ_p 0.78 (전체 중앙값) ·
                                            # ρ_chip 0.29 (전체 3,890표; 빠른 0.33 · 느린 0.03 은 발견으로만 — 무리별 등록은 하지 않는다). chip06 개봉 prep 5회는
@@ -280,7 +281,7 @@ def curve_loglik(obs, mem, evidence=1):
             for b, ms in mem.items()}
 
 
-def posterior(obs, mem, rate_range=1.0, evidence=1):
+def posterior(obs, mem, rate_range=1.0, evidence=1, support=None, prior=None):
     """관측 목록(선택한 눈금) → {x 구간 bin_start: 확률}. x(누적 사이클)는 1-MAX_CYCLE 에 평평한 사전. evidence 는 유효 관측 수.
 
     속도 배율 r 을 [1/R, R] 로그 균등으로 적분한다: P(x) ∝ ∫ L(x·r) d ln r. 곡선 지점 M = x·r 로 바꾸면 d ln r = dM/M 이라,
@@ -291,7 +292,7 @@ def posterior(obs, mem, rate_range=1.0, evidence=1):
     ll = curve_loglik(obs, mem, evidence)
     m = max(ll.values())
     post = {}
-    for xb in range(1, MAX_CYCLE + 1, 1000):
+    for xb in range(1, (support or MAX_CYCLE) + 1, 1000):      # support: v4.3 연구용 지지 상한(기본 = 답 범위)
         c = xb + 499                                           # x 구간 중앙
         if rate_range <= 1:
             mb = int((c - 1) // 1000) * 1000 + 1
@@ -304,7 +305,7 @@ def posterior(obs, mem, rate_range=1.0, evidence=1):
                 if mb in ll and z > a:
                     tot += math.exp(ll[mb] - m) * math.log(z / a)
         if tot > 0:
-            post[xb] = tot
+            post[xb] = tot / c if prior == "log" else tot     # prior="log": x 에 로그 균등 사전(연구용)
     z = sum(post.values())
     return {b: v / z for b, v in post.items()}
 
@@ -360,7 +361,8 @@ def fit(curves, fresh, grp, scale, split_us, model=MODEL_VERSION, rate_range=Non
     return members(curves, fresh, chips, scale, m["cell"], speeds), chips, rate_range, speeds, sigma_r
 
 
-def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, preps=1, prep_indep=False, model=MODEL_VERSION, rho=RHO):
+def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, preps=1, prep_indep=False, model=MODEL_VERSION, rho=RHO,
+           support=None, prior=None):
     """입력 A·B → 결과 dict. 눈금 변환은 여기서만 한다. preps 는 prep 횟수(관측 = 섹터 × preps)."""
     m = MODELS[model]
     grp = group_of(ref_us, split_us)
@@ -372,7 +374,7 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, prep
         evidence = n_eff(max(1, len(obs) // preps), preps, rho["sector"], rho["prep"], rho["chip"])
     else:
         evidence = preps if prep_indep else 1
-    post = posterior(obs, mem, rate_range, evidence)
+    post = posterior(obs, mem, rate_range, evidence, support, prior)
     top = max(post, key=post.get)
     # 밴드 검사는 r 을 빼고 곡선 위에서 가장 그럴듯한 지점(M*)의 구성원 p10 최소 ~ p90 최대로 한다
     ll = curve_loglik(obs, mem)
@@ -382,7 +384,9 @@ def invert(ref_us, worn_us, curves, fresh, scale, split_us, rate_range=1.0, prep
     outside = sum(1 for x in obs if not lo <= x <= hi)
     below = sum(1 for x in obs if x < lo)
     med = median_bin(post)
-    return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "hpd68": ranges(hpd(post, 0.68)),
+    mean = int(sum((b + 499.5) * p for b, p in post.items()) - 1) // 1000 * 1000 + 1   # 사후 평균이 든 1k 구간
+    pb = mean if m.get("point") == "mean" else med
+    return {"group": grp, "chips": chips, "map": (top, top + 999), "median": (med, med + 999), "mean": (mean, mean + 999), "point": (pb, pb + 999), "point_kind": "평균" if m.get("point") == "mean" else "중앙값", "hpd68": ranges(hpd(post, 0.68)),
             "hpd95": ranges(hpd(post, 0.95)), "outside_at_map": outside, "n_obs": len(obs), "post": post, "rate_range": rate_range,
             "below_first": below if mstar == min(ll) else 0,       # 곡선 첫 구간보다도 덜 닳은 관측 — 신품 쪽으로 밖
             "evidence": evidence, "speeds": speeds, "sigma_r": sigma_r}
@@ -464,7 +468,7 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
     """시연용 결과 화면 — 무엇을 쟀고 · 무엇과 비교했나 → 분포와 숫자 → 판정."""
     rule = "─" * 61
     med = statistics.median(worn)
-    a, b = r["median"]
+    a, b = r.get("point", r["median"])
     hi95 = max(z for _, z in r["hpd95"])
     top = min(MAX_CYCLE, max(40_000, math.ceil(hi95 / 20_000) * 20_000))   # 막대는 top/2k 글자 (1k 구간이 점 한 열)
     width, axis = top // 2000, ""
@@ -488,7 +492,7 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
            rule,
            "  확률" + " " * 7 + sparkline(r["post"], top),
            " " * 13 + axis + "   누적 P/E",
-           _row("추정 결과", f"{a:,}-{b:,} 회 (사후 중앙값 활용)"),
+           _row("추정 결과", f"{a:,}-{b:,} 회 (사후 {r.get('point_kind', '중앙값')} 활용)"),
            _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
            _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
            _row("정격 대비", f"{rated} 중 {used} 사용 ({upper})")]
@@ -520,7 +524,7 @@ def loco(curves, fresh, scale, split_us, cycles=LOCO_CYCLES, rate_range=1.0, mod
             r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range, model=model, rho=rho)
             in68 = any(a <= cyc <= z for a, z in r["hpd68"])
             in95 = any(a <= cyc <= z for a, z in r["hpd95"])
-            rows.append((chip, cyc, r["median"], r["hpd68"], r["hpd95"], in68, in95))
+            rows.append((chip, cyc, r.get("point", r["median"]), r["hpd68"], r["hpd95"], in68, in95))
     return rows
 
 
@@ -539,7 +543,7 @@ A_SESSIONS = {
     "chip03": (("1790408609", "1791990254"), ()),                      # v4.3: 100k → 200k (2026-10-15)
     "chip04": (("1790423530", "1790482991", "1790491294"), ((66654, 66671),)),
     "chip06": (("1790788847", "1791740291", "1791800419"), ()),        # v4.3: 100k → 200k (2026-10-13)
-    "chip07": (("1790494073", "1790562456", "1790643103"), ()),
+    "chip07": (("1790494073", "1790562456", "1790643103", "1792429510", "1792494559"), ()),   # v4.3 6장 판: 103.6k → 178.1k · 178.8k → 200k (2026-10-21)
     "chip09": (("1790786787", "1791904816"), ()),                      # v4.3: 100k → 200k (2026-10-14)
     "chip15": (("1791078343", "1791123800", "1792080192"), ((69109, 69109),)),   # v4.3: 100k → 200k (2026-10-16)
     "chip18": (("1790989701",), ()),
@@ -768,7 +772,7 @@ def posterior_dx(obs, mem, rate_range, slope_obs, slope_members, dx):
 
 
 def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_k=3, seed=0, reps=20, dx=0,
-               arows=None, cycles=LOCO_CYCLES, model=MODEL_VERSION, rho=RHO):
+               arows=None, cycles=LOCO_CYCLES, model=MODEL_VERSION, rho=RHO, support=None, prior=None, keep_post=False):
     """모의 블라인드 (부속 연구 · v4 의 등록 LOCO). 행 = dict(칩, 무리, 정답, 반복, MAP, 사후 중앙값, 68%, 95%, 포함 여부) · 뺀 점 = [(칩, 정답, 이유)].
     obs_mode: p50 = 구간 p50 7개 · single = 섹터마다 사이클 prep_k 개의 중앙값 · rows = A 행 prep_k 개 그대로(7·prep_k 개, v4 등록 방식)."""
     import random
@@ -815,11 +819,12 @@ def loco_study(curves, fresh, scale, split_us, rate_range, obs_mode="p50", prep_
                     h68, h95 = ranges(hpd(post, 0.68)), ranges(hpd(post, 0.95))
                 else:
                     r = invert(fresh[chip], worn, rest, fresh, scale, split_us, rate_range,
-                               preps=prep_k if obs_mode == "rows" else 1, model=model, rho=rho)
-                    top, med, h68, h95 = r["map"][0], r["median"][0], r["hpd68"], r["hpd95"]
+                               preps=prep_k if obs_mode == "rows" else 1, model=model, rho=rho, support=support, prior=prior)
+                    top, med, h68, h95 = r["map"][0], r.get("point", r["median"])[0], r["hpd68"], r["hpd95"]
+                    post = r["post"]
                 rows.append({"chip": chip, "group": grp, "x": cyc, "rep": rep, "map": top, "med": med, "h68": h68, "h95": h95,
                              "in68": any(a <= cyc <= z for a, z in h68), "in95": any(a <= cyc <= z for a, z in h95),
-                             "slope": slope_obs[0] if slope_obs else None})
+                             "slope": slope_obs[0] if slope_obs else None, **({"post": post} if keep_post and not dx else {})})
     return rows, skipped
 
 
@@ -1176,7 +1181,7 @@ def main(argv=None):
            f"입력 B  마모 섹터 소거 {len(worn)}개 (prep {runs}회{' · 독립' if args.prep_indep else ''}"
            + (f" · ρ_s {rho['sector']:g} · ρ_p {rho['prep']:g} · ρ_chip {rho['chip']:g} · n_eff {r['evidence']:.2f}" if v4 else "") + "): "
            + ", ".join(f"{v / 1000:.1f}" for v in worn) + " ms",
-           f"답      중앙값 {r['median'][0]:,}-{r['median'][1]:,} · MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
+           f"답      " + (f"평균 {r['mean'][0]:,}-{r['mean'][1]:,} · " if 'mean' in r else "") + f"중앙값 {r['median'][0]:,}-{r['median'][1]:,} · MAP {r['map'][0]:,}-{r['map'][1]:,} · 68% {fmt_ranges(r['hpd68'])} · 95% {fmt_ranges(r['hpd95'])}"]
     if r["outside_at_map"]:
         out.append(f"주의    곡선 최우 지점(r 없이) 밴드 밖 관측 {r['outside_at_map']}/{r['n_obs']}" +
                    (" — 전부 밖: 교정 범위 밖이거나 무리 선택이 틀렸다" if r["outside_at_map"] == r["n_obs"] else ""))
