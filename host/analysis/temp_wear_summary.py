@@ -180,6 +180,7 @@ def main(argv=None):
     sp = max(set(run_tg), key=run_tg.count) if run_tg else 65.0     # 로그의 설정값(RUN 중 최빈) — 2026-10-23 부터 65 · 85°C 둘
     BAND = (sp - 2, sp + 2)                                    # 「설정 ±2°C 안」 띠 (열 이름 in_63_67_pct 는 65°C 때 이름 그대로 둔다)
     sp_lab = f"{sp:g}°C"
+    dy = sp - 65.0                                             # 온도 축을 설정값에 맞춰 옮긴다 (65°C 칩은 그대로)
     fresh = fresh_values()
     room = ROOM_FAST if fresh.get(a.chip, 0) < SPLIT_US else ROOM_SLOW   # 같은 무리의 상온 교정 칩과 겹쳐 그린다
     sw = sweep_info(a.chip)
@@ -293,8 +294,8 @@ def main(argv=None):
     for cyc in (100, 10000, 50000, 100000):
         if cyc in cps:
             x = cps[cyc]["end"].replace(tzinfo=None) + KST
-            ax.annotate(f"{cyc // 1000}k" if cyc >= 1000 else f"{cyc}", (x, 70.6), ha="center", fontsize=8, color=INK2)
-    ylo = 54
+            ax.annotate(f"{cyc // 1000}k" if cyc >= 1000 else f"{cyc}", (x, 70.6 + dy), ha="center", fontsize=8, color=INK2)
+    ylo = 54 + dy
     offs = [i for i in range(1, len(t)) if state[i] == "OFF" and state[i - 1] == "RUN"]
     for k, i in enumerate(offs):
         j = i + int(np.argmin(temp[i:i + 600]))
@@ -308,7 +309,7 @@ def main(argv=None):
     if first68 is not None and a.chip == "chip17":
         ax.annotate("설정 68°C — 히터 출력 상한(86%)에 붙어 약 65.4°C 에서 평형", (tk[first68] + timedelta(hours=2), 68.4),
                     fontsize=8, color=INK2)
-    ax.set_ylim(ylo, 71.5)
+    ax.set_ylim(ylo, 71.5 + dy)
     ax.set_ylabel("칩 위 온도 (°C, TMP117)", color=INK2, fontsize=9)
     ax.set_xlabel("시각 (KST) · 회색 띠 = 체크포인트 측정(prep + 스윕)", color=INK2, fontsize=9)
     import matplotlib.dates as mdates
@@ -335,10 +336,14 @@ def main(argv=None):
     my = [cp_stats[(cyc, "prep")]["mean_c"] for cyc in sorted(cps)]
     ax.scatter(mx, my, s=28, color=MEAS, edgecolor=SURFACE, lw=1.5, zorder=3, label="체크포인트 prep 중 (소거 측정)")
     ax.set_ylabel("온도 (°C)", color=INK2, fontsize=9)
-    ax.set_ylim(55, 69)
+    ax.set_ylim(55 + dy, 69 + dy)
     ax.legend(loc="lower right", frameon=False, fontsize=8.5, labelcolor=INK2, ncol=2)
     ax.set_title("마모 중 온도 — 사이클 축", color=INK, fontsize=10.5, loc="left")
 
+    xend = max(r["cycle"] for r in crows)                         # 이 칩의 끝 — 중단된 칩(chip23)은 100k 전, 1k 곡선이 더 가면 거기까지
+    if a.curves:
+        xend = max(xend, int(ratio_curve(a.curves, fresh[a.chip])[0][-1]))
+    xend = min(100000, xend)
     ax = axes[1]
     w100 = next(r["width_1e2_ps"] for r in crows if r["cycle"] == 100)
     ax.axhspan(-42, 42, color=GRID, alpha=0.7, lw=0)
@@ -349,7 +354,7 @@ def main(argv=None):
             continue
         with open(p, newline="") as f:
             pts = [(int(r["cycle"]), float(r["width_1e2_ps"])) for r in csv.DictReader(f)
-                   if r["mhz"] == "25" and r["width_1e2_ps"] and r["cycle"].isdigit() and 100 <= int(r["cycle"]) <= 100000]
+                   if r["mhz"] == "25" and r["width_1e2_ps"] and r["cycle"].isdigit() and 100 <= int(r["cycle"]) <= xend]
         if pts:
             base = dict(pts).get(100, pts[0][1])
             xs, ys = zip(*sorted(set(pts)))
@@ -370,9 +375,9 @@ def main(argv=None):
         for chip in room:
             p = latest(CURVES_DIR, f"wear_curves_{chip}")
             x, y = ratio_curve(p, fresh[chip])
-            m = x <= 100000
+            m = x <= xend
             ax.plot(x[m] / 1e3, y[m], color=MUTED, lw=1.2, alpha=0.85,
-                    label="상온 빠른 무리 (chip01 · 04 · 09)" if chip == "chip01" else None)
+                    label=("상온 빠른 무리" if room is ROOM_FAST else "상온 느린 무리") + f" ({' · '.join(c[4:] for c in room)})" if chip == room[0] else None)
             ax.annotate(f"{chip} (상온)", (x[m][-1] / 1e3, y[m][-1]), xytext=(4, 0), textcoords="offset points",
                         va="center", fontsize=8, color=MUTED)
         x, y = ratio_curve(a.curves, fresh[a.chip])
@@ -383,7 +388,7 @@ def main(argv=None):
         ax.set_ylabel("소거 시간 ÷ 신품값", color=INK2, fontsize=9)
         ax.set_title("소거 시간 배율 — 섹터 0-6 의 1k 구간 p50 중앙값 ÷ 신품값(상온 newchip)", color=INK, fontsize=10.5, loc="left")
     axes[-1].set_xlabel("누적 P/E 사이클 (k)", color=INK2, fontsize=9)
-    axes[-1].set_xlim(0, 112)
+    axes[-1].set_xlim(0, xend / 1e3 * 1.12)
     fig.tight_layout()
     fig.savefig(pdir / f"wear_temp_{a.chip}.png", facecolor=SURFACE)
     plt.close(fig)
@@ -397,6 +402,8 @@ def main(argv=None):
         x17, y17 = ratio_curve(a.curves, fresh[a.chip])
         ref = {c: ratio_curve(latest(CURVES_DIR, f"wear_curves_{c}"), fresh[c]) for c in room}
         for xe in (10000, 50000, 100000):
+            if xe not in x17:
+                continue
             r17 = float(y17[x17 == xe][0])
             others = {c: float(v[1][v[0] == xe][0]) for c, v in ref.items() if xe in v[0]}
             lo = np.log(list(others.values()))
@@ -408,7 +415,7 @@ def main(argv=None):
         for c, (x, y) in ref.items():
             hit = np.nonzero(y >= r_end)[0]
             if len(hit):
-                print(f"  {a.chip} 의 100k 배율 {r_end:.2f} 에 {c} 는 {x[hit[0]]:,} 사이클에 닿음 → 속도 비 {100000 / x[hit[0]]:.2f}")
+                print(f"  {a.chip} 의 {x17[-1] // 1000}k 배율 {r_end:.2f} 에 {c} 는 {x[hit[0]]:,} 사이클에 닿음 → 속도 비 {x17[-1] / x[hit[0]]:.2f}")
 
 
 if __name__ == "__main__":
