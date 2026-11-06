@@ -490,8 +490,8 @@ def screen(uids, sectors, runs, ref, worn, r, rate_range, split_us):
            _row("교정 곡선", f"같은 무리 {len(r['chips'])}칩 (" + " · ".join(sorted(r["chips"])) + ")"
                 + (f" · R={rate_range:g}" if rate_range > 1 else "")),
            rule,
-           "  확률" + " " * 7 + sparkline(r["post"], top),
-           " " * 13 + axis + "   누적 P/E",
+           #"  확률" + " " * 7 + sparkline(r["post"], top),
+           #" " * 13 + axis + "   누적 P/E",
            _row("추정 결과", f"{a:,}-{b:,} 회 (사후 {r.get('point_kind', '중앙값')} 활용)"),
            _row("68% 신뢰구간", fmt_ranges(r["hpd68"]) + " 회"),
            _row("95% 신뢰구간", fmt_ranges(r["hpd95"]) + " 회"),
