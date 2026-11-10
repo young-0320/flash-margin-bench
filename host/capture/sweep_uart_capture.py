@@ -2,8 +2,8 @@
 """UART 스윕 스트림 수신 → 계약 §6 CSV 파일화 (PS bare-metal의 PC측 반쪽).
 
 ps/src/g0_sweep.c가 UART로 뿜는 행 프로토콜을 받아 파일 두 개로 나눈다:
-  M,<row>  → build/data/sweep_<label>[_<uid16>]_<stamp>.csv        (메인, §6 열 순서)
-  R,<row>  → build/data/sweep_<label>[_<uid16>]_<stamp>_reads.csv  (읽기별 e_i 원본, 필수)
+  M,<row>  → data/sweep_<label>[_<uid16>]_<stamp>.csv        (메인, §6 열 순서)
+  R,<row>  → data/sweep_<label>[_<uid16>]_<stamp>_reads.csv  (읽기별 e_i 원본, 필수)
 PS는 시계·git이 없으므로 메타데이터 열과 파일명 스탬프는 여기서 붙인다.
 generated_at = 수신 시작 시각(UTC), git_rev = 이 리포 HEAD.
 
@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import chip_registry  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-DEFAULT_OUTDIR = REPO / "build" / "data"
+DEFAULT_OUTDIR = REPO / "data"                      # 원본은 처음부터 보관처에 (2026-11-11 — build 는 비트스트림 · ELF · 파생물만)
 PROGRESS_S = 10        # 진행률 출력 간격 (초). 스윕은 수 분간 조용해서 살아있음을 보여준다
 
 MAIN_COLS = ("phase_step,phase_ps,n_reads,b_bits,bit_errors,reads_with_error,"

@@ -125,8 +125,8 @@ def cycle_weighted_mean(intervals_csv):
 
 def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
     data, out = root / "data", root / "build" / "pe_end" / chip
-    sess_roots = [Path(src)] if src else [root / "build" / "logs" / "wear"]
-    file_roots = [Path(src)] if src else [root / "build" / "data"]
+    sess_roots = [Path(src)] if src else [root / "data" / "wear", root / "build" / "logs" / "wear"]   # 2026-11-11 부터 원본은 data/ 에 바로 — build 는 그 전 런의 잔여만
+    file_roots = [Path(src)] if src else [root / "data", root / "build" / "data"]
     found = {d.name: d for d in find_sessions(chip, [data / "wear"])}       # 이미 옮긴 것 + build·묶음에만 있는 것
     found.update({d.name: d for d in find_sessions(chip, sess_roots, deep=bool(src))})
     found = [found[k] for k in sorted(found, key=int)]
@@ -257,7 +257,7 @@ def main(argv=None):
     ap.add_argument("--temp", action="store_true", help="온도 런 — 교정 밖, 곡선 이름에 마모 평균 온도")
     ap.add_argument("--no-calib", action="store_true", help="상온이지만 교정에서 뺀다 — 곡선 이름 _nocal")
     ap.add_argument("--drop-cycles", action="append", default=[], metavar="A-B", help="1k 곡선에서 뺄 사이클 (반복)")
-    ap.add_argument("--from", dest="src", help="raw 묶음 폴더 (보드 B) — 기본은 build/logs/wear · build/data")
+    ap.add_argument("--from", dest="src", help="raw 묶음 폴더 (보드 B) — 기본은 data/wear · data (옛 런은 build/logs/wear · build/data 도 본다)")
     ap.add_argument("--promote", action="store_true", help="2단계 — 산출물을 docs/results/ 로")
     ap.add_argument("--overwrite", action="store_true", help="--promote 에서 내용이 다른 파일을 덮는다")
     a = ap.parse_args(argv)

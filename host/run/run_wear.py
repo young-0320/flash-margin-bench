@@ -21,7 +21,7 @@ TB 전용 1,000~1,006 이다 (S-4 §9) — 파일럿 마모 그룹은 `--base-se
 체크포인트 편성(prep → 스윕 → ELF 교체 → START)은 근접·원격 스윕이 막혀 있어 (로그 44 [U44-8])
 아직 이 실행기에 없다 — 체크포인트마다 사람이 잇는다.
 
-세션 로그: build/logs/wear/<session>/ — raw.txt(원문 전부) · H/A/B/R/D.txt(행 분리) · commands.txt ·
+세션 로그: data/wear/<session>/ — raw.txt(원문 전부) · H/A/B/R/D.txt(행 분리) · commands.txt ·
 verdict.txt · resume.txt. 문자열 생성·해석은 host/tests/host_side.py, 전송은 host/run/wear_link.py.
 의존: run_sweep_chip.py 의 Session·run_xsct·Drained·require_tty, chip_pe.py, chip_registry.py, pyserial, xsct.
 """
@@ -49,7 +49,7 @@ WEAR_ELF = REPO / "build" / "vitis_wear" / "flash_wear" / "build" / "flash_wear.
 PROGRAM_G2 = REPO / "ps" / "scripts" / "program_g2.tcl"
 SWEEP_RUNNER = REPO / "host" / "run" / "run_sweep_chip.py"
 PLOT_DIR = REPO / "build" / "plots"
-LOG_ROOT = REPO / "build" / "logs" / "wear"
+LOG_ROOT = REPO / "data" / "wear"                    # 원본은 처음부터 보관처에 (2026-11-11)
 WEAR_BASE_TB, WEAR_N = 1000, 7                              # S-4 §9 TB 전용 마모 영역 — 인수 시험의 기본값
 WEAR_BASE_GROUP = 0                                         # S-1 §2 마모 그룹 0~6 — 읽기 창과 같은 자리. 파일럿·종단 다 여기
                                                             # (reproduce.py "prep-wear" 의 PREP_BASE=0 · PREP_N=7 과 같은 값 — 옮기면 둘 다)
@@ -523,7 +523,7 @@ def checkpoint_measure(run, n, acc, rested=False):
     print(f"체크포인트 {n:,} — {a.sweep_mhz}MHz 스윕 (약 1분)")
     if subprocess.run(cmd).returncode != 0:
         raise Abort(f"체크포인트 {n} 스윕 실패 — 마모를 잇지 않는다. 사람이 본다")
-    csv = max((REPO / "build" / "data").glob("sweep_*.csv"), key=lambda q: q.stat().st_mtime, default=None)
+    csv = max((REPO / "data").glob("sweep_*.csv"), key=lambda q: q.stat().st_mtime, default=None)
     png = PLOT_DIR / f"bathtub_{csv.stem}.png" if csv else None
     run.write_checkpoint(n, csv, summarize(acc), round(time.monotonic() - t0, 1), rested)
     return csv, png
@@ -548,7 +548,7 @@ def checkpoint_confirm(run, n, csv, png, left):
     print("  장부  docs/chip_pe.md 마지막 두 행 — 마모 증분과 체크포인트 prep +1 이 둘 다 들어갔나 확인")
     for ln in ledger:
         print(f"        {ln}")
-    print(f"  plot  {png if png else '(스윕 CSV 를 못 찾았다 — build/data 확인)'}")
+    print(f"  plot  {png if png else '(스윕 CSV 를 못 찾았다 — data/ 확인)'}")
     print("확인했으면 enter · 멈추려면 q")
     try:
         ans = input("> ").strip().lower()

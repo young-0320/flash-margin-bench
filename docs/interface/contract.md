@@ -6,6 +6,7 @@
   - `amendments/1.base_sector.md` — BASE_SECTOR 읽기 창 위치 + UID 헤더 (인터페이스). 2026-08-23 발의, **한영웅 확정 — 본문 반영 대기** (2026-09-18)
   - `amendments/2.n_reads_112.md` — N 100 → 112 (측정 조건). 2026-08-23 발의, **한영웅 확정 — 본문 반영 대기** (2026-09-18). #1과 독립
   - `amendments/3.uid_pipeline.md` — 파일명 + 메타 열 4개 + UID 없이 생성 거부 (§6 스키마). 2026-09-07 발의, **한영웅 확정 — 본문 반영 대기.** #1 §5를 대체한다
+  - `amendments/4.edge_counter_bathtub_v2.md` — 에지 계수기(`LOG_EDGE` · `ID` 0x4D42_0200 · R8 ④⑤ · R13) + 욕조 v2 파일(`bathtub2_*` · 무효 ⑨⑩⑪ · END 행 수). 2026-11-11 **초안**. #1 과 같은 RTL 파일을 고친다
 - 이 문서가 계약의 유일한 원본이다. 결정 과정(후보·장단점·상세 근거)은 `docs/log/young/3.interface_contract_v1.md` 「근거」.
 - 7/7 심야 core RTL 착수 중 추가 제안 4건(§2 `meas_timeout`·`cfg_err` 신호 / §3 CTRL 단일 명령 규칙 + STATUS bit6 `CMD_ERR` / R11 "유효 START" 조작적 정의 / §6 무효 ⑥)은 **7/8 본문 확정**(위 정정 참조 — 추인 절차 없음). 경위: `docs/log/young/6.core_rtl_implementation.md`
 - 경계: **core 블록**(`fpga/rtl/core/` — MMCM 위상 제어·AXI-Lite 레지스터) ↔ **flash 블록**(`fpga/rtl/flash/` — 패턴 생성·캡처·비교기·에러 로거·e_i 버퍼 + SPI 마스터/루프백 프런트엔드). 담당은 사람이 아니라 블록 기준 — 중간보고서까지 총력전이라 작업 배정은 유동(`docs/workflow/1.midterm_report_workflow.md`), 결과물이 기준.
@@ -88,7 +89,7 @@ e_i 버퍼: flash 소유 BRAM 1개 (2,048 × 16b). 읽기 하나가 끝날 때�
 
 ## 6. 스윕 CSV 스키마
 
-- 파일: 스윕 1회 = 1개, `build/data/sweep_<target>_<YYYYmmddTHHMMSSZ>.csv`, target = `loopback` | `chip01`~`chip20`. <!-- 2026-09-30 상한 10→20: 칩 추가 구매. 표기 범위만 확장, 의미 변경 없음 (Young 반영) --> 게재분만 `docs/results/` 수동 승격. <!-- 표기 정정 7/9 (구 docs/reports — 승격처 개명 반영, 의미 변경 없음): 3인 동의, Young 반영 -->
+- 파일: 스윕 1회 = 1개, `data/sweep_<target>_<YYYYmmddTHHMMSSZ>.csv`, target = `loopback` | `chip01`~`chip20`. <!-- 2026-09-30 상한 10→20: 칩 추가 구매. 표기 범위만 확장, 의미 변경 없음 (Young 반영) --> <!-- 2026-11-11 저장 위치만 build/data → data (원본을 처음부터 보관처에, 한영웅). 의미 변경 없음 --> 게재분만 `docs/results/` 수동 승격. <!-- 표기 정정 7/9 (구 docs/reports — 승격처 개명 반영, 의미 변경 없음): 3인 동의, Young 반영 -->
 - 열 (행 = 위상 스텝 1개, `phase_step` 0부터 연속, 결측 금지):
 
 | 열                                        | 타입       | 출처                                                |

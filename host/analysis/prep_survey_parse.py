@@ -2,7 +2,7 @@
 """prep_survey_parse.py — flash_prep 세션 로그에서 신품 조사 수치를 뽑는다 (W10-P).
 
 실행:  uv run python host/analysis/prep_survey_parse.py data/session_chip04_*.log
-       uv run python host/analysis/prep_survey_parse.py --csv build/data/session_*.log
+       uv run python host/analysis/prep_survey_parse.py --csv data/session_*.log
 
 뽑는 것: 라벨·UID·일자 + 소거 median/min/max(µs) + blank_pre/post(bits).
 `docs/results/data/newchip_survey_2026-09.md` 의 표와 짝 CSV 에 그대로 옮겨 붙이는 용도다.

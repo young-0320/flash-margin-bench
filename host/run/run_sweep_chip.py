@@ -23,7 +23,7 @@ CSV 를 만드는 것은 세션 2(g3_chip_<mhz>, PL) 다. 사람이 중간에 �
       세션1  newchip: program_g2 + flash_prep  →  #PREP UID → 라벨 역조회 → chip_pe.md +1
              sweep  : program_g2 + flash_id    →  #G2 UID   → --chip 과 대조 (P/E 불변)
       세션2  program_g3 + 스윕        →  CSV 2개   (×N, --reseat 면 회차 사이 재장착 프롬프트)
-    [종료]  "k/N 완료" 요약 + build/data/session_<label>_<uid>_<batch_id>.log
+    [종료]  "k/N 완료" 요약 + data/session_<label>_<uid>_<batch_id>.log
             (로그는 시작부터 session_<batch_id>.log 로 쓰이다가 라벨을 알면 개명된다)
 
 제약 — **배치 중 칩이 바뀌지 않는다고 가정한다.** UID 를 배치 시작 시 한 번만 읽고 그 값을
