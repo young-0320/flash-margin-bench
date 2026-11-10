@@ -171,6 +171,9 @@ def capture_sweep(ser, label, uid, outdir=DEFAULT_OUTDIR, *,
                         began = True
                         begin = dict(t.split("=", 1) for t in line.split() if "=" in t)
                         steps, n_cfg = int(begin.get("steps", 0)), int(begin.get("n", 0))
+                        if "fmt" in begin:      # 수정안 #4 §2.5 — 욕조 v2(fmt=bathtub2)는 v1 파일로 받지 않는다
+                            print(f"fmt={begin['fmt']} — v1 캡처가 받지 않는다 (bathtub2_capture.py)", file=log)
+                            break
                         if expect_n and n_cfg != expect_n:
                             # BEGIN 은 첫 줄이다 — 여기서 끊으면 1분짜리 스윕을 다 받고
                             # 버리지 않는다 (2026-09-16 실측: 59초를 그렇게 버렸다)

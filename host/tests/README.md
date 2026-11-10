@@ -18,6 +18,7 @@ uv run pytest host/tests/ -q
 | `test_sim.py` | **C 엔진**(`ps/src/flash_wear.c`)을 호스트 시뮬레이션(`ps/sim/`)으로 띄워 같은 채점표로 잰다. gcc 가 없으면 skip |
 | `test_run_wear.py` | 실행기 `host/run/run_wear.py` — 판정·로그 분리는 순수 함수로, accept·resume 은 sim 파이프로 끝까지 |
 | `test_pe_end.py` · `test_wear_checkpoint_csv.py` · `test_wear_curves.py` · `test_wear_inverse.py` | 분석 스크립트 시험 — `pe_end.py` · `wear_checkpoint_csv.py` · `wear_curves.py` · `wear_inverse.py` |
+| `test_bathtub2.py` | 욕조 v2 — 펌웨어(`ps/src/bathtub_v2.c`)를 호스트 시뮬레이션(`ps/sim/build_bt2_sim.sh`)으로 S-6 §6 시험 2 의 경우마다 돌리고, 그 출력을 캡처(`bathtub2_capture.py`) · 분석기(`bathtub2_analysis.py`)에 흘린다. gcc 가 없으면 skip |
 | `conftest.py` | `sim_bin` fixture — `ps/sim/build_sim.sh` |
 
 ## 왜 버그를 심나

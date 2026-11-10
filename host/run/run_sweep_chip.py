@@ -4,6 +4,7 @@
     run_sweep_chip.py --mode newchip --mhz 25                     신품 첫 투입 (prep = P/E +1)
     run_sweep_chip.py --mode sweep --mhz 25                       재측정 — 어느 칩인지는 기계가 안다
     run_sweep_chip.py --mode sweep --mhz 25 --chip 2 --repeat 3 --reseat   앵커 재장착 σ
+    run_sweep_chip.py --mode bathtub2 --mhz 25 --depth std --chip 2         욕조 v2 (S-6, P/E 불변)
 
 --mode 가 '무엇을 하는가'(= P/E 를 쓰는가)를, 나머지 옵션이 '어떻게'를 정한다. 모드가 정한 것은
 옵션으로 뒤집지 못한다 — newchip 에 --chip 을 줄 수 없고(기계가 UID 를 읽는다), sweep 은 prep 을
@@ -52,6 +53,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "host" / "capture"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import chip_pe                                       # noqa: E402
+import bathtub2_capture as cap2                      # noqa: E402
 import chip_registry                                 # noqa: E402
 import sweep_uart_capture as cap                     # noqa: E402
 
@@ -64,6 +66,12 @@ PREP_TIMEOUT_S = 15 * 60      # 지우기+쓰기+검증 ~1분. 넉넉히
 EXPECT_N = 112                # 실칩 스윕의 N — build_g3_sweep.py 가 ELF 에 박는 값(수정안 #2).
                               # 옵션이 아니라 상수다. ELF 가 다른 값이면 스윕을 시작하지 않는다
 ID_TIMEOUT_S = 60             # flash_id 는 JEDEC+UID 만 읽는다 — 즉시
+BT2_WALL_N = {"std": 8064, "deep": 2064384}   # 욕조 v2 벽 N (S-6 §2) — ELF 는 하나, xsct 가 g_wall_n 을 덮어쓴다
+BASE_SECTOR_MAX = 2041        # 수정안 #1 R11 — N = 112 에서 마지막 읽기가 쪽 32,767
+
+
+def bt2_elf(mhz):
+    return REPO / "build" / f"vitis_bt2_{mhz}" / "bathtub_v2" / "build" / "bathtub_v2.elf"
 
 
 class Abort(SystemExit):
@@ -142,6 +150,17 @@ def analyze(csv_path, ses):
             + (f" — 체크 FAIL {len(checks)}건" if checks else ""))
     print(f"  분석 OK  width@1e-2 = {m.group(1) if m else '?'} ps"
           + (f"   ** 체크리스트 FAIL {len(checks)}건 — 로그 확인 **" if checks else ""))
+
+
+def analyze_bt2(csv_path, ses):
+    """욕조 v2 — 받은 자리에서 정제(스텝 표 · 그림)까지 (S-6 §5). 실패해도 측정 원본은 남는다."""
+    cmd = [sys.executable, str(REPO / "host" / "analysis" / "bathtub2_analysis.py"), str(csv_path)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    ses.write(r.stdout + r.stderr)
+    if r.returncode != 0:
+        ses.log(f"  분석 실패 (exit {r.returncode}) — 측정 원본은 남아 있다: {csv_path.name}")
+        return
+    ses.log("  분석 OK " + next((l.strip() for l in r.stdout.splitlines() if l.strip().startswith(csv_path.stem)), ""))
 
 
 def run_xsct(args, ses, what, ser=None):
@@ -308,8 +327,9 @@ def main():
     # 모드가 정한 것은 옵션으로 뒤집지 못한다 — parse_args 아래 검증이 그 역할이다.
     # 앵커 재측정에서 prep 생략을 빠뜨려 칩을 한 번 더 마모시키던 사고
     # (2026-09-15 chip02: 하루 4회)를 표현 불가능하게 만드는 것이 목적이다
-    ap.add_argument("--mode", required=True, choices=("newchip", "sweep"),
-                    help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)")
+    ap.add_argument("--mode", required=True, choices=("newchip", "sweep", "bathtub2"),
+                    help="newchip: prep(P/E +1) + 스윕 + 분석  |  sweep: 스윕 + 분석 (P/E 불변)  |  "
+                         "bathtub2: 욕조 v2 스윕(S-6) + 분석 (P/E 불변)")
     ap.add_argument("--chip", metavar="NN",
                     help="sweep: 잴 작정인 칩 (2 · 02 · chip02 다 받는다). 주면 flash_id 가 읽은 "
                          "라벨과 대조해 어긋나면 중단한다. 생략하면 읽은 대로 간다 — "
@@ -320,7 +340,10 @@ def main():
                    help="매 회차 사이 재장착 프롬프트. 배치 전체 reseat=1")
     g.add_argument("--base-sector", type=int, default=0,
                    help="**읽는 창**의 위치 (수정안 #1). RTL 에 레지스터가 없어 0 만 허용 — 창은 "
-                        "페이지 0~111 = 섹터 0~6 에 고정이다. 태울 자리인 run_wear.py 의 --base-sector 와 다른 것")
+                        "페이지 0~111 = 섹터 0~6 에 고정이다. 태울 자리인 run_wear.py 의 --base-sector 와 다른 것. "
+                        "bathtub2 는 0-2041 (새 비트스트림 FEATURE bit1). 그 구역에 PRBS 가 써 있어야 한다")
+    g.add_argument("--depth", choices=tuple(BT2_WALL_N),
+                   help="bathtub2 의 벽 N — std 8,064 (기본) · deep 2,064,384 (약 6시간, S-6 §4)")
     h = ap.add_argument_group("하드웨어")
     h.add_argument("--mhz", type=int, required=True, choices=(25, 45, 75),
                    help="필수 — 기계가 알 수 없는 값이다. 빠뜨리면 의도와 다른 조건으로 재고 나중에 안다")
@@ -332,7 +355,8 @@ def main():
 
     args = ap.parse_args()
     os.environ["UART_BAUD"] = str(args.baud)        # program_*.tcl 이 ELF 의 g_uart_baud 를 이 값으로 덮어쓴다
-    args.no_prep = args.mode == "sweep"             # 이하 본문은 이 값만 본다
+    args.no_prep = args.mode in ("sweep", "bathtub2")   # 이하 본문은 이 값만 본다
+    bt2 = args.mode == "bathtub2"
     if args.mode == "newchip" and args.chip:
         ap.error("--mode newchip 은 UID 를 기계가 읽고 라벨은 프롬프트로 정한다 — --chip 을 주지 않는다")
     if args.chip:
@@ -344,7 +368,15 @@ def main():
     if args.reseat and args.repeat < 2:
         ap.error("--reseat 는 --repeat 2 이상에서만 뜻이 있다 — 회차 '사이'에 묻는다. "
                  "1회에 주면 재장착을 안 하고도 CSV 에 reseat=1 이 박힌다")
-    if args.base_sector != 0:
+    if args.depth and not bt2:
+        ap.error("--depth 는 --mode bathtub2 에서만 뜻이 있다")
+    if bt2:
+        args.depth = args.depth or "std"
+        if args.mhz not in (25, 75):
+            ap.error("--mode bathtub2 는 --mhz 25 | 75 만 — S-6 §2 에 45MHz 묶음이 없다")
+        if not 0 <= args.base_sector <= BASE_SECTOR_MAX:
+            ap.error(f"--base-sector 0-{BASE_SECTOR_MAX} (수정안 #1 R11)")
+    elif args.base_sector != 0:
         ap.error("--base-sector: 수정안 #1 미승인 — 0 만 허용")
     if args.repeat < 1:
         ap.error("--repeat 는 1 이상")
@@ -358,6 +390,8 @@ def main():
                     + (f"보험 비트스트림을 먼저 구울 것: vivado -mode batch -source "
                        f"fpga/scripts/build_g3_chip.tcl -tclargs bit {args.mhz} {args.pl}"
                        if args.pl else "reproduce.py --only g3-{} 먼저".format(args.mhz)))
+    if bt2 and not bt2_elf(args.mhz).exists():
+        raise Abort(f"missing {bt2_elf(args.mhz).relative_to(REPO)} — BT2_MHZ={args.mhz} vitis -s ps/scripts/build_bathtub_v2.py 먼저")
     if (args.no_prep or args.reseat) and not ID_ELF.exists():   # 재장착 대조도 이 ELF 를 쓴다
         raise Abort(f"missing {ID_ELF.relative_to(REPO)} — vitis -s ps/scripts/build_flash_id.py 먼저")
     chip_registry.parse()                     # 등록부가 깨져 있으면 보드를 건드리기 전에 죽는다
@@ -370,7 +404,8 @@ def main():
     ses = Session(batch_id)
     ses.log(f"batch {batch_id}: mode={args.mode} chip={args.chip or '(미지정)'} "
             f"mhz={args.mhz} pl={args.pl} repeat={args.repeat} "
-            f"reseat={int(args.reseat)} n={EXPECT_N} blind={int(args.blind)}")
+            f"reseat={int(args.reseat)} n={EXPECT_N} blind={int(args.blind)}"
+            + (f" bathtub2 depth={args.depth} wall_n={BT2_WALL_N[args.depth]} base_sector={args.base_sector}" if bt2 else ""))
 
     done = invalid = 0
     label = uid = None
@@ -408,6 +443,10 @@ def main():
                 ses.log(f"chip_pe.md: {label} {PREP_SECTORS} {'(MASK)' if args.blind else '+1'}")
 
             g3_args = [PROGRAM_G3, args.mhz] + ([f"pl{args.pl}"] if args.pl else [])
+            if bt2:                                     # program_g3.tcl 이 ELF 의 g_wall_n · g_base_sector 를 덮어쓴다
+                g3_args.append(bt2_elf(args.mhz))
+                os.environ["BATHTUB2_WALL_N"] = str(BT2_WALL_N[args.depth])
+                os.environ["BATHTUB2_BASE_SECTOR"] = str(args.base_sector)
             for k in range(1, args.repeat + 1):
                 if k > 1 and args.reseat:
                     input(f"\n[{k}/{args.repeat}] {label} 을 빼고 다시 꽂은 뒤 엔터: ")
@@ -416,6 +455,19 @@ def main():
                 ser.reset_input_buffer()
                 pre = run_xsct(g3_args, ses,
                                f"[{k}/{args.repeat}] 세션2 프로그래밍 (g3_chip_{args.mhz})", ser=ser)
+                if bt2:
+                    r = cap2.capture_bathtub2(Drained(ser, pre), label, uid, reseat=int(args.reseat),
+                                              repeat_idx=k, batch_id=batch_id, log=sys.stderr,
+                                              expect_base_sector=args.base_sector)
+                    ses.log(f"[{k}/{args.repeat}] {'VALID' if r.valid else 'INVALID'} {r.main_path.name} "
+                            f"({r.n_main} rows, mode={r.end.get('mode', '')}, flags={r.end.get('flags', '')}, "
+                            f"reads_gap {r.gap_rows}, reason={r.reason})")
+                    done += 1
+                    if r.valid:
+                        analyze_bt2(r.main_path, ses)
+                    else:
+                        invalid += 1
+                    continue
                 r = cap.capture_sweep(Drained(ser, pre), label, uid, reseat=int(args.reseat),
                                       repeat_idx=k, batch_id=batch_id, log=sys.stderr,
                                       expect_n=EXPECT_N)

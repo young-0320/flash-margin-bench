@@ -65,5 +65,8 @@ dow $elf
 # UART 보 레이트 — 호스트가 UART_BAUD 환경변수로 주면 ELF 의 g_uart_baud 를 실행 전에 덮어쓴다
 # (run_wear.py --baud · run_sweep_chip.py --baud). 안 주면 ELF 초기값 921600 그대로
 if {[info exists env(UART_BAUD)]} { print -set g_uart_baud $env(UART_BAUD) }
+# 욕조 v2 ELF(bathtub_v2.c)의 벽 N · base_sector — run_sweep_chip.py --mode bathtub2 가 줄 때만 (v1 ELF 에는 이 변수가 없다)
+if {[info exists env(BATHTUB2_WALL_N)]} { print -set g_wall_n $env(BATHTUB2_WALL_N) }
+if {[info exists env(BATHTUB2_BASE_SECTOR)]} { print -set g_base_sector $env(BATHTUB2_BASE_SECTOR) }
 con
 puts "== running ($mhz MHz) — sweep_uart_capture.py --uid <16hex> (래퍼 run_sweep_chip.py 권장) 로 수집"
