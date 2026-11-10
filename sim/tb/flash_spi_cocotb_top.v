@@ -9,6 +9,7 @@ module flash_spi_cocotb_top;
     reg         meas_start = 1'b0;
     reg  [15:0] cfg_n_reads = 16'd4;
     reg  [15:0] cfg_burst_bits = 16'd64;
+    reg  [10:0] cfg_base_sector = 11'd0;  // amendment #1; 0 = v1 behaviour
     reg  [11:0] log_rd_addr = 12'd0;
     reg         spi_miso = 1'b0;          // cocotb/manual model input
     reg         use_vendor_model = 1'b0;
@@ -29,6 +30,7 @@ module flash_spi_cocotb_top;
     wire [31:0] err_bits;
     wire [31:0] err_reads;
     wire [15:0] log_rd_data;
+    wire [95:0] log_rd_cand;              // amendment #4
     wire        spi_cs_n;
     wire        spi_sclk;
     wire        spi_mosi;
@@ -141,8 +143,10 @@ module flash_spi_cocotb_top;
         .err_reads      (err_reads),
         .log_rd_addr    (log_rd_addr),
         .log_rd_data    (log_rd_data),
+        .log_rd_cand    (log_rd_cand),
         .cfg_n_reads    (cfg_n_reads),
         .cfg_burst_bits (cfg_burst_bits),
+        .cfg_base_sector(cfg_base_sector),
         .spi_cs_n       (spi_cs_n),
         .spi_sclk       (spi_sclk),
         .spi_mosi       (spi_mosi),

@@ -32,8 +32,10 @@ module flash_top (
     output wire [31:0] err_reads,
     input  wire [11:0] log_rd_addr,
     output wire [15:0] log_rd_data,
+    output wire [95:0] log_rd_cand,     // 수정안 #4 §2.1 — 낱말 c = {e1_c, e_c}
     input  wire [15:0] cfg_n_reads,
     input  wire [15:0] cfg_burst_bits,
+    input  wire [10:0] cfg_base_sector, // 수정안 #1 — 루프백은 주소가 없어 쓰지 않는다 (0 고정)
 
     // 루프백 핀
     output wire        pattern_out,     // JE1 (V12)
@@ -46,6 +48,7 @@ module flash_top (
     wire        log_we;
     wire [11:0] log_waddr;
     wire [15:0] log_wdata;
+    wire [95:0] log_wcand;
 
     flash_sync2 u_sync_run  (.clk(clk_sample), .d(run),     .q(run_s));
     flash_sync2 u_sync_done (.clk(clk_core),   .d(rx_done), .q(rx_done_s));
@@ -73,12 +76,14 @@ module flash_top (
         .run_s      (run_s),
         .n_lat      (n_lat),
         .b_lat      (b_lat),
+        .bs_lat     (11'd0),
         .rx_done    (rx_done),
         .err_bits   (err_bits),
         .err_reads  (err_reads),
         .log_we     (log_we),
         .log_waddr  (log_waddr),
-        .log_wdata  (log_wdata)
+        .log_wdata  (log_wdata),
+        .log_wcand  (log_wcand)
     );
 
     flash_logbuf u_logbuf (
@@ -89,6 +94,16 @@ module flash_top (
         .rclk  (clk_core),
         .raddr (log_rd_addr),
         .rdata (log_rd_data)
+    );
+
+    flash_logbuf #(.W(96)) u_candbuf (
+        .wclk  (clk_sample),
+        .we    (log_we),
+        .waddr (log_waddr),
+        .wdata (log_wcand),
+        .rclk  (clk_core),
+        .raddr (log_rd_addr),
+        .rdata (log_rd_cand)
     );
 
 endmodule

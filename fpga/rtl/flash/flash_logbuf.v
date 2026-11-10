@@ -5,19 +5,22 @@
 // 두 포트가 동시에 같은 주소를 건드리는 일은 프로토콜이 배제한다 — R3: 결과는
 // done~다음 start 사이에만 읽고, start가 버퍼를 덮어쓴다.
 // 읽기는 주소 제시 다음 사이클 유효 (계약 §2 log_rd_data 규약 그대로).
+// W = 96 인스턴스는 정렬별 여섯 값 버퍼 (수정안 #4 §2.1, 같은 깊이·같은 주소).
 
-module flash_logbuf (
+module flash_logbuf #(
+    parameter W = 16
+) (
     input  wire        wclk,      // clk_sample
     input  wire        we,
     input  wire [11:0] waddr,
-    input  wire [15:0] wdata,
+    input  wire [W-1:0] wdata,
 
     input  wire        rclk,      // clk_core
     input  wire [11:0] raddr,
-    output reg  [15:0] rdata
+    output reg  [W-1:0] rdata
 );
 
-    reg [15:0] mem [0:2047];
+    reg [W-1:0] mem [0:2047];
 
     always @(posedge wclk)
         if (we) mem[waddr[10:0]] <= wdata;

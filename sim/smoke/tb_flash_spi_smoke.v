@@ -55,6 +55,7 @@ module tb_flash_spi_smoke;
         .err_bits(err_bits), .err_reads(err_reads),
         .log_rd_addr(log_addr), .log_rd_data(log_data),
         .cfg_n_reads(cfg_n), .cfg_burst_bits(cfg_b),
+        .cfg_base_sector(11'd0),   // 수정안 #1 — 0 = 종전 동작 (창 이동은 tb_feature_smoke)
         .spi_cs_n(cs_n), .spi_sclk(sclk), .spi_mosi(mosi), .spi_miso(miso_pin)
     );
 

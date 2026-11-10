@@ -8,6 +8,7 @@
 - golden model(몬테카를로) — **한영웅**: golden 폴더는 없다. `host/analysis/` 에 있다 (`monte_carlo_sweep_params.py`)
 - `smoke/` — **한영웅**: 블록 단위 스모크 TB (iverilog 순수 Verilog, cocotb 회귀 확립 전 임시 최소 회귀)
 - `check_coverage.py` — **한영웅**: 회귀가 합격 기준 23항목을 다 덮었는지 대조. 기준 쪽 산출물이라 채점 대상(`tb/`)과 소유를 분리한다
+- `a2/` — **한영웅**: 계약 수정안 #4 인수 기준 A2(에지 계수기 시뮬레이션). `tb_edge_a2.v` 가 `flash_top_spi` 경로에 상승 · 하강 지터를 달리 넣은 가짜 칩을 물려 위상별 여섯 값을 내고, `run_a2.py` 가 해석(이웃 짝 → 에지별 누적분포)을 적용해 주입값과 대조한 원값 표를 낸다. 합격 판정은 하지 않는다 — 허용 오차는 `docs/spec/s6.bathtub_v2.md` §7. 실행: `python3 sim/a2/run_a2.py` (약 2분, 산출은 `build/sim_a2/`)
 
 회귀 승인 기준은 한영웅의 테스트 계획 문서 — `docs/spec/s3.g1_test_plan.md` (**2026-08-23 동결, 같은 날 개정 2**).
 판정은 3단이다 — ① 어서션이 기준을 재는가(한영웅) → ② 회귀 통과 여부(자동) → ③ 블록 승인 집행(팀원 A).

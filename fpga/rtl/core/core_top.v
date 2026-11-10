@@ -12,7 +12,8 @@
 //  - clk_sample은 flash 블록 MISO 캡처 경로 전용 (계약 §1 A안)
 
 module core_top #(
-    parameter integer O_DIV = 45       // MMCM CLKOUT 분주 — 클럭 사다리용 (core_mmcm 헤더)
+    parameter integer O_DIV = 45,      // MMCM CLKOUT 분주 — 클럭 사다리용 (core_mmcm 헤더)
+    parameter integer HAS_BASE_SECTOR = 0   // FEATURE bit1 — 실칩 빌드 스크립트가 1로 둔다
 ) (
     input  wire        clk125,          // 보드 125MHz, K17 (계약 §5)
     input  wire        mmcm_rst,        // 비동기 high
@@ -57,8 +58,10 @@ module core_top #(
     input  wire [31:0] err_reads,
     output wire [11:0] log_rd_addr,
     input  wire [15:0] log_rd_data,
+    input  wire [95:0] log_rd_cand,     // 수정안 #4 §2.1
     output wire [15:0] cfg_n_reads,
-    output wire [15:0] cfg_burst_bits
+    output wire [15:0] cfg_burst_bits,
+    output wire [10:0] cfg_base_sector  // 수정안 #1 §2.1
 );
 
     wire        psen, psincdec, psdone;
@@ -89,7 +92,7 @@ module core_top #(
         .phase_pos  (phase_pos)
     );
 
-    core_axil_regs u_regs (
+    core_axil_regs #(.HAS_BASE_SECTOR(HAS_BASE_SECTOR)) u_regs (
         .clk            (clk_core),
         .rstn           (aresetn),
 
@@ -120,8 +123,10 @@ module core_top #(
         .err_reads      (err_reads),
         .log_rd_addr    (log_rd_addr),
         .log_rd_data    (log_rd_data),
+        .log_rd_cand    (log_rd_cand),
         .cfg_n_reads    (cfg_n_reads),
         .cfg_burst_bits (cfg_burst_bits),
+        .cfg_base_sector(cfg_base_sector),
 
         .phase_cmd      (phase_cmd),
         .phase_incdec   (phase_incdec),

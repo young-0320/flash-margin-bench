@@ -80,7 +80,8 @@ connect_bd_net [get_bd_pins psr_core/peripheral_aresetn] [get_bd_pins axi_sc/are
 connect_bd_net [get_bd_pins core_0/clk_core]   [get_bd_pins flash_0/clk_core]
 connect_bd_net [get_bd_pins core_0/clk_sample] [get_bd_pins flash_0/clk_sample]
 foreach s {meas_start meas_busy meas_done meas_timeout cfg_err \
-           err_bits err_reads log_rd_addr log_rd_data cfg_n_reads cfg_burst_bits} {
+           err_bits err_reads log_rd_addr log_rd_data cfg_n_reads cfg_burst_bits \
+           log_rd_cand cfg_base_sector} {
     connect_bd_net [get_bd_pins core_0/$s] [get_bd_pins flash_0/$s]
 }
 

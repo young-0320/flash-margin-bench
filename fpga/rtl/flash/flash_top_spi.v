@@ -34,8 +34,10 @@ module flash_top_spi #(
     output wire [31:0] err_reads,
     input  wire [11:0] log_rd_addr,
     output wire [15:0] log_rd_data,
+    output wire [95:0] log_rd_cand,     // 수정안 #4 §2.1 — 낱말 c = {e1_c, e_c}
     input  wire [15:0] cfg_n_reads,
     input  wire [15:0] cfg_burst_bits,
+    input  wire [10:0] cfg_base_sector, // 수정안 #1 — start 시점 래치
 
     // SPI 핀 (JB — 로그 9 핀 표)
     output wire        spi_cs_n,
@@ -49,9 +51,11 @@ module flash_top_spi #(
     wire        pay, pay_s;
     wire        sclk_en;
     wire [15:0] n_lat, b_lat;
+    wire [10:0] bs_lat;
     wire        log_we;
     wire [11:0] log_waddr;
     wire [15:0] log_wdata;
+    wire [95:0] log_wcand;
     wire        din;
 
     flash_sync2 u_sync_run  (.clk(clk_sample), .d(run),     .q(run_s));
@@ -64,6 +68,7 @@ module flash_top_spi #(
         .meas_start     (meas_start),
         .cfg_n_reads    (cfg_n_reads),
         .cfg_burst_bits (cfg_burst_bits),
+        .cfg_base_sector(cfg_base_sector),
         .meas_busy      (meas_busy),
         .meas_done      (meas_done),
         .meas_timeout   (meas_timeout),
@@ -72,6 +77,7 @@ module flash_top_spi #(
         .rx_done_s      (rx_done_s),
         .n_lat          (n_lat),
         .b_lat          (b_lat),
+        .bs_lat         (bs_lat),
         .spi_cs_n       (spi_cs_n),
         .spi_mosi       (spi_mosi),
         .sclk_en        (sclk_en),
@@ -111,12 +117,14 @@ module flash_top_spi #(
         .run_s      (run_s),
         .n_lat      (n_lat),
         .b_lat      (b_lat),
+        .bs_lat     (bs_lat),
         .rx_done    (rx_done),
         .err_bits   (err_bits),
         .err_reads  (err_reads),
         .log_we     (log_we),
         .log_waddr  (log_waddr),
-        .log_wdata  (log_wdata)
+        .log_wdata  (log_wdata),
+        .log_wcand  (log_wcand)
     );
 
     flash_logbuf u_logbuf (
@@ -127,6 +135,16 @@ module flash_top_spi #(
         .rclk  (clk_core),
         .raddr (log_rd_addr),
         .rdata (log_rd_data)
+    );
+
+    flash_logbuf #(.W(96)) u_candbuf (
+        .wclk  (clk_sample),
+        .we    (log_we),
+        .waddr (log_waddr),
+        .wdata (log_wcand),
+        .rclk  (clk_core),
+        .raddr (log_rd_addr),
+        .rdata (log_rd_cand)
     );
 
 endmodule

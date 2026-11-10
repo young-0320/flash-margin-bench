@@ -60,6 +60,8 @@ set flash0 [create_bd_cell -type module -reference flash_top_spi flash_0]
 
 # 클럭 사다리: MMCM 분주 파라미터 (core_mmcm 헤더)
 set_property CONFIG.O_DIV $odiv $core0
+# FEATURE(0x38) bit1 — BASE_SECTOR 는 실칩 빌드에만 있다 (수정안 #4 §2.2, 루프백은 기본 0)
+set_property CONFIG.HAS_BASE_SECTOR 1 $core0
 # PAY_LEAD 클럭별 보정 훅 (flash_spi_ctrl 헤더 — 왕복 지연 > 1UI면 1 감소).
 # 현재 전 단 5 — 실측에서 전 위상 BER 0.5가 나오는 단만 여기서 내리거나,
 # 미리 구운 보험 빌드(-tclargs bit <mhz> <k>)로 현장 교체
@@ -101,7 +103,8 @@ connect_bd_net [get_bd_pins psr_core/peripheral_aresetn] [get_bd_pins axi_sc/are
 connect_bd_net [get_bd_pins core_0/clk_core]   [get_bd_pins flash_0/clk_core]
 connect_bd_net [get_bd_pins core_0/clk_sample] [get_bd_pins flash_0/clk_sample]
 foreach s {meas_start meas_busy meas_done meas_timeout cfg_err \
-           err_bits err_reads log_rd_addr log_rd_data cfg_n_reads cfg_burst_bits} {
+           err_bits err_reads log_rd_addr log_rd_data cfg_n_reads cfg_burst_bits \
+           log_rd_cand cfg_base_sector} {
     connect_bd_net [get_bd_pins core_0/$s] [get_bd_pins flash_0/$s]
 }
 

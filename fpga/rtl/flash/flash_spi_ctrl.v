@@ -5,8 +5,9 @@
 // 읽기 1회 = CS 프레임 1개 (로그 10 결정 ③: 명령은 0x0B 하나뿐):
 //   [CS↓ 셋업 2] [SCLK 40클럭: cmd 8 + addr 24 + dummy 8] [SCLK B클럭: 데이터]
 //   [홀드 3, CS 유지] [CS↑ 갭 4] → 반복 N회 → S_WAIT
-//   읽기 i → 페이지 i (addr = i×256) — RX의 PRBS 시드 {1, idx}와 자동 정합,
-//   flash_prep이 쓰는 페이지와 1:1 (로그 10 가정 2).
+//   읽기 i → 페이지 page(i) = BASE_SECTOR×16 + i (addr = page×256, 수정안 #1 R12)
+//   — RX의 PRBS 시드 {1, page[13:0]}와 같은 식이라 자동 정합,
+//   flash_prep이 쓰는 페이지와 1:1 (로그 10 가정 2). BASE_SECTOR = 0이면 종전과 동일.
 //   오버헤드 49사이클/읽기 < R10의 (B+64)×2 여유 — T_max 안에 항상 완주.
 //
 // SCLK는 이 모듈이 만들지 않는다 — sclk_en을 top의 ODDR(D1=0, D2=sclk_en)에
@@ -34,6 +35,7 @@ module flash_spi_ctrl #(
     input  wire        meas_start,
     input  wire [15:0] cfg_n_reads,
     input  wire [15:0] cfg_burst_bits,
+    input  wire [10:0] cfg_base_sector,
     output reg         meas_busy,
     output reg         meas_done,     // 1펄스
     output reg         meas_timeout,  // 1펄스, done과 동시 (R10)
@@ -46,6 +48,7 @@ module flash_spi_ctrl #(
     // start 시점 래치값 (R6)
     output reg  [15:0] n_lat,
     output reg  [15:0] b_lat,
+    output reg  [10:0] bs_lat,
 
     // SPI 라인 (SCLK는 top의 ODDR이 sclk_en으로 생성)
     output reg         spi_cs_n,
@@ -60,13 +63,20 @@ module flash_spi_ctrl #(
 
     reg [2:0]  state;
     reg [16:0] cyc;
-    reg [11:0] idx;       // 읽기 인덱스 = 페이지 번호 = RX PRBS 시드 인덱스
+    reg [11:0] idx;       // 읽기 인덱스(순번) — 페이지 번호와 분리 (R12)
     reg [31:0] sh;        // {cmd 8, addr 24} 시프트 레지스터
     reg [31:0] wd_cnt;
 
+    // R12: 주소와 RX 시드가 같은 page(i)에서 나온다 (flash_rx의 page와 같은 식)
+    wire [15:0] page = {1'b0, bs_lat, 4'd0} + {4'd0, idx};
+
+    // R11 + 수정안 #1 §2.4: BASE_SECTOR×16 + N − 1 ≤ 32,767 (칩 최종 페이지) —
+    // 없으면 주소가 칩 끝을 넘어 랩어라운드해 다른 섹터를 조용히 읽는다
+    wire [16:0] page_end = {2'b00, cfg_base_sector, 4'd0} + {1'b0, cfg_n_reads};
     wire cfg_ok = (cfg_n_reads   >= 16'd1) && (cfg_n_reads   <= 16'd2048) &&
                   (cfg_burst_bits >= 16'd8) && (cfg_burst_bits <= 16'd65528) &&
-                  (cfg_burst_bits[2:0] == 3'b000);
+                  (cfg_burst_bits[2:0] == 3'b000) &&
+                  (page_end <= 17'd32768);
 
     wire [16:0] b_plus64 = {1'b0, b_lat} + 17'd64;
     wire [31:0] t_max    = (n_lat * b_plus64) << 1;
@@ -87,6 +97,7 @@ module flash_spi_ctrl #(
             pay          <= 1'b0;
             n_lat        <= 16'd0;
             b_lat        <= 16'd0;
+            bs_lat       <= 11'd0;
             cyc          <= 17'd0;
             idx          <= 12'd0;
             sh           <= 32'd0;
@@ -103,6 +114,7 @@ module flash_spi_ctrl #(
                         if (cfg_ok) begin
                             n_lat     <= cfg_n_reads;
                             b_lat     <= cfg_burst_bits;
+                            bs_lat    <= cfg_base_sector;
                             idx       <= 12'd0;
                             cyc       <= 17'd0;
                             wd_cnt    <= 32'd0;
@@ -117,7 +129,7 @@ module flash_spi_ctrl #(
                 end
 
                 S_CS: begin   // CS↓ 셋업 + 프레임 시프트 레지스터 장전
-                    sh <= {8'h0B, 4'd0, idx, 8'h00};   // addr = idx × 256
+                    sh <= {8'h0B, page, 8'h00};   // addr = page × 256
                     if (cyc == CS_SETUP-1) begin
                         cyc     <= 17'd0;
                         sclk_en <= 1'b1;

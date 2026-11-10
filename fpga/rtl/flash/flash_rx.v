@@ -16,6 +16,13 @@
 //     ≈B/2라 벽 적합 영역(BER ≤ 0.25)에서 항상 명확히 분리된다.
 //     정직한 한계: 포화 영역(진짜 BER→0.5)에서는 min이 0.5를 약간 밑돌 수
 //     있다 — 통계가 쓰는 벽 영역 밖이라 무해 (로그 7에 기록).
+//  4) 에지 계수기 (수정안 #4 R14): 정렬 c마다 불일치 수 e_c에 더해, 그중 기대
+//     비트가 1인 자리의 불일치 수 e1_c(RTL 이름 o0·o1·o2)를 따로 센다. 읽기마다
+//     여섯 값을 e_i 옆 버퍼에 전부 남긴다 — 여기서는 기록만 하고, 짝 고르기·방향
+//     해석은 호스트 몫이다. e_i(= min)는 v1 그대로.
+//
+// PRBS 시드 (수정안 #1 R12): page = {bs_lat, 4'd0} + idx 의 하위 14비트 —
+// flash_spi_ctrl이 주소로 내보내는 page와 같은 식이다. 루프백은 bs_lat = 0 고정.
 //
 // 도메인 규율: 이 모듈 전체가 clk_sample. 리셋 없음 — run_s(2FF)가 0이면 전부
 // 초기화(DISARM)라 리셋 CDC가 필요 없다. n_lat/b_lat은 start 래치 후 불변인
@@ -27,6 +34,7 @@ module flash_rx (
     input  wire        run_s,       // 측정 창 레벨 (2FF 동기 완료)
     input  wire [15:0] n_lat,       // 준정적
     input  wire [15:0] b_lat,       // 준정적
+    input  wire [10:0] bs_lat,      // 준정적 — 읽기 시작 섹터 (수정안 #1)
 
     output reg         rx_done,     // 레벨 — N버스트 집계 완료
     output reg  [31:0] err_bits,
@@ -35,7 +43,9 @@ module flash_rx (
     // e_i 버퍼 쓰기 포트
     output reg         log_we,
     output reg  [11:0] log_waddr,
-    output reg  [15:0] log_wdata
+    output reg  [15:0] log_wdata,
+    // 정렬별 여섯 값 (수정안 #4 §2.1) — 낱말 c = {e1_c, e_c}, log_we와 같은 사이클
+    output reg  [95:0] log_wcand
 );
 
     localparam [2:0] S_DIS = 3'd0, S_HUNT = 3'd1, S_CMP = 3'd2,
@@ -54,15 +64,19 @@ module flash_rx (
     reg [2:0]  state;
     reg [3:0]  zcnt;      // 0-run 자격 카운터 (포화 8)
     reg [17:0] cc;        // t0 이후 사이클 (최대 B+4)
-    reg [11:0] idx;       // 버스트 인덱스 = e_i 주소 = PRBS 시드 인덱스
+    reg [11:0] idx;       // 버스트 인덱스(읽기 순번) = e_i 주소
     reg [15:0] e0, e1, e2;
+    reg [15:0] o0, o1, o2;   // 정렬별 기대 1 불일치 수 (계약의 e1_c0·e1_c1·e1_c2)
     reg        pd1, pd2;  // 기대 비트 지연선 (+1, +2 오프셋용)
+
+    // 읽기 순번과 페이지 번호를 분리한다 (R12) — 시드는 페이지에서만 유도
+    wire [15:0] page = {1'b0, bs_lat, 4'd0} + {4'd0, idx};
 
     wire pd0;
     flash_prbs15 u_rx_prbs (
         .clk  (clk_sample),
         .load (state == S_HUNT),
-        .seed ({1'b1, 2'b00, idx}),
+        .seed ({1'b1, page[13:0]}),
         .en   ((state == S_CMP) && (cc >= 18'd3) && (cc <= {2'd0, b_lat} + 18'd2)),
         .dout (pd0)
     );
@@ -85,6 +99,7 @@ module flash_rx (
                     idx       <= 12'd0;
                     zcnt      <= 4'd0;
                     e0 <= 16'd0; e1 <= 16'd0; e2 <= 16'd0;
+                    o0 <= 16'd0; o1 <= 16'd0; o2 <= 16'd0;
                     state     <= S_HUNT;
                 end
 
@@ -107,6 +122,10 @@ module flash_rx (
                     if (cc >= 18'd3 && cc <= {2'd0, b_lat} + 18'd2 && d != pd0) e0 <= e0 + 16'd1;
                     if (cc >= 18'd4 && cc <= {2'd0, b_lat} + 18'd3 && d != pd1) e1 <= e1 + 16'd1;
                     if (cc >= 18'd5 && cc <= {2'd0, b_lat} + 18'd4 && d != pd2) e2 <= e2 + 16'd1;
+                    // 같은 창, 기대 비트 1인 자리만 (d != 기대 && 기대 == 1 ⇔ 기대 & ~d)
+                    if (cc >= 18'd3 && cc <= {2'd0, b_lat} + 18'd2 && pd0 && !d) o0 <= o0 + 16'd1;
+                    if (cc >= 18'd4 && cc <= {2'd0, b_lat} + 18'd3 && pd1 && !d) o1 <= o1 + 16'd1;
+                    if (cc >= 18'd5 && cc <= {2'd0, b_lat} + 18'd4 && pd2 && !d) o2 <= o2 + 16'd1;
                     if (cc == {2'd0, b_lat} + 18'd4)
                         state <= S_TALLY;
                 end
@@ -115,9 +134,11 @@ module flash_rx (
                     log_we    <= 1'b1;
                     log_waddr <= idx;
                     log_wdata <= ei_min;
+                    log_wcand <= {o2, e2, o1, e1, o0, e0};
                     err_bits  <= err_bits + {16'd0, ei_min};
                     if (ei_min != 16'd0) err_reads <= err_reads + 32'd1;
                     e0 <= 16'd0; e1 <= 16'd0; e2 <= 16'd0;
+                    o0 <= 16'd0; o1 <= 16'd0; o2 <= 16'd0;
                     zcnt <= 4'd0;
                     if ({4'd0, idx} == n_lat - 16'd1) begin
                         rx_done <= 1'b1;     // 이 시점에 err_*·BRAM은 이미 확정

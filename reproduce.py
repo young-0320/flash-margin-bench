@@ -96,9 +96,10 @@ STEPS = {
                       done="== done (sectors 0~6):",
                       artifacts=["build/vitis_prep_0_7/flash_prep/build/flash_prep.elf"], tools=["vitis"]),
     "sim": dict(cmd=[c for tb in (("tb_core_smoke", "core"), ("tb_flash_smoke", "flash"),
-                                  ("tb_flash_spi_smoke", "flash"), ("tb_g0_smoke", "core", "flash"))
+                                  ("tb_flash_spi_smoke", "flash"), ("tb_g0_smoke", "core", "flash"),
+                                  ("tb_feature_smoke", "core", "flash"))   # 수정안 #1 · #4 레지스터 경로
                      for c in sim(*tb)],
-                cwd=REPO / "sim/smoke", done="PASS: all checks passed", done_count=4, tools=["iverilog", "vvp"]),
+                cwd=REPO / "sim/smoke", done="PASS: all checks passed", done_count=5, tools=["iverilog", "vvp"]),
     "selftest": dict(cmd=[["uv", "run", "python", p, "--selftest"]
                           for p in ("host/analysis/bathtub_analysis.py", "host/capture/chip_registry.py",
                                     "host/run/chip_pe.py")],

@@ -14,8 +14,15 @@
 //    거부된 START(CFG_ERR 재발)는 busy가 안 뜨므로 이전 TIMEOUT을 지우지 않는다.
 //
 // meas_timeout·cfg_err 입력은 contract §2에 아직 없는 경계 신호 (7/8 추인 안건).
+//
+// 수정안 #1·#4 (ID는 그대로 — 기능 유무는 FEATURE로 본다, 로그 55 [D55-18]):
+//  - 0x28 BASE_SECTOR RW [10:0] → cfg_base_sector (start 시점에 flash가 래치, R12)
+//  - 0x2C-0x34 LOG_C0-C2 RO — LOG_ADDR가 가리키는 읽기의 {e1_c, e_c} (R14)
+//  - 0x38 FEATURE RO — bit0 에지 계수기(항상 1) · bit1 BASE_SECTOR(실칩 빌드만 1)
 
-module core_axil_regs (
+module core_axil_regs #(
+    parameter integer HAS_BASE_SECTOR = 0   // FEATURE bit1 — 실칩 빌드가 1로 둔다 (루프백은 0)
+) (
     input  wire        clk,            // = clk_core
     input  wire        rstn,
 
@@ -48,8 +55,10 @@ module core_axil_regs (
     input  wire [31:0] err_reads,
     output reg  [11:0] log_rd_addr,
     input  wire [15:0] log_rd_data,
+    input  wire [95:0] log_rd_cand,    // 낱말 c = [32c+15:32c] e_c · [32c+31:32c+16] e1_c
     output reg  [15:0] cfg_n_reads,
     output reg  [15:0] cfg_burst_bits,
+    output reg  [10:0] cfg_base_sector,
 
     // 위상 제어 (core 내부)
     output reg         phase_cmd,      // 1펄스 (게이팅 완료)
@@ -68,7 +77,12 @@ module core_axil_regs (
                      A_ERRBITS  = 4'h6,   // 0x18
                      A_ERRREADS = 4'h7,   // 0x1C
                      A_LOGADDR  = 4'h8,   // 0x20
-                     A_LOGDATA  = 4'h9;   // 0x24
+                     A_LOGDATA  = 4'h9,   // 0x24
+                     A_BASESEC  = 4'hA,   // 0x28
+                     A_LOGC0    = 4'hB,   // 0x2C
+                     A_LOGC1    = 4'hC,   // 0x30
+                     A_LOGC2    = 4'hD,   // 0x34
+                     A_FEATURE  = 4'hE;   // 0x38
 
     // ── AXI 핸드셰이크: 단일 미결(outstanding 1), 응답은 항상 OKAY ──
     wire wr_fire = s_axi_awvalid && s_axi_wvalid && !s_axi_bvalid;
@@ -109,6 +123,7 @@ module core_axil_regs (
             phase_incdec   <= 1'b0;
             cfg_n_reads    <= 16'd100;    // 리셋값 (계약 §3)
             cfg_burst_bits <= 16'd2048;
+            cfg_base_sector <= 11'd0;     // 0 = 종전과 완전히 동일 동작
             log_rd_addr    <= 12'd0;
             done_sticky    <= 1'b0;
             timeout_sticky <= 1'b0;
@@ -154,6 +169,10 @@ module core_axil_regs (
                         if (s_axi_wstrb[0]) log_rd_addr[7:0]  <= s_axi_wdata[7:0];
                         if (s_axi_wstrb[1]) log_rd_addr[11:8] <= s_axi_wdata[11:8];
                     end
+                    A_BASESEC: begin
+                        if (s_axi_wstrb[0]) cfg_base_sector[7:0]  <= s_axi_wdata[7:0];
+                        if (s_axi_wstrb[1]) cfg_base_sector[10:8] <= s_axi_wdata[10:8];
+                    end
                     default: ;
                 endcase
             end
@@ -176,6 +195,11 @@ module core_axil_regs (
                     A_ERRREADS: s_axi_rdata <= err_reads;
                     A_LOGADDR:  s_axi_rdata <= {20'd0, log_rd_addr};
                     A_LOGDATA:  s_axi_rdata <= {16'd0, log_rd_data};
+                    A_BASESEC:  s_axi_rdata <= {21'd0, cfg_base_sector};
+                    A_LOGC0:    s_axi_rdata <= log_rd_cand[31:0];
+                    A_LOGC1:    s_axi_rdata <= log_rd_cand[63:32];
+                    A_LOGC2:    s_axi_rdata <= log_rd_cand[95:64];
+                    A_FEATURE:  s_axi_rdata <= {30'd0, (HAS_BASE_SECTOR != 0), 1'b1};
                     default:    s_axi_rdata <= 32'd0;
                 endcase
             end else if (s_axi_rvalid && s_axi_rready) begin
