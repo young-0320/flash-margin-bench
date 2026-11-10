@@ -31,7 +31,7 @@
 표에 없는 접두사는 바로 아래에 둔다. 같은 접두사가 4장이 되면 그때 폴더를 만들고 이 표에 한 줄 더한다 (2-3장 폴더는 두지 않는다). `pe_end.py` 의 승격 자리와 `wear_checkpoint_table.py` 의 그림 찾기가 이 표를 따른다.
 
 `data/` 바로 아래: 몬테카를로 사전 등록(`monte_carlo_*`) · 단일 스윕(`sweep_*` — 7월 chip01 반복 5회 · G0 루프백) · 신품 전수
-집계표(`newchip_survey_2026-09.*`) · 블라인드 추정(`blind_chip06_2026-10.md` · `chip06_estimate_*.txt` — 개봉 전 커밋한 것 그대로 · 85°C 온도 칩 `blind_temp_chip23_chip26_2026-11.md` · `chip2{3,6}_estimate_v4.3.txt` — 정답 봉인 없이 모델 고정) ·
+집계표(`newchip_survey_2026-09.*`) · 블라인드 추정(`blind_chip06_2026-10.md` · `chip06_estimate_*.txt` — 개봉 전 커밋한 것 그대로 · 85°C 온도 칩 `blind_temp_chip23_chip26_2026-11.md` · `chip2{3,6}_estimate_v4.3.txt` — 정답 봉인 없이 모델 고정 · 상온 chip08 `blind_chip08_2026-11.md` · `chip08_estimate_v4.3.txt` — 같은 방식) ·
 칩별 0 → 100k 추이 표(`wear_curves/wear_erase_trajectory_2026-10.md` · `wear_program_trajectory_2026-10.md` — 빠른 · 느린 무리, 1k 구간 중앙값과 배율) · 역산 모델 검증(`synthetic_recovery_*` · `chip17_loco_*` · `chip16_loco_*` · v3 전 탐색 `inverse_v3_probe_2026-10.md` — Δx · R · 대표값 · v4 부분 탐색 `inverse_v4_probe_2026-10.md` — 정렬 · R 유도 · n_eff · v4 등록 측정 `inverse_v4_eval_2026-10.md` — ρ · LOCO · 합성 · 칩별 · v4.1 측정 `inverse_v4_1_eval_2026-10.md` — chip06 을 더한 9칩으로 같은 측정 · v4.3 5장 판 `inverse_v4_3_eval_2026-10.md` — 100k 너머 곡선 5장, 68% 개선 · 점 추정 절단 편향 확인) · 기준선 비교(`baseline_compare_2026-10.md`) · 온도 마모 런의 칩 위 온도(`temp_chip17_*`).
 
 이 구분은 2026-09-26 부터다. 그 전에 올린 `data/` 의 md 중 `newchip_survey_2026-09.md` 는 같은 날 나눴고, 나머지(7월·8월분)는
@@ -55,4 +55,5 @@
 - [`wear_temperature_85C.md`](wear/wear_temperature_85C.md) — 설정 85°C chip24(빠른) · chip22(느린) 0 → 100k: chip24 는 상온 빠른 띠 한가운데(3.47배 · 계단 · 프로그램 불변 · 상온 모델 12/12), chip22 는 상온 느린 띠 위(1.90배 · 68% 3/12 · 95% 12/12) — 65 · 85°C 네 칩 합쳐 개체 산포 안, 상온 모델 95% 47/48 · 68% 22/48, 온도 축 없음 · *(11/1 추기 §5 — chip26 빠른 · 70k 상온 안, chip23 느린 · 26.5k 상온 chip12 · 21 형 자리)*
 - [`blind_chip06.md`](blind_chip06.md) — 블라인드 chip06 정답 12,000: 판정용 v2 가 68%·95% 구간에 품음(49번째 백분위), 기준 ①② 통과 · ③ 불통과, 교정 4칩 v1 은 68% 밖
 - [`blind_temp_chip23_chip26.md`](blind_temp_chip23_chip26.md) — 85°C 온도 칩 v4.3 블라인드(정답 봉인 없이 모델 고정, 11/1): chip26(빠른, 정답 70,000) 68% 안 · 0.86배 합격, chip23(느린, 정답 26,528) 3.5배 과대 · 95% 밖 — 원인은 온도가 아니라 [D52-12] 에 적어 둔 chip12 · 21 형
+- [`blind_chip08.md`](blind_chip08.md) — 상온 chip08 v4.3 블라인드(모델 고정 판정 — 정답 봉인 없음, 11/11): 느린 무리, 정답 30,000 을 71-72k 로 2.38배 과대 · 95% 43-100k 밖(① 불통과 · ②③ 통과) — 같은 30k 에서 느린 교정 셋보다 1.5-2.3배 빨리 늙었고 chip12 · 21 형보다는 느린 중간 속도, 느린 무리 R 1.59 너머 ([U52-7] 재료)
 - [`baseline_compare.md`](baseline_compare.md) — 기준선 비교(10-07 판 — 교정 8칩 LOCO 94점 · 신품 15칩): 선행식 이진 판별은 데이터시트 기준 검출 64/94(빠른 무리 2만 회 이하 2/20) · 정규화 뒤 74/94(빠른 무리 13/20) · 오경보 0, 단순 회귀 오차 중앙값 10,000 대 현행 모델 7,500 — 점 추정도 현행이 덜 빗나가고(느린 무리만 회귀가 낫다) 차이의 본체는 구간(68% 67/94 · 95% 93/94)

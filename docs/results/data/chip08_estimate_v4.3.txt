@@ -1,0 +1,20 @@
+# 생성   2026-11-10T16:16:04+00:00
+# 모델   v4.3
+# 코드   git_rev caa77c8
+# 인자   data/session_chip08_D16414615B564524_20261105T235448Z.log --out build/inverse/blind_chip08_2026-11-11.txt
+# 입력
+#   041dffbd35ef8ac35d34bd15cd00aa5a75a0a59be6634664f62c2aba7379d732  data/session_chip08_D16414615B564524_20261105T235448Z.log
+# 교정 표
+#   docs/results/data/wear_curves/wear_curves_chip01_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip02_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip03_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip04_2026-09.csv
+#   docs/results/data/wear_curves/wear_curves_chip06_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip07_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip09_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip15_2026-10.csv
+#   docs/results/data/wear_curves/wear_curves_chip18_2026-10.csv
+
+입력 A  기준(32-127) 소거 중앙값 48.7ms → slow 무리 (교정 ['chip03', 'chip07', 'chip15']) · 눈금 ratio · R 1.59 (σ_r 0.204)
+입력 B  마모 섹터 소거 7개 (prep 1회 · ρ_s 0 · ρ_p 0.78 · ρ_chip 0.21 · n_eff 3.10): 77.9, 80.1, 80.0, 72.2, 86.2, 72.5, 73.9 ms
+답      평균 71,001-72,000 · 중앙값 71,001-72,000 · MAP 76,001-77,000 · 68% 58,001-96,000 · 95% 43,001-100,000
