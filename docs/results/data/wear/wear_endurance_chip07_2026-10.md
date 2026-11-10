@@ -10,8 +10,8 @@
 - **세션**: `1790494073` (0 → 52,670, 호스트 종료) · `1790562456` (60,000 → 76,169, 호스트 종료) · `1790643103` (80,000 → 100,000,
   정상 종료). 재개 판정 세션 `1790562292`·`1790643034` 는 둘 다 `host_died`, 채택값 60,000 · 80,000. 판정이 남은 구간(100 · 1k · 3k ·
   10k-50k · 70k · 90k · 100k)은 verdict 8줄 전부 PASS. 엔진 git_rev 45a51ec.
-- **짝 그림**: 계측 사건 직전·직후 한 쌍만 승격 — [`../../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png`](../../plots/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png)
-  (50k) · [`../../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png`](../../plots/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png) (70k).
+- **짝 그림**: 계측 사건 직전·직후 한 쌍만 승격 — [`../../plots/bathtub/v1/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip07_D1629835DB334534_20260927T155054Z.png)
+  (50k) · [`../../plots/bathtub/v1/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip07_D1629835DB334534_20260928T042131Z.png) (70k).
   나머지는 `build/plots/bathtub_sweep_chip07_D1629835DB334534_<batch>.png`
 - **원본**: `data/sweep_chip07_D1629835DB334534_<batch>.csv`(+`_reads`, `.analysis.json`, 세션 로그) · 마모 루프
   `data/wear/{1790494073,1790562456,1790643103}/A.txt` · 재개 판정 `data/wear/{1790562292,1790643034}/resume.txt` · newchip prep 로그

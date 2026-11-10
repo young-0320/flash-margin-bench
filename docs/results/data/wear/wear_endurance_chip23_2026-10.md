@@ -12,8 +12,8 @@
 - **마지막 사이클**: 26,528 은 세션 `1792312282` 의 마지막 A 행(섹터 0-6 모두)이다. 20,000 체크포인트까지는 A5 검사 통과, 그 뒤는 세션이 죽어 **tally 를 읽지 않았다**.
   장부(`docs/chip_pe.md`)는 20,000 체크포인트까지만 있고 20k → 26,528(+6,528) 정정 행은 tally 를 읽은 뒤 덧붙인다
 - **온도**: 마모 구간 시간 가중 85.01°C · sd 0.23 · 84.2-85.8 · 85±2 안 100%. 열 `temp_wear_c` 는 그 체크포인트 직전 구간의 평균
-- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub_sweep_chip23_D16660141F1B132F_20261018T075505Z.png`](../../plots/bathtub_sweep_chip23_D16660141F1B132F_20261018T075505Z.png) (체크포인트 100) ·
-  [`../../plots/bathtub_sweep_chip23_D16660141F1B132F_20261018T121840Z.png`](../../plots/bathtub_sweep_chip23_D16660141F1B132F_20261018T121840Z.png) (20,000) · 곡선 [`../../plots/wear_temp_chip23_2026-10.png`](../../plots/wear_temp_chip23_2026-10.png)
+- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub/v1/bathtub_sweep_chip23_D16660141F1B132F_20261018T075505Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip23_D16660141F1B132F_20261018T075505Z.png) (체크포인트 100) ·
+  [`../../plots/bathtub/v1/bathtub_sweep_chip23_D16660141F1B132F_20261018T121840Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip23_D16660141F1B132F_20261018T121840Z.png) (20,000) · 곡선 [`../../plots/wear/wear_temp_chip23_2026-10.png`](../../plots/wear/wear_temp_chip23_2026-10.png)
 - **원본**: 박지민 묶음 → `data/` · `data/wear/{1792309823,1792312282}/` · 온도 로그 `data/temp_chip23_65C_20261018T072621Z.csv` · 11/01 newchip `data/session_chip23_D16660141F1B132F_20261101T142549Z.log` · 스윕 `20261101T142645Z`.
   끊김 뒤 13:50 - 14:01Z 에 시도한 스윕 4회(`20261018T135121Z` 외)는 모두 `_invalid` 라 유효본이 없다
 

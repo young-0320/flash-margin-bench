@@ -57,7 +57,7 @@ chip24 의 근접 교란이 지금까지 칩 중 가장 크다(상온 1.06-1.15)
 
 두 칩을 상온 newchip 1회로 v4.3 블라인드 판정했다(정답 봉인 없이 모델 고정): chip26 은 68% 안 · 0.86배로 합격, chip23 은 3.5배 과대 · 95% 밖으로 불합격 —
 실패는 온도가 아니라 v4.3 이 한계로 적어 둔 칩 종류([D52-12] · [U52-7])에서 왔다. 해석은 [`../blind_temp_chip23_chip26.md`](../blind_temp_chip23_chip26.md).
-그림 [`../plots/wear_temp_chip26_2026-10.png`](../plots/wear_temp_chip26_2026-10.png) · [`../plots/wear_temp_chip23_2026-10.png`](../plots/wear_temp_chip23_2026-10.png) ·
+그림 [`../plots/wear/wear_temp_chip26_2026-10.png`](../plots/wear/wear_temp_chip26_2026-10.png) · [`../plots/wear/wear_temp_chip23_2026-10.png`](../plots/wear/wear_temp_chip23_2026-10.png) ·
 [`../plots/blind_temp_chip23_chip26_2026-11.png`](../plots/blind_temp_chip23_chip26_2026-11.png). 11/1 에 `temp_wear_summary.py` 의 온도 축 · x 축을 설정값 · 칩 끝에 맞게 고쳐
 chip22 · 24 의 두 그림도 다시 그렸다(전에는 85°C 선이 55-69°C 축 밖이라 위 칸이 비어 있었다).
 

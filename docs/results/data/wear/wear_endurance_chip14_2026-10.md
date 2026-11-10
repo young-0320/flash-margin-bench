@@ -17,8 +17,8 @@
   `1791204058`)에서 700,000(cycle 1 - 100,000) · 깨진 행 0
 - **x=0 행**: 2026-10-01 보드 B newchip `20261001T062828Z`(집계표 신품값 36,239µs 와 같은 prep 이 없어 마지막 newchip 35,796µs 를 썼다 — 1단계 메시지).
   10/1 prep 은 4회(앞 2회는 라벨 전 Ctrl-C)
-- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub_sweep_chip14_DF678C14CF384F30_20261005T124733Z.png`](../../plots/bathtub_sweep_chip14_DF678C14CF384F30_20261005T124733Z.png)
-  (체크포인트 1,000) · [`../../plots/bathtub_sweep_chip14_DF678C14CF384F30_20261006T111104Z.png`](../../plots/bathtub_sweep_chip14_DF678C14CF384F30_20261006T111104Z.png) (100,000)
+- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub/v1/bathtub_sweep_chip14_DF678C14CF384F30_20261005T124733Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip14_DF678C14CF384F30_20261005T124733Z.png)
+  (체크포인트 1,000) · [`../../plots/bathtub/v1/bathtub_sweep_chip14_DF678C14CF384F30_20261006T111104Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip14_DF678C14CF384F30_20261006T111104Z.png) (100,000)
 - **원본**: 마모 루프 `data/wear/{1791089978,1791201309,1791201358,1791201933,1791204058}/` · 스윕 `data/sweep_chip14_DF678C14CF384F30_<stamp>.csv`(+`_reads`,
   `.analysis.json`). 박지민이 10/8 · 10/9 에 보냈다. 장부 행은 `docs/chip_pe.md`(10/8 추가분 40행)
 - **생산**: `host/analysis/pe_end.py --chip chip14 --no-calib --from <묶음>` → `--promote --overwrite` (2026-10-12 저녁, 세션 로그 수령 뒤). 이 md 는 사람이 썼다

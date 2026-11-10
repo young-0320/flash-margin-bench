@@ -4,8 +4,8 @@
 - **수치**: [`data/wear/wear_endurance_chip16_2026-10.md`](../data/wear/wear_endurance_chip16_2026-10.md) (체크포인트 · 1k 구간 배율 · 100k 뒤 사다리 · 현장 역산) ·
   [`data/temp_chip16_2026-10.md`](../data/temp_chip16_2026-10.md) (온도 전체 · 상태 변화 · 구간별 · 시간별) ·
   [`data/chip16_loco_2026-10.md`](../data/chip16_loco_2026-10.md) (상온 v4 모델로 맞히기 · 교정에 넣었을 때) — 표를 다시 싣지 않고 인용한다
-- **그림**: [`plots/wear_temp_chip16_2026-10.png`](../plots/wear_temp_chip16_2026-10.png) (사이클 축: 온도 · 폭 변화 · 소거 배율) ·
-  [`plots/temp_chip16_timeline_2026-10.png`](../plots/temp_chip16_timeline_2026-10.png) (시계 축 온도)
+- **그림**: [`plots/wear/wear_temp_chip16_2026-10.png`](../plots/wear/wear_temp_chip16_2026-10.png) (사이클 축: 온도 · 폭 변화 · 소거 배율) ·
+  [`plots/temp/temp_chip16_timeline_2026-10.png`](../plots/temp/temp_chip16_timeline_2026-10.png) (시계 축 온도)
 - **사전 등록**: 없다 — chip16 은 **상온** 0 → 100k · 곡선 무관 빠른 무리 교정으로 등록된 칩이었다(`docs/spec/s1.wear_bench_spec.md` §15 2026-10-03 · 로그 48
   [D48-74] · [D48-75]). 지민이 히터를 설정 65°C 로 무장한 채 돌렸고(로그 53 §1), 영웅님이 2026-10-12 에 **온도 축(두 번째 65°C 칩) · 교정 밖**으로 정했다
   (로그 53 [D53-4]). 판정 기준은 chip17 과 같이 상온 종단 칩의 H1′ · H2′ · H6 를 그대로 적용했다

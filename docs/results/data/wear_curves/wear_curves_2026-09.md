@@ -14,10 +14,10 @@
 - **생산**: `host/analysis/wear_curves.py` → `build/data/wear_curves_<chip>.csv`. 사람이 이 폴더(`docs/results/data/wear_curves/`)로 옮기며 이름에 `_2026-09` 를 붙인다.
   **2026-10-03 부터 교정 = 접미사 없는 이름** `wear_curves_<chip>_<YYYY-MM>.csv`(달은 마지막 체크포인트) — `wear_inverse.py`·`plot_wear_curves.py` 의 glob 이
   `wear_curves_chip[0-9][0-9]_20[0-9][0-9]-[0-9][0-9].csv` 다. 교정 밖은 접미사(`_65C` 온도 · `_ali` · `_nocal`). `host/analysis/pe_end.py` 가 이름을 붙인다(워크플로 13)
-- **짝 그림**: `../../plots/wear_curves_<chip>_<YYYY-MM>.png` — 교정 칩마다 한 장(2026-10-02 부터 · 지금 chip01·02·03·04·06·07·09·15·18), 섹터 0-6 의 소거
+- **짝 그림**: `../../plots/wear/wear_curves_<chip>_<YYYY-MM>.png` — 교정 칩마다 한 장(2026-10-02 부터 · 지금 chip01·02·03·04·06·07·09·15·18), 섹터 0-6 의 소거
   p50 선과 p10-p90 띠. y 는 모든 장이 같다(전 칩 p90 최대) — 나란히 놓으면 무리 사이 절대값 차이가 보인다. x 는 칩별(chip01 만 300k).
-  표에 없는 구간은 선을 끊었다. 9월 4칩을 한 장에 담은 2×2 `../../plots/wear_curves_2026-09.png` 는 그때의 기록으로 둔다(10/2 보고서 재료가 가리킨다)
-- **짝 그림 2**: 교정 칩 배율 겹침 `../../plots/wear_ratio_curves_<YYYY-MM-DD>.png` — 교정 칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸,
+  표에 없는 구간은 선을 끊었다. 9월 4칩을 한 장에 담은 2×2 `../../plots/wear/wear_curves_2026-09.png` 는 그때의 기록으로 둔다(10/2 보고서 재료가 가리킨다)
+- **짝 그림 2**: 교정 칩 배율 겹침 `../../plots/wear/wear_ratio_curves_<YYYY-MM-DD>.png` — 교정 칩의 섹터 0-6 p50 중앙값 ÷ 신품값(집계표), 무리별 두 칸,
   0-100k. 빠른 칸의 점선은 chip06 블라인드 관측 배율 1.63. 칸은 교정 glob 의 칩을 무리별로 신품 소거 내림차순, `pe_end.py --promote` 가 교정
   칩이 들 때마다 그날 날짜로 한 장 그린다 — 가장 최근 날짜가 현행(지금 `2026-10-12` · 9칩, `2026-10-04` 6칩 · `2026-10-05` 7칩 · `2026-10-07` 8칩판은 그날의 기록). 10/2 의 교정 5칩판(`wear_ratio_curves_2026-10.png`)은
   2026-10-04 지웠다(영웅님)
@@ -26,7 +26,7 @@
 
 `wear_curves_chip10_nocal_2026-10.csv` 는 chip10 을 상온 0 → 100k 마모한 같은 묶음의 표다(보드 A, 세션 `1791175305`, A 행 700,000 · 뺀 사이클
 없음). chip10 은 다른 칩(W25Q64FV)과 세대가 다른 **W25Q64JV** 라(마킹 `25Q64JVSIQ` `1850`) 교정에 넣지 않았다 — 로그 48 §50 · [U48-21]. 수치는
-`../wear/wear_endurance_chip10_2026-10.md` §2, 섹터별 소거 · 프로그램 그림은 `../../plots/wear_curves_chip10_nocal_2026-10.png`(`plot_wear_curves.py --single`).
+`../wear/wear_endurance_chip10_2026-10.md` §2, 섹터별 소거 · 프로그램 그림은 `../../plots/wear/wear_curves_chip10_nocal_2026-10.png`(`plot_wear_curves.py --single`).
 
 `wear_curves_chip14_nocal_2026-10.csv` 는 두 번째 JV — chip14(마킹 `25Q64JVSIQ` `1749`)를 박지민이 보드 B 에서 상온 0 → 100k 마모한 표다(세션
 `1791089978` · `1791201358` · `1791204058`, A 행 700,000 · 뺀 사이클 없음). 2026-10-12 `--no-calib` 별개 승격(로그 48 [U48-22] · 로그 53 [D53-5]) —

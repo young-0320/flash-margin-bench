@@ -10,7 +10,7 @@
 - **세션**: `1790408609` (0 → 100,000, 실행기 정상 종료). 체크포인트 13점 전부 verdict 8줄 PASS. 엔진 git_rev 45a51ec.
   **연장**: `1791990254` (100,000 → 200,000, 2026-10-14 15:04Z → 10-15 15:13Z 보드 A · 921600, 24h09m, `--confirm-first 0` 무인, 10점 전부 PASS · 재접속 없음) —
   느린 무리 첫 200k, 역산 답 범위 150k 너머용(로그 52 [D52-10]). 100k 뒤 19일 휴지(newchip PRBS 기록 상태 보관)
-- **짝 그림**: `../../plots/bathtub_sweep_chip03_D1628C10C3433F33_<batch>.png` (batch 는 CSV 의 `sweep_batch` 열)
+- **짝 그림**: `../../plots/bathtub/v1/bathtub_sweep_chip03_D1628C10C3433F33_<batch>.png` (batch 는 CSV 의 `sweep_batch` 열)
 - **원본**: `data/sweep_chip03_D1628C10C3433F33_<batch>.csv`(+`_reads`, `.analysis.json`, 세션 로그) ·
   마모 루프 `data/wear/1790408609/A.txt`(700,000행 = 100,000 × 7) · newchip prep 로그
   `data/session_chip03_D1628C10C3433F33_20260927T034035Z.log` · 신품 prep 로그 `…_20260915T155433Z.log`

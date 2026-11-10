@@ -11,9 +11,9 @@
   엔진 git_rev 45a51ec (H 행 13개 전부)
 - **세션**: `1791175305` 하나 (0 → 100,000 · 끊김 · 재개 없음)
 - **x=0 행**: 2026-09-20 보드 A newchip (집계표 §1) — 신품 측정 때의 장착이라 체크포인트 100 과 같은 장착이 아니다
-- **짝 그림**: 섹터별 소거 · 프로그램 [`../../plots/wear_curves_chip10_nocal_2026-10.png`](../../plots/wear_curves_chip10_nocal_2026-10.png) ·
-  bathtub 한 쌍 [`../../plots/bathtub_sweep_chip10_DF685453E7791531_20261005T044339Z.png`](../../plots/bathtub_sweep_chip10_DF685453E7791531_20261005T044339Z.png)
-  (체크포인트 100) · [`../../plots/bathtub_sweep_chip10_DF685453E7791531_20261005T214459Z.png`](../../plots/bathtub_sweep_chip10_DF685453E7791531_20261005T214459Z.png) (100,000)
+- **짝 그림**: 섹터별 소거 · 프로그램 [`../../plots/wear/wear_curves_chip10_nocal_2026-10.png`](../../plots/wear/wear_curves_chip10_nocal_2026-10.png) ·
+  bathtub 한 쌍 [`../../plots/bathtub/v1/bathtub_sweep_chip10_DF685453E7791531_20261005T044339Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip10_DF685453E7791531_20261005T044339Z.png)
+  (체크포인트 100) · [`../../plots/bathtub/v1/bathtub_sweep_chip10_DF685453E7791531_20261005T214459Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip10_DF685453E7791531_20261005T214459Z.png) (100,000)
 - **원본**: 마모 루프 `data/wear/1791175305/` · 스윕 `data/sweep_chip10_DF685453E7791531_<stamp>.csv`(+`_reads`, `.analysis.json`) · 세션 로그
   `data/session_chip10_DF685453E7791531_<batch>.log` (9/20 신품 · 체크포인트 13점 · 10/6 newchip). 장부 행은 `docs/chip_pe.md`
 - **생산**: `host/analysis/pe_end.py --chip chip10 --no-calib` → `--promote` · 그림 `plot_wear_curves.py --single`. 이 md 와 CSV note 는 사람이 썼다

@@ -162,8 +162,8 @@ def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
         for a, b, dest in ((f"wear_temp_{chip}.csv", f"wear_endurance_{chip}_{ym}.csv", "data/wear"),
                            (f"temp_{chip}_intervals.csv", f"temp_{chip}_intervals_{ym}.csv", "data"),
                            (f"temp_{chip}_hourly.csv", f"temp_{chip}_hourly_{ym}.csv", "data"),
-                           (f"temp_{chip}_timeline.png", f"temp_{chip}_timeline_{ym}.png", "plots"),
-                           (f"wear_temp_{chip}.png", f"wear_temp_{chip}_{ym}.png", "plots")):
+                           (f"temp_{chip}_timeline.png", f"temp_{chip}_timeline_{ym}.png", "plots/temp"),
+                           (f"wear_temp_{chip}.png", f"wear_temp_{chip}_{ym}.png", "plots/wear")):
             (out / "tmp" / a).rename(out / b)
             files[b] = dest
     else:
@@ -185,7 +185,7 @@ def stage(chip, temp=False, no_calib=False, drops=(), src=None, root=REPO):
         if not png.exists():                                # 보드 B 묶음 등 — 같은 CSV 에서 다시 그린다
             run(ANALYSIS / "bathtub_analysis.py", data / r["sweep_csv"])
         shutil.copy2(png, out / png.name)
-        files[png.name] = "plots"
+        files[png.name] = "plots/bathtub/v1"                # 욕조 v1 = 전 구간 균일 스윕 (plots/bathtub/README.md)
     shutil.rmtree(out / "tmp")
 
     calib = not temp and not no_calib
@@ -238,12 +238,12 @@ def promote(chip, overwrite=False, root=REPO):
     if man["calib"]:                                        # y 축이 전 칩 공통이라 새 칩이 들면 다른 칩 그림도 바뀐다 — 전부 다시
         run(ANALYSIS / "plot_wear_curves.py", "--per-chip", out / "plots")
         for p in sorted((out / "plots").glob("wear_curves_*.png")):
-            put(p, res / "plots" / p.name)
+            put(p, res / "plots" / "wear" / p.name)
         ratio = RATIO_PNG()                                 # 가장 최근 날짜가 현행
         run(ANALYSIS / "plot_wear_curves.py", "--ratio", "--mark", RATIO_MARK[0], "--mark-label", RATIO_MARK[1], "-o", out / ratio)
-        put(out / ratio, res / "plots" / ratio)
+        put(out / ratio, res / "plots" / "wear" / ratio)
     run(ANALYSIS / "wear_checkpoint_table.py", "--plot", out / TABLE_PNG)
-    put(out / TABLE_PNG, res / "plots" / TABLE_PNG)         # 표 md 는 plots/ 를 보고 그림 링크를 단다 — 그림 먼저
+    put(out / TABLE_PNG, res / "plots" / "wear" / TABLE_PNG)       # 표 md 는 plots/ 를 보고 그림 링크를 단다 — 그림 먼저
     run(ANALYSIS / "wear_checkpoint_table.py", "-o", out / TABLE_MD)
     put(out / TABLE_MD, res / "data" / "wear" / TABLE_MD)
     print("\n남은 것 (사람 — 워크플로 13 번호):")

@@ -7,7 +7,7 @@
 |---|---|---|
 | 바로 아래 `*.md` · `wear/` | **해석** — 결론, 가설 판정, 한계, 보고서 문장. 칩마다 한 편씩 쌓이는 마모 결과만 `wear/`, 나머지는 바로 아래 | 표를 다시 싣지 않고 `data/` 를 인용한다 |
 | `data/` | **수치** — 파싱한 요약 CSV + 동명 md(유래·조건·표·재현 명령) | 해석을 쓰지 않는다. 칩마다 쌓이는 두 계열만 폴더(아래), 나머지는 바로 아래. `_reads` 원본은 올리지 않는다(리포 루트 `data/` 에 보관) |
-| `plots/` | 그림 | 짝 데이터의 md 에서 가리킨다 |
+| `plots/` | 그림 | 짝 데이터의 md 에서 가리킨다. 접두사로 폴더가 정해진다 — 아래 「plots/ 자리」 |
 | `captures/` | 화면·사진 증거 | 동명 md — 어느 게이트의 증거인지는 md 에 |
 | `reports/` | 보고서 재료 — 본문에 옮길 숫자·표를 출처와 함께 · 계획서 원본 · 최종 발표 대본(`최종발표대본.md`, 슬라이드 `최종발표_초안6.pptx`) · 10/5 대본 초안(`최종발표대본초안.md`) | 해석의 정본은 각 출처 문서 |
 
@@ -16,8 +16,19 @@
 | 폴더 | 무엇 |
 |---|---|
 | `wear/` | 마모 결과 해석 — 칩마다 한 편 (파일럿 chip01 · 종단 chip03·04·07 · 온도 chip17·16 · 구매처 미검증 chip12 · 새 배치 chip18·15 · JV chip10·14) · 200k 연장은 한 편(`wear_endurance_200k.md`, chip06 · 09 · 03 · 15 · 21 · 07 · 02) |
-| `data/wear/` | 마모 체크포인트 요약 — 칩마다 CSV + md (chip01 · 03 · 04 · 07 · 09 · 10 · 12 · 15 · 17 · 18). 칩 × 체크포인트 한눈 표 `wear_checkpoint_table_2026-10.md` 와 폭 변화·프로그램 칩 간 그림 `plots/wear_checkpoint_width_program_2026-10.png` (둘 다 `wear_checkpoint_table.py` 산출) |
+| `data/wear/` | 마모 체크포인트 요약 — 칩마다 CSV + md (chip01 · 03 · 04 · 07 · 09 · 10 · 12 · 15 · 17 · 18). 칩 × 체크포인트 한눈 표 `wear_checkpoint_table_2026-10.md` 와 폭 변화·프로그램 칩 간 그림 `plots/wear/wear_checkpoint_width_program_2026-10.png` (둘 다 `wear_checkpoint_table.py` 산출) |
 | `data/wear_curves/` | 수명 역산 교정 표 — A 행을 1k 구간 × 섹터로 묶은 분위수 (`wear_curves.py` 산출). 교정 = 접미사 없는 `wear_curves_<chip>_<YYYY-MM>.csv`, 교정에 안 넣는 칩은 접미사로 glob 에서 뺀다(chip17 `_65C` · chip16 `_64C` · chip22 `_85C` · chip24 `_83C` · chip23 `_85C` · chip26 `_84C` · chip12 `_ali` · `pe_end.py --no-calib` 은 `_nocal`) |
+
+`plots/` 자리 (2026-11-10, 영웅님). 그림은 승격할 때 접두사로 자리가 정해진다 — 다시 펼치거나 모으는 일이 없게 하려는 규칙이다:
+
+| 접두사 | 자리 |
+|---|---|
+| `bathtub_` | `plots/bathtub/v<N>/` — 버전은 측정 방식(펌웨어 읽기 배치)으로 정한다. 같은 데이터를 다르게 그린 그림은 버전을 올리지 않는다. 정의는 `plots/bathtub/README.md` |
+| `wear_` | `plots/wear/` |
+| `temp_` | `plots/temp/` |
+| 그 밖 (`synthetic_recovery_` · `inverse_` · `blind_` · `baseline_compare_` · `monte_carlo_` · `overview_`) | `plots/` 바로 아래 |
+
+표에 없는 접두사는 바로 아래에 둔다. 같은 접두사가 4장이 되면 그때 폴더를 만들고 이 표에 한 줄 더한다 (2-3장 폴더는 두지 않는다). `pe_end.py` 의 승격 자리와 `wear_checkpoint_table.py` 의 그림 찾기가 이 표를 따른다.
 
 `data/` 바로 아래: 몬테카를로 사전 등록(`monte_carlo_*`) · 단일 스윕(`sweep_*` — 7월 chip01 반복 5회 · G0 루프백) · 신품 전수
 집계표(`newchip_survey_2026-09.*`) · 블라인드 추정(`blind_chip06_2026-10.md` · `chip06_estimate_*.txt` — 개봉 전 커밋한 것 그대로 · 85°C 온도 칩 `blind_temp_chip23_chip26_2026-11.md` · `chip2{3,6}_estimate_v4.3.txt` — 정답 봉인 없이 모델 고정) ·

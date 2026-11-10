@@ -70,13 +70,13 @@ PASS/FAIL이라는 1비트짜리 답 대신, 단위가 있는 연속적인 물�
 
 반복 표준편차가 1ps 미만 — "측정이 노이즈가 아니라 신호"라는 정량 증거이자, 노화 실험 개시 게이트(G5 ②: 노이즈 플로어 ≪ 노화 이동량)의 선행 지표다.
 
-![실칩 욕조 곡선 — chip01 25MHz 반복 5회](docs/results/plots/bathtub_chip01_repeat5.png)
+![실칩 욕조 곡선 — chip01 25MHz 반복 5회](docs/results/plots/bathtub/v1/bathtub_chip01_repeat5.png)
 
 *실칩(W25Q64) 25MHz. 눈이 UI의 99.3%까지 열려 있어 양 끝 벽만 화면에 남는다 — 곡선이 비어 보이는 것이 정상이며, 그 자체가 "이 칩은 여유가 많다"는 결과다.*
 
 ### 3) 루프백 기준선 (G0) — 칩 없이 FPGA 단독
 
-![루프백 욕조 곡선](docs/results/plots/bathtub_sweep_loopback_20260708T131310Z.png)
+![루프백 욕조 곡선](docs/results/plots/bathtub/v1/bathtub_sweep_loopback_20260708T131310Z.png)
 
 *JE1↔JE2 점퍼 루프백, 25MHz · 2,520스텝 × 100읽기 × 2,048비트. 폭 34,693ps, σⱼ = 29.1/29.2ps.*
 *칩을 끼우기 전에 측정 메커니즘 자체가 욕조 곡선을 만들어낸다는 물리 검증. 실칩 채널(σⱼ ≈ 6~11ps)이 자기 배선보다 3배 가파르다는 비교 기준선도 여기서 나온다.*
@@ -115,7 +115,7 @@ PASS/FAIL이라는 1비트짜리 답 대신, 단위가 있는 연속적인 물�
 - **닳지 않은 섹터는 그대로다.** 10만 회 뒤에도 같은 칩의 섹터 32-127 은 신품 대비 0.98-1.00 이었다 — 마모는 칩이 아니라 섹터에 쌓인다
 - 칩 위 65°C 에서 닳게 한 1칩(chip17)도 폭은 불변이었고, 소거 증가(2.44배)는 상온 칩들의 개체차와 구별되지 않았다
 
-![칩별 노화 배율 곡선 — 교정 7칩](docs/results/plots/wear_ratio_curves_2026-10-05.png)
+![칩별 노화 배율 곡선 — 교정 7칩](docs/results/plots/wear/wear_ratio_curves_2026-10-05.png)
 
 *닳은 섹터의 소거 시간 ÷ 그 칩의 신품 소거 시간. 두 무리가 다른 띠를 그리고, 같은 무리 안에서도 칩마다 늙는 속도가 다르다 —
 뒤의 역산이 점이 아니라 구간으로 답하는 이유다.* (`docs/results/wear/` · 한눈 표 `docs/results/data/wear/wear_checkpoint_table_2026-10.md`)

@@ -13,7 +13,7 @@
 - **세션**: `1791434740` (0 → 97,957 · 13구간째 90k → 97,957 에서 `wip_timeout@97957` 로 구간 FAIL) · `1791523104` (resume 판정 — tally 97,900 일치 ·
   채택 97,957 · 섹터 0-4 reerase 586.7ms 뒤 잔류 0) · `1791523150` (97,957 → 100,000 · 1점 PASS). verdict FAIL 은 13구간째 A1-A5 · C 뿐이고 A 행은 깨진 행 0
 - **x=0 행**: 2026-10-01 **보드 B · 상온** newchip (집계표 §1, 소거 26.79ms). 10-07 보드 A newchip(27.7ms · 폭 39,715.6ps)은 「제외」(마모 전 25MHz 스윕)
-- **짝 그림**: [`../../plots/wear_temp_chip16_2026-10.png`](../../plots/wear_temp_chip16_2026-10.png) — 사이클 축 세 칸(마모 중 온도 · 폭 변화 · 소거 배율과 상온 빠른 무리)
+- **짝 그림**: [`../../plots/wear/wear_temp_chip16_2026-10.png`](../../plots/wear/wear_temp_chip16_2026-10.png) — 사이클 축 세 칸(마모 중 온도 · 폭 변화 · 소거 배율과 상온 빠른 무리)
 - **온도 수치**: [`../temp_chip16_2026-10.md`](../temp_chip16_2026-10.md) · **상온 모델로 맞히기(LOCO)**: [`../chip16_loco_2026-10.md`](../chip16_loco_2026-10.md)
 - **원본**: 마모 루프 `data/wear/{1791434740,1791523104,1791523150}/` · 스윕 `data/sweep_chip16_D165906063442A33_<stamp>.csv`(+`_reads`, `.analysis.json`) ·
   스윕 세션 로그 `data/session_chip16_D165906063442A33_<batch>.log` · 온도 `data/temp_chip16_65C_20261008T{033716Z,034049Z,035828Z}.csv`(+`_events.txt`).

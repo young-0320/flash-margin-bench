@@ -11,8 +11,8 @@
 - **A 행**: `1792996750` 231,700행 · `1793025714` 258,300행, 합쳐 490,000행(cycle 1 - 70,000 x 7섹터). 마지막 구간 A5 — 카운터 70,000 · A 행 ÷ 7 70,000 · tally x 100 70,000 · B 의 cycle 70,000
 - **장부**: `docs/chip_pe.md` 섹터 0-6 합계 70,012 (마모 70,000 + 체크포인트 10 + 신품 prep 1 + 개봉 prep 1)
 - **온도**: 마모 구간 시간 가중 84.08°C · sd 1.29 · 78.6-85.4 · 85±2 안 68%(초반 0-30k 가 79-83°C, 33,100 이후 85.0°C). 열 `temp_wear_c` 는 그 체크포인트 직전 구간의 평균
-- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub_sweep_chip26_D16518B58F503638_20261026T064434Z.png`](../../plots/bathtub_sweep_chip26_D16518B58F503638_20261026T064434Z.png) (체크포인트 100) ·
-  [`../../plots/bathtub_sweep_chip26_D16518B58F503638_20261026T191307Z.png`](../../plots/bathtub_sweep_chip26_D16518B58F503638_20261026T191307Z.png) (60,000) · 곡선 [`../../plots/wear_temp_chip26_2026-10.png`](../../plots/wear_temp_chip26_2026-10.png)
+- **짝 그림**: bathtub 한 쌍 [`../../plots/bathtub/v1/bathtub_sweep_chip26_D16518B58F503638_20261026T064434Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip26_D16518B58F503638_20261026T064434Z.png) (체크포인트 100) ·
+  [`../../plots/bathtub/v1/bathtub_sweep_chip26_D16518B58F503638_20261026T191307Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip26_D16518B58F503638_20261026T191307Z.png) (60,000) · 곡선 [`../../plots/wear/wear_temp_chip26_2026-10.png`](../../plots/wear/wear_temp_chip26_2026-10.png)
 - **원본**: 박지민 묶음(`TalkFile_chip26_artifacts_20261027_115823`) → `data/` · `data/wear/{1792996750,1793025714}/` · 온도 로그 `data/temp_chip26_85C_20261026T052249Z.csv`(+`_events.txt`) ·
   11/01 newchip `data/session_chip26_D16518B58F503638_20261101T142328Z.log` · 스윕 `20261101T142421Z`
 

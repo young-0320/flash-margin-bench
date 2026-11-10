@@ -14,15 +14,15 @@
 
 | 무엇 | 그림 |
 |---|---|
-| 폭 변화 · 프로그램 — 칩 간 (이 표의 그림) | [wear_checkpoint_width_program_2026-10.png](../../plots/wear_checkpoint_width_program_2026-10.png) |
-| 소거 — 칩 겹침 (신품 대비 배율) | [wear_ratio_curves_2026-10-04.png](../../plots/wear_ratio_curves_2026-10-04.png) · [wear_ratio_curves_2026-10-05.png](../../plots/wear_ratio_curves_2026-10-05.png) · [wear_ratio_curves_2026-10-07.png](../../plots/wear_ratio_curves_2026-10-07.png) · [wear_ratio_curves_2026-10-12.png](../../plots/wear_ratio_curves_2026-10-12.png) |
-| 소거 — 칩별 섹터 곡선 (1k 구간) | [chip01](../../plots/wear_curves_chip01_2026-09.png) · [chip02](../../plots/wear_curves_chip02_2026-10.png) · [chip03](../../plots/wear_curves_chip03_2026-10.png) · [chip04](../../plots/wear_curves_chip04_2026-09.png) · [chip06](../../plots/wear_curves_chip06_2026-10.png) · [chip07](../../plots/wear_curves_chip07_2026-10.png) · [chip09](../../plots/wear_curves_chip09_2026-10.png) · [chip15](../../plots/wear_curves_chip15_2026-10.png) · [chip18](../../plots/wear_curves_chip18_2026-10.png) · [chip21](../../plots/wear_curves_chip21_2026-10.png) |
-| chip16 의 그림 | [temp_chip16_timeline_2026-10.png](../../plots/temp_chip16_timeline_2026-10.png) · [wear_temp_chip16_2026-10.png](../../plots/wear_temp_chip16_2026-10.png) |
-| chip17 의 그림 | [temp_chip17_timeline_2026-10.png](../../plots/temp_chip17_timeline_2026-10.png) · [wear_temp_chip17_2026-10.png](../../plots/wear_temp_chip17_2026-10.png) |
-| chip22 의 그림 | [temp_chip22_timeline_2026-10.png](../../plots/temp_chip22_timeline_2026-10.png) · [wear_temp_chip22_2026-10.png](../../plots/wear_temp_chip22_2026-10.png) |
-| chip23 의 그림 | [temp_chip23_timeline_2026-10.png](../../plots/temp_chip23_timeline_2026-10.png) · [wear_temp_chip23_2026-10.png](../../plots/wear_temp_chip23_2026-10.png) |
-| chip24 의 그림 | [temp_chip24_timeline_2026-10.png](../../plots/temp_chip24_timeline_2026-10.png) · [wear_temp_chip24_2026-10.png](../../plots/wear_temp_chip24_2026-10.png) |
-| chip26 의 그림 | [temp_chip26_timeline_2026-10.png](../../plots/temp_chip26_timeline_2026-10.png) · [wear_temp_chip26_2026-10.png](../../plots/wear_temp_chip26_2026-10.png) |
+| 폭 변화 · 프로그램 — 칩 간 (이 표의 그림) | [wear_checkpoint_width_program_2026-10.png](../../plots/wear/wear_checkpoint_width_program_2026-10.png) |
+| 소거 — 칩 겹침 (신품 대비 배율) | [wear_ratio_curves_2026-10-04.png](../../plots/wear/wear_ratio_curves_2026-10-04.png) · [wear_ratio_curves_2026-10-05.png](../../plots/wear/wear_ratio_curves_2026-10-05.png) · [wear_ratio_curves_2026-10-07.png](../../plots/wear/wear_ratio_curves_2026-10-07.png) · [wear_ratio_curves_2026-10-12.png](../../plots/wear/wear_ratio_curves_2026-10-12.png) |
+| 소거 — 칩별 섹터 곡선 (1k 구간) | [chip01](../../plots/wear/wear_curves_chip01_2026-09.png) · [chip02](../../plots/wear/wear_curves_chip02_2026-10.png) · [chip03](../../plots/wear/wear_curves_chip03_2026-10.png) · [chip04](../../plots/wear/wear_curves_chip04_2026-09.png) · [chip06](../../plots/wear/wear_curves_chip06_2026-10.png) · [chip07](../../plots/wear/wear_curves_chip07_2026-10.png) · [chip09](../../plots/wear/wear_curves_chip09_2026-10.png) · [chip15](../../plots/wear/wear_curves_chip15_2026-10.png) · [chip18](../../plots/wear/wear_curves_chip18_2026-10.png) · [chip21](../../plots/wear/wear_curves_chip21_2026-10.png) |
+| chip16 의 그림 | [temp_chip16_timeline_2026-10.png](../../plots/temp/temp_chip16_timeline_2026-10.png) · [wear_temp_chip16_2026-10.png](../../plots/wear/wear_temp_chip16_2026-10.png) |
+| chip17 의 그림 | [temp_chip17_timeline_2026-10.png](../../plots/temp/temp_chip17_timeline_2026-10.png) · [wear_temp_chip17_2026-10.png](../../plots/wear/wear_temp_chip17_2026-10.png) |
+| chip22 의 그림 | [temp_chip22_timeline_2026-10.png](../../plots/temp/temp_chip22_timeline_2026-10.png) · [wear_temp_chip22_2026-10.png](../../plots/wear/wear_temp_chip22_2026-10.png) |
+| chip23 의 그림 | [blind_temp_chip23_chip26_2026-11.png](../../plots/blind_temp_chip23_chip26_2026-11.png) · [temp_chip23_timeline_2026-10.png](../../plots/temp/temp_chip23_timeline_2026-10.png) · [wear_temp_chip23_2026-10.png](../../plots/wear/wear_temp_chip23_2026-10.png) |
+| chip24 의 그림 | [temp_chip24_timeline_2026-10.png](../../plots/temp/temp_chip24_timeline_2026-10.png) · [wear_temp_chip24_2026-10.png](../../plots/wear/wear_temp_chip24_2026-10.png) |
+| chip26 의 그림 | [blind_temp_chip23_chip26_2026-11.png](../../plots/blind_temp_chip23_chip26_2026-11.png) · [temp_chip26_timeline_2026-10.png](../../plots/temp/temp_chip26_timeline_2026-10.png) · [wear_temp_chip26_2026-10.png](../../plots/wear/wear_temp_chip26_2026-10.png) |
 
 ## 욕조 폭 (25MHz · BER 10⁻² · ps)
 
@@ -160,6 +160,6 @@
 ## 재현
 
 ```bash
-uv run python host/analysis/wear_checkpoint_table.py --plot build/plots/wear_checkpoint_width_program_2026-10.png   # 그 뒤 plots/ 로 승격
+uv run python host/analysis/wear_checkpoint_table.py --plot build/plots/wear_checkpoint_width_program_2026-10.png   # 그 뒤 plots/wear/ 로 승격
 uv run python host/analysis/wear_checkpoint_table.py -o build/data/wear_checkpoint_table_2026-10.md   # 그 뒤 data/wear/ 로 승격 (그림 링크는 plots/ 를 보고 단다)
 ```

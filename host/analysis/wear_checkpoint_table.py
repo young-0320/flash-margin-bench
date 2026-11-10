@@ -27,7 +27,7 @@ import plot_wear_curves as pwc                              # noqa: E402 — 칩
 REPO = Path(__file__).resolve().parents[2]
 TABLES = str(REPO / "docs" / "results" / "data" / "wear" / "wear_*_20*.csv")
 SURVEY = REPO / "docs" / "results" / "data" / "newchip_survey_2026-09.csv"
-PLOTS = REPO / "docs" / "results" / "plots"                 # 표 문서(data/wear/)에서 ../../plots/
+PLOTS = REPO / "docs" / "results" / "plots"                 # 표 문서(data/wear/)에서 ../../plots/ — 하위 폴더(wear/ · temp/)까지 찾는다
 FAST_US = 40_000                                            # 신품 소거 40ms 미만 = 빠른 무리 (S-1 §15)
 COLORS = {**pwc.CHIP_COLORS, "chip17": "#4a3aa7", "chip12": "#008300",   # 칸마다 --pairs all 검증 통과 (빠른 5색 · 느린 4색)
           "chip18": "#006300"}                              # 빠른 칸 5번째 — 팔레트 44단계 중 이것만 통과 (2026-10-04)
@@ -64,16 +64,16 @@ def survey(path=SURVEY):
 
 def figures(chips):
     """이 표의 숫자를 그린 그림 — plots/ 에서 찾는다. 칩 이름이 든 그림(단일 스윕 욕조 bathtub_* 는 뺀다)과 칩을 겹친 배율 그림."""
-    link = lambda name, label=None: f"[{label or name}](../../plots/{name})"
-    wp = " · ".join(link(p.name) for p in sorted(PLOTS.glob("wear_checkpoint_width_program_*.png")))
+    link = lambda p, label=None: f"[{label or p.name}](../../plots/{p.relative_to(PLOTS).as_posix()})"
+    wp = " · ".join(link(p) for p in sorted(PLOTS.rglob("wear_checkpoint_width_program_*.png")))
     rows = [("폭 변화 · 프로그램 — 칩 간 (이 표의 그림)", wp or "그림 없음 — 이 표가 정본"),
-            ("소거 — 칩 겹침 (신품 대비 배율)", " · ".join(link(p.name) for p in sorted(PLOTS.glob("wear_ratio_curves_*.png"))))]
-    per_chip = [(c, p.name) for c in sorted(chips) for p in sorted(PLOTS.glob(f"wear_curves_{c}_*.png"))]
-    rows.append(("소거 — 칩별 섹터 곡선 (1k 구간)", " · ".join(link(n, c) for c, n in per_chip)))
+            ("소거 — 칩 겹침 (신품 대비 배율)", " · ".join(link(p) for p in sorted(PLOTS.rglob("wear_ratio_curves_*.png"))))]
+    per_chip = [(c, p) for c in sorted(chips) for p in sorted(PLOTS.rglob(f"wear_curves_{c}_*.png"))]
+    rows.append(("소거 — 칩별 섹터 곡선 (1k 구간)", " · ".join(link(p, c) for c, p in per_chip)))
     for c in sorted(chips):
-        other = sorted(p.name for p in PLOTS.glob(f"*{c}_*.png") if not p.name.startswith(("bathtub_", "wear_curves_")))
+        other = sorted((p for p in PLOTS.rglob(f"*{c}_*.png") if not p.name.startswith(("bathtub_", "wear_curves_"))), key=lambda p: p.name)
         if other:
-            rows.append((f"{c} 의 그림", " · ".join(link(n) for n in other)))
+            rows.append((f"{c} 의 그림", " · ".join(link(p) for p in other)))
     return ["## 그림", "", "| 무엇 | 그림 |", "|---|---|"] + [f"| {a} | {b} |" for a, b in rows if b] + [""]
 
 
@@ -141,7 +141,7 @@ def build(chips, fresh, title):
         out.append(f"- 격자 밖: {c} {cyc:,} — 폭 {num(r['width_1e2_ps'], 1, '{:,.1f}')} ps · 소거 {num(r['erase_us_p50'], 1e3, '{:.1f}')} ms · "
                    f"프로그램 {num(r['program_us_p50'], 1e3, '{:.2f}')} ms — {r.get('note') or ''}".rstrip(" —"))
     out += ["", "## 재현", "", "```bash",
-            "uv run python host/analysis/wear_checkpoint_table.py --plot build/plots/wear_checkpoint_width_program_2026-10.png   # 그 뒤 plots/ 로 승격",
+            "uv run python host/analysis/wear_checkpoint_table.py --plot build/plots/wear_checkpoint_width_program_2026-10.png   # 그 뒤 plots/wear/ 로 승격",
             f"uv run python host/analysis/wear_checkpoint_table.py -o build/data/{title}.md   # 그 뒤 data/wear/ 로 승격 (그림 링크는 plots/ 를 보고 단다)",
             "```", ""]
     return "\n".join(out)

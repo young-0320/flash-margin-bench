@@ -16,9 +16,9 @@
 - **x=0 행**: 2026-09-30 보드 A newchip (집계표 §1) — 신품 배치 때의 장착이라 체크포인트 100 과 같은 장착이 아니다
 - **원본**: 마모 루프 `data/wear/1791078343/` · `data/wear/1791123800/` · 스윕 `data/sweep_chip15_D16314314B671B24_<stamp>.csv`(+`_reads`,
   `.analysis.json`) · 세션 로그 `data/session_chip15_D16314314B671B24_<batch>.log` (9/30 신품 · 체크포인트 13점 · 10/5 newchip). 장부 행은 `docs/chip_pe.md`
-- **짝 그림**: 마진 전후 한 쌍 — [`../../plots/bathtub_sweep_chip15_D16314314B671B24_20261004T014852Z.png`](../../plots/bathtub_sweep_chip15_D16314314B671B24_20261004T014852Z.png)
-  (체크포인트 100) · [`../../plots/bathtub_sweep_chip15_D16314314B671B24_20261004T205330Z.png`](../../plots/bathtub_sweep_chip15_D16314314B671B24_20261004T205330Z.png) (100,000).
-  칩별 섹터 곡선 [`../../plots/wear_curves_chip15_2026-10.png`](../../plots/wear_curves_chip15_2026-10.png) · 교정 칩 배율 겹침 [`../../plots/wear_ratio_curves_2026-10-05.png`](../../plots/wear_ratio_curves_2026-10-05.png)
+- **짝 그림**: 마진 전후 한 쌍 — [`../../plots/bathtub/v1/bathtub_sweep_chip15_D16314314B671B24_20261004T014852Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip15_D16314314B671B24_20261004T014852Z.png)
+  (체크포인트 100) · [`../../plots/bathtub/v1/bathtub_sweep_chip15_D16314314B671B24_20261004T205330Z.png`](../../plots/bathtub/v1/bathtub_sweep_chip15_D16314314B671B24_20261004T205330Z.png) (100,000).
+  칩별 섹터 곡선 [`../../plots/wear/wear_curves_chip15_2026-10.png`](../../plots/wear/wear_curves_chip15_2026-10.png) · 교정 칩 배율 겹침 [`../../plots/wear/wear_ratio_curves_2026-10-05.png`](../../plots/wear/wear_ratio_curves_2026-10-05.png)
 - **생산**: `host/analysis/pe_end.py --chip chip15 --drop-cycles 69109-69109` (1단계) → `--promote`. 이 md 와 CSV note 는 사람이 썼다
 
 ## 1. 25MHz 체크포인트
