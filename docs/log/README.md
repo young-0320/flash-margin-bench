@@ -100,6 +100,10 @@
 | # | 로그                                                               | 여기에만 있는 것                         |
 | - | ------------------------------------------------------------------ | ---------------------------------------- |
 | 1 | [Windows 빌드 트러블슈팅](seeun/1.windows_build_troubleshooting.md) | FPGA/Vitis Windows 환경 수동 빌드 가이드 |
+| 2 | [W25Q64 온도·열화 환경 구성안](seeun/2.temperature_bench_design.md) | 온도 벤치 1차 하드웨어 구상 |
+| 3 | [TMP117 단독 연결 시험](seeun/3.tmp117_test.md) | 온도 센서 읽기 시험 (9/21) |
+| 4 | [DFR0457 온도 제어](seeun/4.dfr0457_temperature_controller.md) | 히터 PWM 제어 최종 연결 |
+| 5 | [Arduino 온도 로그를 WSL 에서](seeun/5.arduino_wsl_temperature_logging.md) | USB 시리얼을 WSL 로 넘겨 로거 실행 |
 
 ---
 
@@ -112,3 +116,6 @@
 | 3 | [cocotb 검증 환경 계획](jimin/3.cocotb_verification_plan.md)          | G1 회귀 계획 (9/15)                |
 | 4 | [Vivado/Vitis 빌드 명령어](jimin/4.vivado_vitis_build_commands.md)    | 전체 빌드 명령 정리                |
 | 5 | [WSL USB 포트 연결](jimin/5.wsl_usbipd_jtag_uart_connection.md)       | usbipd 로 JTAG·UART 붙이기 (9/16) |
+| 6 | [cocotb 환경과 smoke 기준선](jimin/6.cocotb_environment_and_smoke_baseline.md) | cocotb 환경 확인 (9/18) |
+| 7 | [cocotb G1 진행 기록](jimin/7.cocotb_g1_progress.md) | G1 구현 진행 (9/18) |
+| 8 | [P/E 엔진 스펙 회신 검토](jimin/8.pe_engine_spec_review_notes.md) | 스펙 회신 검토와 개념 정리 (9/20) |

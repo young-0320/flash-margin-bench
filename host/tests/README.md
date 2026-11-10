@@ -17,6 +17,7 @@ uv run pytest host/tests/ -q
 | `test_tb_catches_bugs.py` | **채점표가 실패하는지 확인한다** — S-4 §7 T6 (양방향) |
 | `test_sim.py` | **C 엔진**(`ps/src/flash_wear.c`)을 호스트 시뮬레이션(`ps/sim/`)으로 띄워 같은 채점표로 잰다. gcc 가 없으면 skip |
 | `test_run_wear.py` | 실행기 `host/run/run_wear.py` — 판정·로그 분리는 순수 함수로, accept·resume 은 sim 파이프로 끝까지 |
+| `test_pe_end.py` · `test_wear_checkpoint_csv.py` · `test_wear_curves.py` · `test_wear_inverse.py` | 분석 스크립트 시험 — `pe_end.py` · `wear_checkpoint_csv.py` · `wear_curves.py` · `wear_inverse.py` |
 | `conftest.py` | `sim_bin` fixture — `ps/sim/build_sim.sh` |
 
 ## 왜 버그를 심나

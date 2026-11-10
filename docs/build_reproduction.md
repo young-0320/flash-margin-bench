@@ -56,16 +56,16 @@ RTL·엔진이 깨져 있으면 Vivado 를 태우기 전에 알아야 한다 —
 [검증 루프 — 보드 불필요]
 sim/smoke/  iverilog 스모크 TB 4개 (core · flash · spi · g0)   → 전부 PASS
 host/       파이썬 셀프테스트 3개 (분석기 · 등록부 · P/E 이력) → 전부 PASS
-host/tests/ 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬(gcc) + 실행기, 그리고 분석 스크립트 시험 → 163 passed
-sim/tb/     cocotb + Winbond 모델 회귀 = G1 (박지민, 구축 중)   → 기준 docs/spec/s3.g1_test_plan.md
+host/tests/ 블랙박스 TB (S-4) — mock 채점 + C 엔진 호스트 시뮬(gcc) + 실행기, 그리고 분석 스크립트 시험 → 178 passed
+sim/tb/     cocotb + Winbond 모델 회귀 = G1 (박지민; 회귀 21항목 PASS(9/23, 작성자 실행) · ① 판정 3블록 미판정 · F11 · F12 제외 · 게이트 미개방)   → 기준 docs/spec/s3.g1_test_plan.md
 
 [빌드·측정 루프 — 보드 필요]
 fpga/scripts/*.tcl  →  build/vivado*/   bit · XSA        (Vivado)
 ps/scripts/*.py     →  build/vitis*/    ELF              (vitis -s, XSA 소비)
 ps/scripts/*.tcl    →  보드              JTAG 프로그래밍  (xsct)
-host/capture/       →  build/data/      CSV              (UART 수신)
+host/capture/       →  data/            CSV              (UART 수신)
 host/analysis/      →  build/plots/     욕조 곡선 · 폭    (판정)
-host/run/run_wear.py→  build/logs/wear/ P/E 시험 verdict  (xsct + UART, 워크플로 12)
+host/run/run_wear.py→  data/wear/       P/E 시험 verdict  (xsct + UART, 워크플로 12)
 ```
 
 RTL을 바꾸면 검증 루프부터. 측정만 재현하려면 빌드·측정 루프만 돌면 된다. **g1 빌드는 없다** —
@@ -264,7 +264,7 @@ build/vitis_prep/flash_prep/build/flash_prep.elf
 **`flash_prep.c` 를 고친 뒤 이 단계를 빼먹으면 체크포인트만 옛 펌웨어로 돈다.** 2026-09-29 에 넣은 섹터별
 `#PREP PROGRAM` 출력이 chip15 · chip18 종단(10/4 까지)의 체크포인트 로그에 없는 것이 이 유형이다 — 영웅 PC 는 2026-10-05 에
 다시 구웠다. 마모를 시작하기 전에 `python3 reproduce.py --only prep-wear` 를 돌리고, 첫 체크포인트 뒤
-`grep -c "#PREP PROGRAM [0-9]" build/logs/wear/<세션>/session.log` 가 7 인지 본다.
+`grep -c "#PREP PROGRAM [0-9]" data/wear/<세션>/session.log` 가 7 인지 본다.
 
 같은 XSA로 형제 앱 **`flash_id`** 도 만든다 — JEDEC과 UID만 읽고 **쓰기 명령을 내보내지
 않는다**(P/E 불변). `--mode sweep` 재측정의 세션 1이 이 ELF를 요구하므로 실칩 재측정을
@@ -389,7 +389,7 @@ xsct ps/scripts/program_g0.tcl                                                  
 ```
 
 기대 결과: 터미널 1에 수 초 내 `#G0 SWEEP BEGIN …`, 약 10분 뒤
-`#G0 SWEEP END valid=1 reason=complete`, `build/data/sweep_loopback_<stamp>.csv` 생성.
+`#G0 SWEEP END valid=1 reason=complete`, `data/sweep_loopback_<stamp>.csv` 생성.
 `TIMEOUT`이면 점퍼 미접촉, BEGIN 자체가 안 뜨면 포트(§1).
 
 `BUILD_DIR=<폴더>` 환경변수를 앞에 붙이면 `build/` 대신 그 폴더의 산출물을 굽는다 (기본 `build`).
@@ -414,7 +414,7 @@ cd ../..
 
 기대 결과: 네 TB 모두 `PASS` 줄을 찍고 FAIL/ERROR 없이 `$finish`. `[검증 2026-09-14]` 4/4 PASS.
 
-G1 cocotb 회귀(`sim/tb/`, 박지민)는 구축 중이다. 기준은 `docs/spec/s3.g1_test_plan.md`,
+G1 cocotb 회귀(`sim/tb/`, 박지민)의 현황: 회귀 21항목 PASS(9/23, 작성자 실행) · ① 판정 3블록 미판정 · F11 · F12 제외 · 게이트 미개방. 기준은 `docs/spec/s3.g1_test_plan.md`,
 커버리지 대조는 `python3 sim/check_coverage.py --results sim/build/results.xml`.
 
 ### 5.2 호스트 셀프테스트
@@ -437,13 +437,13 @@ uv run python host/run/chip_pe.py --selftest
 uv run pytest host/tests/ -q            # 또는 python3 reproduce.py --only tb
 ```
 
-기대 결과: `163 passed`. `[검증 2026-10-05]` 통과 (약 40초 — 2026-09-21 에는 114개 · 11초였다). 블랙박스 TB 세 층에 더해
+기대 결과: `178 passed`. `[검증 2026-11-11]` 통과 (2026-10-05 에는 163개) (약 40초 — 2026-09-21 에는 114개 · 11초였다). 블랙박스 TB 세 층에 더해
 분석 스크립트 시험(`test_pe_end` · `test_wear_curves` · `test_wear_checkpoint_csv` · `test_wear_inverse`)이 같은 폴더에서 같이 돈다.
 **gcc 가 없으면** ② 가 skip 되고
 `test_gcc_absent_is_reported_not_hidden` 1개가 FAIL 한다 — 조용히 넘어가지 않게 둔 의도된 실패이니
 `build-essential` 을 깔고 다시 돌린다. Windows 네이티브는 ② 가 POSIX(`poll.h`) 라 지원하지 않는다 — WSL 로.
 
-시뮬레이션을 손으로 굴려 출력 모양을 익히려면 (P/E 없음, 결과는 `build/logs/wear/<session>/`):
+시뮬레이션을 손으로 굴려 출력 모양을 익히려면 (P/E 없음, 결과는 `/tmp/practice_logs/<session>/`):
 
 ```bash
 grep -v '| chip01 |' docs/chip_pe.md > /tmp/practice_pe.md   # 임시 장부 · sim 칩은 chip01 UID 를 흉내 내고 0 에서 시작하므로 chip01 행은 뺀다
@@ -497,7 +497,7 @@ build/
 ```
 
 전부 `.gitignore`. `rm -rf build`로 지우고 §3으로 처음부터 다시 만들 수 있어야
-한다 — 그것이 재현이다. 측정 원본 CSV는 `build/data/`에서 `data/`로 옮겨 보관한다(CONTRIBUTING).
+한다 — 그것이 재현이다. 측정 원본 CSV는 처음부터 `data/`에 쓰인다(CONTRIBUTING).
 
 ## 8. 디버그·과거 흐름
 

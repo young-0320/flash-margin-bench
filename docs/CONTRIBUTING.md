@@ -13,6 +13,7 @@ repo/flash-margin-bench/
 ├── reproduce.py        # [한영웅] 빌드·검증 원샷 재현 + 채점 (build_reproduction.md §3·§5).
 │                       #   fpga·ps·sim·host 를 전부 가로지르므로 어느 하위 폴더에도 두지 않는다
 ├── .gitignore
+├── .claude/agents/     # 프로젝트 서브에이전트 정의 — implementer · implementer-light · reviewer
 ├── fpga/               # 비트스트림 생산에 들어가는 입력의 집합
 │   ├── rtl/
 │   │   ├── core/       # [한영웅] MMCM 위상 제어, 스윕 FSM, AXI-Lite 레지스터
@@ -92,7 +93,7 @@ repo/flash-margin-bench/
 
 ## 1.5 파이썬 환경 (uv)
 
-호스트 Python(`host/`, `sim/golden/`)의 의존성은 리포 루트 `pyproject.toml` + `uv.lock`으로 관리한다. 개인 venv·pip 수동 설치 금지 — 세 명이 같은 환경이어야 "내 컴에선 되는데"가 없다.
+호스트 Python(`host/` — golden model 도 `host/analysis/` 에 있다)의 의존성은 리포 루트 `pyproject.toml` + `uv.lock`으로 관리한다. 개인 venv·pip 수동 설치 금지 — 세 명이 같은 환경이어야 "내 컴에선 되는데"가 없다.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh   # uv 설치 (최초 1회)

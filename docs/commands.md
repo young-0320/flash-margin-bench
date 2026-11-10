@@ -142,8 +142,8 @@ uv run python host/run/run_sweep_chip.py --mode sweep --mhz 25 --chip 2 --repeat
 | `*_invalid.csv`                       | 스윕이 완주하지 못했다 (행 결측·중단)           | `#G0 SWEEP END` 줄의 `valid=`  |
 | `분석 실패 — 측정은 유효하다`        | CSV 는 정상. 분석만 다시 돌리면 된다             | §4 「분석만 다시」                |
 
-세션 로그는 `build/data/session_*.log`, CSV 는 `build/data/sweep_*.csv` 에 생긴다.
-**측정이 끝나면 원본을 `data/` 로 옮긴다** — `build/` 는 재빌드 때 지워진다.
+세션 로그는 `data/session_*.log`, CSV 는 `data/sweep_*.csv` 에 생긴다 (2026-11-11 부터 원본이 처음부터 `data/` 에 쓰인다 —
+`build/` 는 재빌드 때 지워진다).
 
 ---
 
@@ -224,20 +224,20 @@ uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --cyc
 # 이어 돌리기 (halt 뒤) — --cycle 을 빼면 칩의 tally 에서 이어 간다
 uv run python host/run/run_wear.py accept --chip chipNN --base-sector 1000 --to 200
 # 전원 차단 뒤 — 채택값만 출력한다. START 는 사람이 위 명령으로
-uv run python host/run/run_wear.py resume --chip chipNN --from-session build/logs/wear/<세션>
+uv run python host/run/run_wear.py resume --chip chipNN --from-session data/wear/<세션>
 # 같은 칩으로 처음부터 — UID 를 타이핑해야 지운다. 지운 값은 chip_pe.md 에 먼저 남는다
 uv run python host/run/run_wear.py tally-erase --chip chipNN --i-approve-tally-erase
 ```
 
 ### 남는 것
 
-`build/logs/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
+`data/wear/<session>/` — `plan.txt`(승인받은 계획 그대로) · `checkpoints.csv`(C 행 — 스윕 CSV 와
 동작 시간 요약 `t_erase_p50/p99/max` · `t_program_p50/p99/max` · `cycle_s_p50` · 점당 소요 · `measured` 직후/휴지 뒤) · `verdict.txt` ·
 `A.txt` · `B.txt` · `R.txt`(사건 있을 때만) · `H.txt` · `raw.txt` · `commands.txt` · `session.log`.
 체크포인트 prep 의 섹터별 소거 · 프로그램 시간(`#PREP ERASE` · `#PREP PROGRAM`, PRBS 패턴)은 `session.log` 에 원문으로 남는다 —
 `checkpoints.csv` 의 프로그램 시간 칸은 마모 루프(0x00 패턴) 값이라 눈금이 다르다.
 구간마다 **덧붙는다** — 판정(인수 시험 9줄 · 마모 런 8줄, A6 는 인수 시험에서만)도 구간 머리글과 함께 `verdict.txt` 에 쌓이고, 행 파일은 구간 끝에
-흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `build/` 는 재빌드에 지워지지
+흘려 쓰므로 호스트가 죽어도 직전 구간까지는 남는다. `chip_pe.md` 에는 구간마다 증분 행 하나. `data/` 는 재빌드에 지워지지
 않지만 커밋도 안 되므로 필요하면 `docs/results/` 로 승격한다. 종료 코드 0 = 전부 PASS ·
 1 = FAIL 있음 · 2 = `resume` 이 사람을 부름 · 3 = 중단(거부·UID 불일치·타임아웃).
 
@@ -311,8 +311,8 @@ BER 이 0.001 → 0.25 로 뛰는 것은 물리적으로 불가능하고, 캡처
 `uv run python host/analysis/pe_end.py --chip chipNN [--no-calib | --temp] [--drop-cycles A-B ...] [--from <보드 B 묶음>]` ·
 `uv run python host/analysis/pe_end.py --chip chipNN --promote [--overwrite]`
 
-관련: **수명 역산 모델** (현행 v3.2 — 버전별 사양 `docs/spec/s5.lifetime_inverse_model.md`) — 개봉 prep 로그 → 마모 섹터의 누적 P/E
-추정 결과(사후 중앙값) · 68% · 95% 구간과 판정(신품 · 저마모 · 중마모 · 고마모 — 정격 대비 1 · 20 · 60%). 같은 칩의 prep 로그를 여러 개 주면
+관련: **수명 역산 모델** (현행 v4.3 — 버전별 사양 `docs/spec/s5.lifetime_inverse_model.md`) — 개봉 prep 로그 → 마모 섹터의 누적 P/E
+추정 결과(사후 평균) · 68% · 95% 구간과 판정(신품 · 저마모 · 중마모 · 고마모 — 정격 대비 1 · 20 · 60%). 같은 칩의 prep 로그를 여러 개 주면
 한 번에 쓴다. 화면은 시연용이고 `--out` 은 블라인드 기록(머리말에 모델 버전 · git_rev · 입력 sha256). 보드가 필요 없다 —
 
 ```bash
@@ -329,7 +329,7 @@ uv run python host/analysis/wear_inverse.py --loco --rate-range 1.6   # 속도 �
 - **`sweep` 모드로 P/E 를 쓰지 않는다.** 그런 인자가 없다. 사전 쓰기가 필요하면 `newchip` 이다
 - **`--chip` 으로 라벨을 "지정"하지 않는다.** 그것은 대조용 선언이고, 실제 라벨은 UID 가 정한다
 - **신규 칩을 등록부에 손으로 적지 않는다.** `newchip` 이 기계가 읽은 UID 로만 등록한다
-- **`build/` 안의 측정 원본을 그대로 두지 않는다.** 재빌드 때 사라진다 — `data/` 로 옮긴다
+- **측정 원본을 `build/` 에 두지 않는다.** 재빌드 때 사라진다 — 원본은 `data/` 에 직접 쓰인다
 - **실칩에 승인 플래그 없이 P/E 를 내지 않는다.** `accept` 는 `--i-approve-real-pe`, `tally-erase` 는
   `--i-approve-tally-erase` + UID 타이핑. `--sim` 만 예외다
 - **tally 를 자동으로 지우지 않는다.** `E_DIRTY` 를 받았다고 실행기가 알아서 `tally-erase` 를 부르는 길은 없다

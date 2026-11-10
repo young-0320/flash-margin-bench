@@ -9,6 +9,6 @@ NOR/NAND 하위 폴더 분화는 W25N 착수 시 소유자 판단 — 지금은 
 ## TODO
 
 - [ ] SPI 마스터 — 물리 계층/커맨드 시퀀서 분리, 가변 클럭, 상태 폴링
-- [ ] 0x0B fast read 더미 사이클 지원 (첫 곡선이 0x03만 써도 스펙에 지금 포함)
+- [x] 0x0B fast read 더미 사이클 지원 (첫 곡선이 0x03만 써도 스펙에 지금 포함) — `fpga/rtl/flash/flash_spi_ctrl.v`
 - [ ] P/E 사이클링 엔진
 - [ ] 패턴 생성기 / op_timer(10ns) / error logger

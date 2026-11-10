@@ -5,7 +5,7 @@
 소유 분할 — 타인 영역 수정은 PR로만:
 
 - `tb/` — **팀원 A**: cocotb 환경, Winbond 행동 모델 통합, 회귀 실행
-- `golden/` — **한영웅**: golden model(몬테카를로)
+- golden model(몬테카를로) — **한영웅**: golden 폴더는 없다. `host/analysis/` 에 있다 (`monte_carlo_sweep_params.py`)
 - `smoke/` — **한영웅**: 블록 단위 스모크 TB (iverilog 순수 Verilog, cocotb 회귀 확립 전 임시 최소 회귀)
 - `check_coverage.py` — **한영웅**: 회귀가 합격 기준 23항목을 다 덮었는지 대조. 기준 쪽 산출물이라 채점 대상(`tb/`)과 소유를 분리한다
 
@@ -24,7 +24,7 @@ python3 sim/check_coverage.py --results sim/build/results.xml
 ## TODO
 
 - [x] [한영웅] 테스트 계획 문서 (팀원 A의 회귀 승인 기준) — `docs/spec/s3.g1_test_plan.md`
-- [ ] [팀원 A] cocotb 환경 구축 (`tb/`)
+- [x] [팀원 A] cocotb 환경 구축 (`tb/`) — `sim/tb/runner.py`
 - [x] [한영웅] `check_coverage.py` — 항목 ID 대조 스크립트 (2026-08-23)
-- [ ] [팀원 A] Winbond 행동 모델 통합 (W25Q64 접미 확정 후 모델 파일 선택)
-- [ ] [한영웅] golden model 연동 (`golden/`)
+- [x] [팀원 A] Winbond 행동 모델 통합 (W25Q64 접미 확정 후 모델 파일 선택) — `sim/tb/runner.py` (`WINBOND_MODEL_DIR`)
+- [ ] [한영웅] golden model 연동 (`golden/`) — golden 폴더는 만들지 않았고 golden model 은 `host/analysis/` 에 있다. cocotb 와의 연동은 없다
