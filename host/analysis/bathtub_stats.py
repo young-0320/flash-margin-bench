@@ -6,7 +6,7 @@
 #       docs/results/data/wear/wear_endurance_<chip>_*.csv — mhz==25 행의 sweep_batch 로 런에 P/E cycle 을 붙인다.
 #         sweep_batch 는 세션 로그 stamp 다 (wear_checkpoint_csv.py) — data/session_<chip>_<batch>.log 의
 #         「VALID sweep_….csv」 가 그 스윕. 세션 로그가 없으면 스윕 파일 stamp 와 바로 맞춘다 (9월 표의 옛 방식)
-# 출력: build/bathtub_stats/ — runs.csv · per_chip.csv · per_checkpoint.csv · trend.csv · 그림 PNG
+# 출력: build/bathtub_stats/ — runs.csv · per_chip.csv · per_checkpoint.csv · 그림 PNG (칩 전체 추세는 뺐다 — 세션 안 추세는 bathtub_session_trend.py)
 #
 # 오류 블록 = 원형으로 이어진 bit_errors>0 스텝 덩어리 (위상 원점은 런마다 임의라 2519→0 을 넘을 수 있다).
 # 블록이 한 개가 아니면 이상 런으로 빼고 화면에 알린다.
@@ -14,6 +14,7 @@
 #   벽 거리 = BER 1e-4 교차와 1e-1 교차 사이 ps. 바깥(0 오류)에서 안쪽으로 걸어 처음 문턱을 넘는 두 이웃 스텝 사이를
 #            log-선형 보간한다. 아래 이웃이 0 오류면(바닥에서 바로 문턱 위로 뛰면) 비운다
 #   비대칭 = L - R (벽 스텝 수 · 벽 거리 둘 다)
+#   L · R 은 덩어리 기준이다 (L = 위상이 낮은 쪽). 바닥을 가운데 둔 욕조 그림에서는 좌우가 뒤집힌다
 # 정렬 = 블록 첫·끝 스텝의 중점을 0 ps 로 두고 ±31 스텝(63 스텝 = 1000 ps) 창. 그림에만 쓴다
 # 추세 = 체크포인트(서로 다른 cycle) 5개 이상인 칩에서 런 단위 Spearman. p 는 순열 검정 (scipy 가 의존성에 없다)
 
@@ -38,6 +39,7 @@ N_STEPS = 2520            # 25MHz UI 40,000ps / 15.873ps
 HALF = 31                 # 정렬 창 ±31 스텝 = 1000ps
 K_GAP = 5                 # 덩어리 안 0 틈이 이보다 짧으면 같은 덩어리 (로그 55 [D55-4] K)
 CEIL_FRAC = 0.99
+SHELF_LO, SHELF_HI = 0.3, 0.7   # 절반 높이 턱 = 천장의 30-70% (bathtub_freq_compare.py 의 선반과 같은 문턱)
 THR_LO, THR_HI = 1e-4, 1e-1
 N_PERM = 10_000           # Spearman 순열 검정 횟수 (seed 0 고정)
 SAMPLE = "sweep_chip01_20260708T164931Z.csv"   # 확대 그림 런
@@ -45,17 +47,22 @@ SAMPLE = "sweep_chip01_20260708T164931Z.csv"   # 확대 그림 런
 NAME = re.compile(r"sweep_(chip\d+)_(?:([0-9A-F]{16})_)?(\d{8}T\d{6}Z)\.csv$")
 FEATURES = ["span_ps", "ceil_width_ps", "ceil_bit_errors", "wall_L_steps", "wall_R_steps",
             "wall_L_1e4to1e1_ps", "wall_R_1e4to1e1_ps", "asym_steps", "asym_1e4to1e1_ps"]
-TREND_FIGS = ["ceil_width_ps", "asym_steps", "asym_1e4to1e1_ps"]
 
 
-def cycle_map():
-    """wear_endurance 표 → {스윕 파일명: cycle}. 못 찾은 행은 화면에 알린다."""
+def batch_sweeps():
+    """{(chip, sweep_batch): 스윕 파일명} — 세션 로그의 VALID 줄, 세션 로그가 없으면 스윕 파일 stamp."""
     sess = {}
     for p in glob.glob(str(DATA / "session_*.log")):
         v = re.search(r"\bVALID (sweep_\S+\.csv)", Path(p).read_text(encoding="utf-8", errors="replace"))
         if v:
             sess[(Path(p).name.split("_")[1], Path(p).stem.rsplit("_", 1)[1])] = v[1]
     direct = {(m[1], m[3]): m[0] for m in (NAME.match(Path(f).name) for f in glob.glob(str(DATA / "sweep_*.csv"))) if m}
+    return {**direct, **sess}
+
+
+def cycle_map():
+    """wear_endurance 표 → {스윕 파일명: cycle}. 못 찾은 행은 화면에 알린다."""
+    sweeps = batch_sweeps()
     cyc = {}
     for f in sorted(glob.glob(str(WEAR / "wear_endurance_*.csv"))):
         chip = re.search(r"wear_endurance_(chip\d+)_", f)[1]
@@ -64,7 +71,7 @@ def cycle_map():
                 if r["mhz"].strip() != "25" or not r["cycle"].strip():
                     continue
                 b = r["sweep_batch"].strip()
-                sw = sess.get((chip, b)) or direct.get((chip, b))
+                sw = sweeps.get((chip, b))
                 if not sw:
                     print(f"  [cycle] {Path(f).name} cycle={r['cycle']} sweep_batch='{b}' — 스윕 파일 없음, 건너뜀")
                     continue
@@ -137,6 +144,7 @@ def analyze(path):
     rb = np.concatenate([[0.0], ber[c1:][::-1]])
     rp = np.arange(n, c1 - 1, -1)
     wl, wr = int(wall[:c0].sum()), int(wall[c1 + 1:].sum())
+    shelf = (ber > SHELF_LO * ceil_ber) & (ber < SHELF_HI * ceil_ber)
     dl, dr = wall_dist(lb, lp, dphi), wall_dist(rb, rp, dphi)
     # 정렬 창 — 중점(반 스텝일 수 있음)이 0ps
     mid = (n - 1) / 2
@@ -145,7 +153,10 @@ def analyze(path):
          "span_ps": n * dphi, "ceil_width_ps": len(ceil) * dphi, "ceil_bit_errors": mx,
          "wall_L_steps": wl, "wall_R_steps": wr, "wall_L_1e4to1e1_ps": dl, "wall_R_1e4to1e1_ps": dr,
          "asym_steps": wl - wr, "asym_1e4to1e1_ps": None if dl is None or dr is None else dl - dr,
-         "win_x": (k - mid) * dphi, "win_ber": e[(first + k) % N_STEPS] / nb, "trunc": n > 2 * HALF + 1}
+         "win_x": (k - mid) * dphi, "win_ber": e[(first + k) % N_STEPS] / nb, "trunc": n > 2 * HALF + 1,
+         # 아래는 표에 안 나간다 — bathtub_p1_figures.py · bathtub_session_trend.py 가 쓴다
+         "e": e, "dphi": dphi, "n_block": n,
+         "shelf_L_steps": int(shelf[:c0].sum()), "shelf_R_steps": int(shelf[c1 + 1:].sum())}
     return "ok", f
 
 
@@ -266,36 +277,6 @@ def plot_per_chip_mean(by_chip, out_png):
     plt.close(fig)
 
 
-def plot_trend(by_chip_cyc, chips, ft, out_png):
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    plt.rcParams["font.family"] = "Noto Sans CJK JP"
-    nc = 5
-    nr = -(-len(chips) // nc)
-    fig, axs = plt.subplots(nr, nc, figsize=(3.2 * nc, 2.4 * nr), sharex=True, sharey=True, squeeze=False)
-    for ax in axs.flat[len(chips):]:
-        ax.set_visible(False)
-    for ax, c in zip(axs.flat, chips):
-        _style_axes(fig, ax)
-        cyc = sorted(by_chip_cyc[c])
-        pts = [(cy, r[ft]) for cy in cyc for r in by_chip_cyc[c][cy] if r[ft] is not None]
-        ax.plot([p[0] for p in pts], [p[1] for p in pts], "o", color=RAMP[0], ms=3)
-        mc = [(cy, np.mean(v)) for cy in cyc if (v := [r[ft] for r in by_chip_cyc[c][cy] if r[ft] is not None])]
-        ax.plot([m[0] for m in mc], [m[1] for m in mc], "-", color=RAMP[2], lw=2)
-        ax.axhline(0, color=BASELINE, lw=0.8)
-        ax.set_xscale("symlog", linthresh=100)
-        ax.set_title(c, color=INK, fontsize=9)
-    for ax in axs[-1]:
-        ax.set_xlabel("P/E cycle", color=INK2, fontsize=8)
-    for ax in axs[:, 0]:
-        ax.set_ylabel(ft, color=INK2, fontsize=8)
-    fig.suptitle(f"{ft} 대 P/E cycle — 점 = 런, 선 = 체크포인트 평균", color=INK, fontsize=10)
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=150, facecolor=SURFACE)
-    plt.close(fig)
-
-
 def main():
     argparse.ArgumentParser(description="v1 25MHz 스윕 전부 → 오류 블록 정렬 · 벽 특징 · 칩별/체크포인트별 집계 · 마모 추세 (build/bathtub_stats/)").parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -341,23 +322,13 @@ def main():
               [{"chip": c, "cycle": cy, "n_runs": len(rs), **stats(rs)}
                for c in sorted(by_chip_cyc) for cy, rs in sorted(by_chip_cyc[c].items())])
 
-    rng = np.random.default_rng(0)
-    tchips = [c for c in sorted(by_chip_cyc) if len(by_chip_cyc[c]) >= 5]
-    trend = []
-    for c in tchips:
-        for ft in FEATURES:
-            pts = [(cy, r[ft]) for cy, rs in by_chip_cyc[c].items() for r in rs if r[ft] is not None]
-            rho, p = spearman([q[0] for q in pts], [q[1] for q in pts], rng) if len(pts) >= 3 else (None, None)
-            trend.append({"chip": c, "feature": ft, "n": len(pts), "rho": rho, "p": p})
-    write_csv(OUT / "trend.csv", ["chip", "feature", "n", "rho", "p"], trend)
+    # 칩 전체 추세(trend.csv)는 뺐다 — 재장착 · 보드 이동 단차를 마모로 읽었다(로그 55 §9 R3). 세션 안 추세는 bathtub_session_trend.py
 
     sample = [r for r in runs if r["file"] == SAMPLE]
     if sample:
         plot_zoom(sample[0], OUT / f"zoom_{SAMPLE[len('sweep_'):-len('.csv')]}.png")
     plot_per_chip_mean(by_chip, OUT / "per_chip_mean.png")
-    for ft in TREND_FIGS:
-        plot_trend(by_chip_cyc, tchips, ft, OUT / f"trend_{ft}.png")
-    print(f"출력: {OUT.relative_to(REPO)}/ — 칩 {len(by_chip)} · 체크포인트 칩 {len(by_chip_cyc)} · 추세 칩 {len(tchips)}")
+    print(f"출력: {OUT.relative_to(REPO)}/ — 칩 {len(by_chip)} · 체크포인트 칩 {len(by_chip_cyc)}")
 
 
 if __name__ == "__main__":
