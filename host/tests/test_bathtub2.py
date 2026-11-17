@@ -470,9 +470,10 @@ def test_print_set_vars_live_in_data(sims):
     import re
     if not shutil.which("nm"):
         pytest.skip("nm 이 없다")
-    names = set(re.findall(r"print -set (\w+)", "".join(p.read_text() for p in (REPO / "ps" / "scripts").glob("*.tcl"))))
+    names = set(re.findall(r"print -set ([A-Za-z_][A-Za-z0-9_]*)","".join(p.read_text() for p in (REPO / "ps" / "scripts").glob("*.tcl"))))
     assert {"g_uart_baud", "g_wall_n", "g_base_sector"} <= names
-    elfs = [sims[25], sims[75]] + sorted(REPO.glob("build/vitis_bt2_*/bathtub_v2/build/bathtub_v2.elf"))
+    elfs = [sims[25], sims[75]] + sorted(REPO.glob("build/vitis_*/*/build/*.elf"))   # 빌드된 ARM ELF 전부 (없는 PC 는 sim 만)
+    found = set()
     for elf in elfs:
         sym = {}
         for ln in subprocess.run(["nm", str(elf)], check=True, capture_output=True, text=True).stdout.splitlines():
@@ -480,7 +481,10 @@ def test_print_set_vars_live_in_data(sims):
             if len(f) == 3:
                 sym[f[2]] = f[1]
         for n in names & sym.keys():
-            assert sym[n] in "Dd", f"{elf.name}: {n} 이 {sym[n]} 섹션 — .data 에 둬야 한다"
+            found.add(n)
+            assert sym[n] in "Dd", (f"{elf.relative_to(REPO) if elf.is_relative_to(REPO) else elf}: {n} 이 {sym[n]} 섹션 — "
+                                    f".data 에 둬야 한다. 옛 빌드면 다시 빌드한다")
+    assert names <= found, f"기호를 어느 ELF 에서도 못 찾았다(빈 통과 방지): {sorted(names - found)}"
 
 
 # ── 분석기 (S-6 §5) ───────────────────────────────────────────────────────

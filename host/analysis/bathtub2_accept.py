@@ -16,7 +16,12 @@
 #   3 짝    — 전 읽기(scan · ceil · wall · rescan)에서 짝이 골라진다 — bathtub2_analysis.pick_pair 그대로(옆 · 둘 · 옆 아닌 하나).
 #             짝 없음(옆 가까움 · 둘 다 안 맞음)이 0 이어야 한다
 #   4 방향  — 천장 스텝에서 고른 짝의 「지금 비트」 정렬 c 에서 전 읽기 e1_c = 0 이면 상승 먼저, e1_c = e_c 면 하강 먼저.
-#             섞이면 불통과. 극성(e1 이 정답 1 쪽인가)은 이 항목이 검증하지 못한다 — A5 의 선반 방향이 본다
+#             섞이면 불통과
+#   5 극성  — 짝이 골라진 전 읽기에서 e1_c + (e_(c−1) − e1_(c−1)) = 그 쪽의 하강 수. 짝의 두 정렬이 한 쪽의 모든 하강을
+#             한 번씩 나눠 세는 항등식이라, e1 경로가 죽거나(e1 = 0) 정답 0 · 1 이 뒤집히면 깨진다 (2026-11-18 리뷰 M3 —
+#             실데이터 25MHz 18런 · 75MHz 전 읽기에서 성립). 쪽이 모두 1 로 끝나는 창(base 121)에서는 약하다
+#   천장 칸 수가 같은 장착 v1 의 최댓값 칸 범위와 다르면 「확인 필요」 를 찍는다(판정은 바꾸지 않는다 — 런마다 끝 칸이
+#     한 칸 흔들릴 수 있다). 천장 범위 안에 ceil 행이 없는 칸도 구멍이다
 # A5 (수정안 #4 §4 A5 · [D55-20]) — 정답은 같은 런의 오류 수로 정한다
 #   선반 후보 = ceil · wall 행 중 읽기당 오류가 그 런 최댓값의 30-70% (bathtub_isi_shelf.py 와 같은 문턱), 최댓값 스텝 왼쪽 L · 오른쪽 R
 #   부류 = 읽기별 err_count(min)와 쪽별 개수가 가장 많이 일치하는 PRBS 이력 부류 (bathtub_isi_shelf.candidates)
@@ -27,11 +32,14 @@
 #     ① 계수기 — 오류가 가장 적은 정렬의 (e − e1, e1). 표 그대로: L 상승 · R 하강 → e − e1 = 부류 개수, e1 = 0
 #                                                                  L 하강 · R 상승 → e1 = 부류 개수, e − e1 = 0
 #     ② 짝 · 정렬 번호 — pick_pair 가 짝을 고르고(짝 없음 0), L 은 오류가 가장 적은 정렬 = c, R 은 = c − 1
-#     ③ 짝의 반대쪽 정렬(L 은 c − 1, R 은 c) — 흔한 경우(L 「1 0 1」 상승 · R 「1 1 0」 하강)에만 유도된 값이 있다:
-#        L: (e − e1, e1) = (하강 수, 상승+쪽 끝 상승 수 − 부류 개수) · R: (상승+쪽 끝 상승 수, 하강 수 − 부류 개수).
-#        ①은 e1 = 0 만 보게 되어 e1 경로가 죽어도 통과한다 — ③이 e1 이 실제 값을 세는지 본다. 다른 부류면 「대조 없음」
-#   통과 = L · R 양쪽에 부류 선반 + 부류 선반 전 읽기에서 ① · ② (· ③ 이 있으면 ③). 한쪽에만 부류 선반이면 「판정 불가(한쪽)」.
-#   허용 오차는 두지 않는다
+#     ③ 짝의 반대쪽 정렬(L 은 c − 1, R 은 c) — L 상승 부류 · R 하강 부류일 때 값이 정해진다:
+#        L: (e − e1, e1) = (하강 수, 쪽 안 상승 수 − 쪽 안 부류 개수) — 반대쪽(다음 비트) 정렬은 쪽 끝 상승을 안 본다
+#        R: (e − e1, e1) = (상승+쪽 끝 상승 수, 하강 수 − 부류 개수)
+#        (처음 판의 L 식 「상승+쪽 끝 − 부류」 는 쪽 끝 상승이 그 부류이면서 먼저 온 경우에만 맞았다 — 2026-11-18 리뷰 H1)
+#        ①은 e1 = 0 만 보게 되어 e1 경로가 죽어도 통과한다 — ③이 e1 이 실제 값을 세는지 본다. 그 밖의 조합이면 「대조 없음」
+#     ④ 극성 항등식 — A4 5 와 같다. 벽 집중의 짝이 골라진 전 읽기
+#   통과 = L · R 양쪽에 부류 선반 + 부류 선반 전 읽기에서 ① · ② · ③(있으면) + ④. ③ 이 한 번도 없으면 「통과(e1 미검증)」.
+#   한쪽에만 부류 선반이면 「판정 불가(한쪽)」. 허용 오차는 두지 않는다
 # 출력은 화면뿐이다. 판정 결과는 사람이 로그 · results 에 옮긴다
 
 import argparse
@@ -48,7 +56,6 @@ from bathtub_isi_shelf import candidates
 SHELF_LO, SHELF_HI = 0.3, 0.7
 NAMES = {"one": "옆 하나", "both": "둘 → 옆", "far": "옆 아닌 하나", "near": "옆 가까움(짝 없음)", "none": "둘 다 안 맞음(짝 없음)"}
 READS_COLS = "phase_step,pass,read_idx,err_count,e_c0,e_c1,e_c2,e1_c0,e1_c1,e1_c2"
-COMMON = {("L", "「1 0 1」 상승"), ("R", "「1 1 0」 하강")}       # ③ 의 유도가 있는 경우 (+쪽 경계 포함)
 
 
 def ok(flag):
@@ -70,7 +77,7 @@ def load_main(path):
         raise SystemExit(f"{Path(path).name}: v2(bathtub2_*) 메인 CSV 가 아니다")
     if {r["mode"] for r in rows} != {"std"}:
         raise SystemExit(f"{Path(path).name}: std 런만 받는다")
-    flags = sorted({f for r in rows for f in r["flags"].split("|") if f} - {"reads_gap"})
+    flags = sorted({f for r in rows for f in r["flags"].split(";") if f} - {"reads_gap"})
     print(f"     flags {flags or '없음'}")
     return rows
 
@@ -94,7 +101,7 @@ def gap_steps(rows, step, ps):
     out = set()
     for r in rows:
         k = (r["pass"][0], int(r["phase_step"]))
-        if have.get(k, 0) != int(r["n_reads"]) or "reads_gap" in r["flags"].split("|"):
+        if have.get(k, 0) != int(r["n_reads"]) or "reads_gap" in r["flags"].split(";"):
             out.add(k)
     return out
 
@@ -112,12 +119,23 @@ def pages(base, n):
     return [base * 16 + i for i in range(n)]
 
 
-def top_range(per_read, off):
-    """{스텝: 읽기당 오류} → (최댓값, 최댓값 스텝의 첫-끝 범위 안 스텝 목록(오프셋 순)). 범위 안에 최댓값 아닌 스텝이 섞일 수 있다."""
+def top_range(per_read, off, n_steps):
+    """{스텝: 읽기당 오류} → (최댓값, 최댓값 스텝의 첫-끝 범위 안의 모든 스텝(오프셋 순) — 행이 없는 스텝도 넣는다)."""
+    if not per_read:
+        raise SystemExit("ceil 행이 없다 — 천장을 정할 수 없다 (불통과)")
     top = max(per_read.values())
     tops = [s for s, v in per_read.items() if v == top]
     lo, hi = min(off(s) for s in tops), max(off(s) for s in tops)
-    return top, sorted((s for s in per_read if lo <= off(s) <= hi), key=off)
+    first = min(tops, key=off)
+    return top, [(first + k) % n_steps for k in range(int(round(hi - lo)) + 1)]
+
+
+def polarity(e, e1, c, DN, sel):
+    """짝이 골라진 읽기(c > 0)에서 e1_c + (e_(c−1) − e1_(c−1)) = 하강 수 인 수 · 대상 수."""
+    r = np.flatnonzero(sel & (c > 0))
+    j = c[r]
+    ok_ = e1[r, j] + (e[r, j - 1] - e1[r, j - 1]) == DN[r]
+    return int(ok_.sum()), len(r)
 
 
 def a4(v1_path, v2_path):
@@ -131,7 +149,8 @@ def a4(v1_path, v2_path):
         if a != b or len(a) != 1:
             raise SystemExit(f"v1 · v2 의 {k} 가 다르다: {sorted(a)} · {sorted(b)} — 같은 장착 · 같은 칩만 받는다")
     base = int(rows[0]["base_sector"])
-    print(f"     {rows[0]['target']} · base sector {base}")
+    dt = abs(np.datetime64(rows[0]["generated_at"][:19]) - np.datetime64(v1[0]["generated_at"][:19])).astype(int)
+    print(f"     {rows[0]['target']} · base sector {base} · v1 과 시작 시각 차 {dt // 60}분 (같은 장착인지는 사람이 확인)")
 
     # 1 위치
     e_v1 = np.array([int(r["bit_errors"]) for r in v1])
@@ -154,19 +173,21 @@ def a4(v1_path, v2_path):
 
     # 2 천장
     per = {int(r["phase_step"]): int(r["bit_errors"]) / int(r["n_reads"]) for r in rows if r["pass"] == "ceil"}
-    top, rng = top_range(per, off)
-    holes = [s for s in rng if per[s] != top]
+    top, rng = top_range(per, off, n_steps)
+    holes = [s for s in rng if per.get(s) != top]
     gap_top = [s for s in rng if ("c", s) in gaps]
     m = (ps == "c") & np.isin(step, rng) & use
     hit_dn, hit_up = int((err[m] == DN[m]).sum()), int((err[m] == UPIN[m]).sum())
     kind = "하강 수" if hit_dn == m.sum() else "쪽 안 상승 수" if hit_up == m.sum() else None
-    v1_top = np.flatnonzero(e_v1 == e_v1.max())
+    v1_top = sorted(np.flatnonzero(e_v1 == e_v1.max()).tolist(), key=off)
+    same = (v1_top[0], v1_top[-1], len(v1_top)) == (rng[0], rng[-1], len(rng))
     good2 = kind is not None and not holes and not gap_top and m.sum() > 0
     print(f"2 천장   천장 스텝 {rng[0]}-{rng[-1]} ({len(rng)}칸, 읽기당 {top:.1f}) · 구멍 {holes or '없음'} · "
           f"err_count = 하강 수 {hit_dn}/{m.sum()} · = 쪽 안 상승 수 {hit_up}/{m.sum()}"
           f"{' (' + kind + ')' if kind else ''} — {ok(good2)}"
           + (f" · 천장에 R 행 결측 {gap_top}" if gap_top else ""))
-    print(f"         같은 장착 v1 의 최댓값 스텝 {v1_top.min()}-{v1_top.max()} ({len(v1_top)}칸)")
+    print(f"         같은 장착 v1 의 최댓값 스텝 {v1_top[0]}-{v1_top[-1]} ({len(v1_top)}칸)"
+          + ("" if same else " — v2 천장 범위와 다르다, 확인 필요"))
     for s in sorted(per, key=off):
         k = (ps == "c") & (step == s)
         print(f"         ceil {s} 읽기당 {per[s]:.1f} · 하강 수 일치 {(err[k] == DN[k]).sum()}/{k.sum()}"
@@ -194,8 +215,14 @@ def a4(v1_path, v2_path):
         verdict = "판정: 하강 먼저 — 통과"
     else:
         verdict = "섞임 — 불통과"
-    print(f"4 방향   천장 읽기 {len(cc)} · 고른 정렬 {pick} · e1_c = 0 {zero} · e1_c = e_c {full} — {verdict}"
-          f" (극성은 A5 의 선반 방향으로 확인)")
+    print(f"4 방향   천장 읽기 {len(cc)} · 고른 정렬 {pick} · e1_c = 0 {zero} · e1_c = e_c {full} — {verdict}")
+
+    # 5 극성
+    hit, n = polarity(e, e1, c, DN, use)
+    print(f"5 극성   짝이 골라진 읽기 {n} 중 e1_c + (e_(c−1) − e1_(c−1)) = 하강 수 {hit} — {ok(hit == n and n > 0)}")
+    good = good2 and tally[3] + tally[4] == 0 and "통과" in verdict and hit == n and n > 0
+    print(f"A4 — {'통과' if good else '불통과'} (1 위치는 수치만)")
+    return good
 
 
 def a5(v2_path):
@@ -210,13 +237,13 @@ def a5(v2_path):
     off = lambda s: (s - center + n_steps / 2) % n_steps - n_steps / 2      # noqa: E731
 
     deep = {int(r["phase_step"]): int(r["bit_errors"]) / int(r["n_reads"]) for r in rows if r["pass"] in ("ceil", "wall")}
-    top, rng = top_range(deep, off)
+    top, rng = top_range(deep, off, n_steps)
     lo, hi = off(rng[0]), off(rng[-1])
     shelf = sorted((s for s, v in deep.items() if SHELF_LO * top < v < SHELF_HI * top), key=off)
     print(f"최댓값 스텝 {rng[0]}-{rng[-1]} (읽기당 {top:.1f}) · 선반 후보 {len(shelf)}스텝")
     if not shelf:
         print("선반이 없다 — 판정 불가")
-        return
+        return "판정 불가(선반 없음)"
 
     step, ps, idx, err, e, e1 = load_reads(str(v2_path)[:-4] + "_reads.csv")
     gaps = gap_steps(rows, step, ps)
@@ -225,6 +252,9 @@ def a5(v2_path):
     T, R, DN = cnt[idx, 0], cnt[idx, 1], cnt[idx, 2]
     c, out = pick_pair(e, T, off(step) > 0)
     cands = candidates(np.array([prbs_page(p) for p in pages(base, n_pages)]))
+    cdict = dict(cands)
+    UPIN = T - DN
+    checked3 = 0
 
     plateau = {"L": 0, "R": 0}
     bad = []
@@ -250,12 +280,16 @@ def a5(v2_path):
         ctr = (cnt_part == cv[i]) & (zero_part == 0)
         cs = c[rows_m]
         pair = (out[rows_m] <= 2) & (amin == (cs if side == "L" else cs - 1))
-        if (side, base_name) in COMMON:                # ③ 짝의 반대쪽 정렬
-            j = np.where(side == "L", cs - 1, cs).astype(int)
-            j = np.clip(j, 0, 2)
+        if (side == "L" and rise) or (side == "R" and not rise):     # ③ 짝의 반대쪽 정렬
+            j = np.clip(cs - 1 if side == "L" else cs, 0, 2)
             eo, e1o = e[rows_m, j], e1[rows_m, j]
-            opp = ((eo - e1o == DN[m]) & (e1o == R[m] - cv[i])) if side == "L" else ((eo - e1o == R[m]) & (e1o == DN[m] - cv[i]))
+            if side == "L":                            # 다음 비트 정렬은 쪽 끝 상승을 안 본다 — 쪽 안 수끼리
+                opp = (eo - e1o == DN[m]) & (e1o == UPIN[m] - cdict[base_name][i])
+            else:
+                opp = (eo - e1o == R[m]) & (e1o == DN[m] - cv[i])
             opp_txt = f"{int((opp & cls).sum())}/{n_cls}"
+            if n_cls == n:
+                checked3 += 1
         else:
             opp = np.ones(n, bool)
             opp_txt = "대조 없음"
@@ -272,15 +306,21 @@ def a5(v2_path):
         print(f"  스텝 {s} {side} · 읽기 {n} · {name} {n_cls}/{n} [{kind}] · 그중 ① 계수기"
               f"({'e1' if on_e1 else 'e − e1'} = 개수) {int((ctr & cls).sum())} · ② 짝 · 정렬 {int((pair & cls).sum())} · "
               f"③ 반대쪽 {opp_txt} · 가장 적은 정렬 {np.bincount(amin, minlength=3).tolist()}")
-    nopair = int((out[np.isin(ps, ("c", "w"))] >= 3).sum())
-    print(f"벽 집중 읽기 중 짝 없음 {nopair}")
+    deep_m = np.isin(ps, ("c", "w"))
+    nopair = int((out[deep_m] >= 3).sum())
+    hit4, n4 = polarity(e, e1, c, DN, deep_m)
+    print(f"벽 집중 읽기 중 짝 없음 {nopair} · ④ 극성 항등식 {hit4}/{n4}")
     if plateau["L"] and plateau["R"]:
-        verdict = "통과" if not bad and nopair == 0 else "불통과"
+        if bad or nopair or hit4 != n4:
+            verdict = "불통과"
+        else:
+            verdict = "통과" if checked3 else "통과(e1 미검증 — ③ 대조가 된 부류 선반 없음)"
     elif plateau["L"] or plateau["R"]:
         verdict = "판정 불가(한쪽 선반만)" if not bad else "불통과"
     else:
         verdict = "판정 불가(부류 선반 없음)"
     print(f"부류 선반 L {plateau['L']}스텝 · R {plateau['R']}스텝 · 어긋난 부류 선반 {bad or '없음'} — A5 {verdict}")
+    return verdict
 
 
 def main(argv=None):
@@ -293,9 +333,8 @@ def main(argv=None):
     p5.add_argument("v2")
     a = ap.parse_args(argv)
     if a.cmd == "a4":
-        a4(a.v1, a.v2)
-    else:
-        a5(a.v2)
+        raise SystemExit(0 if a4(a.v1, a.v2) else 1)
+    raise SystemExit(0 if a5(a.v2).startswith("통과") else 1)
 
 
 if __name__ == "__main__":
