@@ -66,6 +66,8 @@ dow $elf
 # (run_wear.py --baud · run_sweep_chip.py --baud). 안 주면 ELF 초기값 921600 그대로
 if {[info exists env(UART_BAUD)]} { print -set g_uart_baud $env(UART_BAUD) }
 # 욕조 v2 ELF(bathtub_v2.c)의 벽 N · base_sector — run_sweep_chip.py --mode bathtub2 가 줄 때만 (v1 ELF 에는 이 변수가 없다)
+# 손으로 줄 때는 `BATHTUB2_WALL_N=… xsct …` 처럼 한 줄 안에서만 — 셸에 export 해 두면 v1 ELF(마모 체크포인트)에도 print -set 이 나가
+# 없는 심볼로 xsct 가 죽는다 (2026-11-17 리뷰 F7)
 if {[info exists env(BATHTUB2_WALL_N)]} { print -set g_wall_n $env(BATHTUB2_WALL_N) }
 if {[info exists env(BATHTUB2_BASE_SECTOR)]} { print -set g_base_sector $env(BATHTUB2_BASE_SECTOR) }
 con

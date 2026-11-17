@@ -83,7 +83,10 @@ static void uart_set_baud(void)
 
 /* 실행 때 덮어쓰는 값 — 같은 ELF 로 std · deep (S-6 §2, [D55-5]) */
 volatile u32 g_wall_n = 8064u;        /* 벽 N. 112 의 배수 — std 8,064 = 112 × 72 · deep 2,064,384 = 112 × 18,432 */
-volatile u32 g_base_sector = 0u;      /* 읽기 창 시작 섹터 (수정안 #1). 범위 밖은 RTL 이 CFG_ERR 로 거부한다 (R11) */
+/* 읽기 창 시작 섹터 (수정안 #1). 범위 밖은 RTL 이 CFG_ERR 로 거부한다 (R11).
+ * .data 에 둔다 — 초기값 0 이면 .bss 로 가고, xsct 가 dow 뒤에 덮어쓴 값을 con 직후 시작 코드가 0 으로 지운다
+ * (2026-11-17 chip02 첫 base_sector=32 런이 BEGIN base_sector=0 으로 시작해 캡처가 거부) */
+volatile u32 g_base_sector __attribute__((section(".data"))) = 0u;
 
 /* 클럭 상수 — 75MHz 는 빌드 때 치환 (bathtub_v2_gen.py) */
 #define SWEEP_STEPS     2520u          /* 56 × 45 = 1 UI */

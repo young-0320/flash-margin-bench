@@ -454,6 +454,35 @@ def test_capture_base_sector_expectation(gauss_lines, tmp_path):
     assert not r.valid and r.n_main == 0
 
 
+def test_capture_base_sector_expectation_zero(gauss_lines, tmp_path):
+    """반대 방향 — 0 을 원했는데 스트림이 5 면 거부, 0 이면 유효 (2026-11-17 리뷰 F6: `if expect:` 로 바뀌면 0 이 빠진다)."""
+    five = [ln.replace(b"base_sector=0", b"base_sector=5") if b"SWEEP BEGIN" in ln else ln for ln in gauss_lines]
+    assert any(b"base_sector=5" in ln for ln in five)
+    r = capture(five, tmp_path / "a", expect_base_sector=0)
+    assert not r.valid and r.n_main == 0 and r.begin.get("base_sector") == "5"
+    assert capture(gauss_lines, tmp_path / "b", expect_base_sector=0).valid
+
+
+def test_print_set_vars_live_in_data(sims):
+    """xsct 가 dow 뒤 print -set 으로 덮어쓰는 변수는 .data 에 있어야 한다 — .bss 면 con 직후 crt0 이 0 으로 지운다
+    (2026-11-17 g_base_sector 사건, 로그 49). 시뮬레이션은 덮어쓰기를 .bss 가 지워진 뒤에 해서 동작으로는 못 잡는다(리뷰 F5) —
+    그래서 기호의 섹션을 본다. 호스트 gcc 도 초기값 0 을 .bss 에 두는 규칙이 같다. 빌드된 ARM ELF 가 있으면 그것도 본다."""
+    import re
+    if not shutil.which("nm"):
+        pytest.skip("nm 이 없다")
+    names = set(re.findall(r"print -set (\w+)", "".join(p.read_text() for p in (REPO / "ps" / "scripts").glob("*.tcl"))))
+    assert {"g_uart_baud", "g_wall_n", "g_base_sector"} <= names
+    elfs = [sims[25], sims[75]] + sorted(REPO.glob("build/vitis_bt2_*/bathtub_v2/build/bathtub_v2.elf"))
+    for elf in elfs:
+        sym = {}
+        for ln in subprocess.run(["nm", str(elf)], check=True, capture_output=True, text=True).stdout.splitlines():
+            f = ln.split()
+            if len(f) == 3:
+                sym[f[2]] = f[1]
+        for n in names & sym.keys():
+            assert sym[n] in "Dd", f"{elf.name}: {n} 이 {sym[n]} 섹션 — .data 에 둬야 한다"
+
+
 # ── 분석기 (S-6 §5) ───────────────────────────────────────────────────────
 def h12(s):
     return math.sqrt(s * s + DPHI * DPHI / 12)                  # 폭에 든 스텝 양자화 몫
