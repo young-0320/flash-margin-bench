@@ -271,9 +271,11 @@ def plot_edges(plt, name, summ, cv, out_png):
         for ax in (a1, a2):
             ax.axvline(mu, color=col, lw=0.8, ls="--")
     a1.set_ylabel("셔터보다 먼저 온 비율 (CDF)", color=INK2)
-    a2.set_ylabel("pdf (1/ps)", color=INK2)
+    a2.set_ylabel("도착 확률밀도 pdf (1/ps)", color=INK2)
+    a1.text(0.36, 0.55, "위: 누적분포 CDF", transform=a1.transAxes, va="center", fontsize=9, color=INK2)
+    a2.text(0.36, 0.97, "아래: 확률밀도 pdf (위 CDF 의 이웃 스텝 차분)", transform=a2.transAxes, va="top", fontsize=9, color=INK2)
     a2.set_xlabel("위상 (ps) — 훑기 덩어리 중점 = 0", color=INK2)
-    a1.set_title(f"{name} — 에지별 도착 분포 · DCD {summ['dcd_ps']:,.1f}ps", color=INK, fontsize=10)
+    a1.set_title(f"{name} — 에지별 도착 분포 (CDF · pdf) · DCD {summ['dcd_ps']:,.1f}ps", color=INK, fontsize=10)
     for ax in (a1, a2):
         leg = ax.legend(frameon=False, fontsize=8.5)
         for t in leg.get_texts():
