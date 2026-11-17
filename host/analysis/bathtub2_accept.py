@@ -38,7 +38,8 @@
 #        (처음 판의 L 식 「상승+쪽 끝 − 부류」 는 쪽 끝 상승이 그 부류이면서 먼저 온 경우에만 맞았다 — 2026-11-18 리뷰 H1)
 #        ①은 e1 = 0 만 보게 되어 e1 경로가 죽어도 통과한다 — ③이 e1 이 실제 값을 세는지 본다. 그 밖의 조합이면 「대조 없음」
 #     ④ 극성 항등식 — A4 5 와 같다. 벽 집중의 짝이 골라진 전 읽기
-#   통과 = L · R 양쪽에 부류 선반 + 부류 선반 전 읽기에서 ① · ② · ③(있으면) + ④. ③ 이 한 번도 없으면 「통과(e1 미검증)」.
+#   통과 = L · R 양쪽에 부류 선반 + 부류 선반 전 읽기에서 ① · ② · ③(있으면) + ④. ③ 이 한 번도 없으면(L 하강 · R 상승 부류뿐)
+#     「통과(③ 대조 없음)」 — 그 경우 ① 이 e1 = 부류 개수를 보므로 e1 은 ① · ④ 로 확인된다
 #   한쪽에만 부류 선반이면 「판정 불가(한쪽)」. 허용 오차는 두지 않는다
 # 출력은 화면뿐이다. 판정 결과는 사람이 로그 · results 에 옮긴다
 
@@ -209,18 +210,19 @@ def a4(v1_path, v2_path):
     ec, e1c = e[rows_m, np.maximum(cc, 1)], e1[rows_m, np.maximum(cc, 1)]
     zero, full = int((e1c == 0).sum()), int((e1c == ec).sum())
     pick = ", ".join(f"c={k} {v}" for k, v in zip(*np.unique(cc, return_counts=True)))
-    if len(cc) and zero == len(cc):
-        verdict = "판정: 상승 먼저 — 통과"
-    elif len(cc) and full == len(cc):
-        verdict = "판정: 하강 먼저 — 통과"
-    else:
+    dir_ok = len(cc) > 0 and (zero == len(cc) or full == len(cc))
+    if not dir_ok:
         verdict = "섞임 — 불통과"
+    elif zero == len(cc):
+        verdict = "판정: 상승 먼저 — 통과"
+    else:
+        verdict = "판정: 하강 먼저 — 통과"
     print(f"4 방향   천장 읽기 {len(cc)} · 고른 정렬 {pick} · e1_c = 0 {zero} · e1_c = e_c {full} — {verdict}")
 
     # 5 극성
     hit, n = polarity(e, e1, c, DN, use)
     print(f"5 극성   짝이 골라진 읽기 {n} 중 e1_c + (e_(c−1) − e1_(c−1)) = 하강 수 {hit} — {ok(hit == n and n > 0)}")
-    good = good2 and tally[3] + tally[4] == 0 and "통과" in verdict and hit == n and n > 0
+    good = bool(good2 and tally[3] + tally[4] == 0 and dir_ok and hit == n and n > 0)
     print(f"A4 — {'통과' if good else '불통과'} (1 위치는 수치만)")
     return good
 
@@ -314,7 +316,7 @@ def a5(v2_path):
         if bad or nopair or hit4 != n4:
             verdict = "불통과"
         else:
-            verdict = "통과" if checked3 else "통과(e1 미검증 — ③ 대조가 된 부류 선반 없음)"
+            verdict = "통과" if checked3 else "통과(③ 대조 없음 — e1 은 ① · ④ 로 확인)"
     elif plateau["L"] or plateau["R"]:
         verdict = "판정 불가(한쪽 선반만)" if not bad else "불통과"
     else:
