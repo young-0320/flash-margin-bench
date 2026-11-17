@@ -26,7 +26,9 @@ END 의 mode · flags 와 reason 은 END 를 받은 뒤 전 행에 채운다 (v1
 """
 
 import argparse
+import queue
 import sys
+import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -81,6 +83,40 @@ def finalize_main(path, mode, run_flags, gap, reason):
     tmp.replace(path)
 
 
+class _Pump:
+    """시리얼 줄을 따로 도는 스레드가 계속 읽어 큐에 쌓는다 — readline 만 흉내 낸다.
+    M 줄마다 스풀을 _reads 로 옮기는 동안(deep 벽 스텝 약 2백만 행 — 약 0.3초) 포트를 안 읽으면
+    커널 · FTDI 버퍼(약 10KB, run_sweep_chip.run_xsct)가 넘쳐 다음 스텝 R 행이 빠진다 (2026-11-17 리뷰 F1).
+    포트 예외는 받는 쪽 readline 에서 다시 던진다."""
+
+    def __init__(self, ser):
+        self.port, self.baudrate = ser.port, ser.baudrate
+        self._ser, self._q, self._stop, self._err = ser, queue.Queue(), threading.Event(), None
+        self._th = threading.Thread(target=self._run, daemon=True)
+        self._th.start()
+
+    def _run(self):
+        try:
+            while not self._stop.is_set():
+                ln = self._ser.readline()
+                if ln:
+                    self._q.put(ln)
+        except BaseException as e:                  # noqa: BLE001 — 포트 예외 · 시험 대역의 Ctrl-C 를 받는 쪽에서 다시 던진다
+            self._err = e
+
+    def readline(self):
+        try:
+            return self._q.get(timeout=1.0)
+        except queue.Empty:
+            if self._err is not None:
+                raise self._err
+            return b""
+
+    def close(self):
+        self._stop.set()
+        self._th.join(timeout=10)
+
+
 def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, batch_id=None,
                      log=sys.stderr, expect_base_sector=None):
     """열린 시리얼 핸들에서 욕조 v2 스윕 1회를 받아 CSV 2개로 쓴다. Ctrl-C 는 파일을 _invalid 로 정리한 뒤 다시 던진다."""
@@ -119,6 +155,7 @@ def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, ba
         print(f"  progress main {n_main} · reads {n_reads}  {n_reads / el if el > 0 else 0:.0f} reads/s  "
               f"elapsed {v1.fmt_mmss(el)}", file=log)
 
+    ser = _Pump(ser)
     try:
         with open(main_path, "x") as fm, open(reads_path, "x") as fr, open(spool_path, "w+") as sp:
             fm.write(f"{MAIN_COLS},{v1.META_COLS}\n")
@@ -202,6 +239,8 @@ def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, ba
     except KeyboardInterrupt as e:
         print("interrupted — 무효 ⑤(미완주)", file=log)
         interrupted = e
+    finally:
+        ser.close()
     spool_path.unlink(missing_ok=True)
 
     complete = False

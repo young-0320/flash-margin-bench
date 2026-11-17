@@ -463,6 +463,13 @@ def main():
                             f"({r.n_main} rows, mode={r.end.get('mode', '')}, flags={r.end.get('flags', '')}, "
                             f"reads_gap {r.gap_rows}, reason={r.reason})")
                     done += 1
+                    bs = r.begin.get("base_sector")
+                    if bs is not None and bs != str(args.base_sector):     # 캡처가 받지 않고 끊은 경우 — 되풀이해도 같다
+                        raise Abort(f"기대 base_sector={args.base_sector} 인데 ELF 는 {bs} — ELF 의 g_base_sector 덮어쓰기가 "
+                                    f"안 먹었다 (2026-11-17 .bss 사건, ps/src/bathtub_v2.c)")
+                    if r.valid and r.end.get("mode") != args.depth:       # g_wall_n 덮어쓰기가 안 먹은 경우
+                        raise Abort(f"--depth {args.depth} 인데 END mode={r.end.get('mode')} — ELF 의 g_wall_n 덮어쓰기가 "
+                                    f"안 먹었다. 파일은 남겼다 (mode 열이 진실)")
                     if r.valid:
                         analyze_bt2(r.main_path, ses)
                     else:
