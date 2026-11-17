@@ -112,9 +112,14 @@ class _Pump:
                 raise self._err
             return b""
 
-    def close(self):
+    def stop(self):
         self._stop.set()
+
+    def join(self):
+        """스레드가 끝나야 다음 소비자(같은 포트의 다음 반복 · UID 대조)가 바이트를 잃지 않는다 — readline timeout 이 있어야 깬다."""
         self._th.join(timeout=10)
+        if self._th.is_alive():
+            raise RuntimeError("시리얼 읽기 스레드가 10초 안에 안 끝났다 — 포트 timeout 이 없으면 readline 이 안 깬다")
 
 
 def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, batch_id=None,
@@ -239,8 +244,11 @@ def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, ba
     except KeyboardInterrupt as e:
         print("interrupted — 무효 ⑤(미완주)", file=log)
         interrupted = e
+    except Exception as e:                                   # 포트 소실 등 — 파일을 _invalid 로 정리한 뒤 다시 던진다
+        print(f"예외 {e!r} — 무효 ⑤(미완주)", file=log)
+        interrupted = e
     finally:
-        ser.close()
+        ser.stop()                                           # join 은 정리가 끝난 뒤 — 기다리는 동안 온 Ctrl-C 가 정리를 건너뛰지 않게
     spool_path.unlink(missing_ok=True)
 
     complete = False
@@ -258,7 +266,7 @@ def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, ba
     valid = end.get("valid") == "1" and complete
 
     if not end:
-        reason = "interrupted" if interrupted else "no_end"
+        reason = ("interrupted" if isinstance(interrupted, KeyboardInterrupt) else "port_error") if interrupted else "no_end"
     elif end.get("valid") == "1" and not complete:
         reason = "row_mismatch"                              # ⑤ — v1 과 같은 이름
     else:
@@ -271,6 +279,7 @@ def capture_bathtub2(ser, label, uid, outdir=None, *, reseat=0, repeat_idx=1, ba
     print(f"{'VALID' if valid else 'INVALID'}: {n_main} rows, {n_reads} read rows, reads_gap {len(gap)}, "
           f"mode={end.get('mode', '')} flags={end.get('flags', '')} reason={reason}\n  {main_path}\n  {reads_path}",
           file=log)
+    ser.join()
     if interrupted:
         raise interrupted
     return Result(valid, n_main, n_reads, main_path, reads_path, begin, end, reason, len(gap))
@@ -298,7 +307,7 @@ def main():
         uid = args.uid
     v1.check_target(label, uid)
     try:
-        with v1.serial.Serial(args.port, args.baud, timeout=None) as ser:
+        with v1.serial.Serial(args.port, args.baud, timeout=2) as ser:
             r = capture_bathtub2(ser, label, uid, args.outdir, reseat=args.reseat,
                                  repeat_idx=args.repeat_idx, batch_id=args.batch_id)
     except KeyboardInterrupt:
