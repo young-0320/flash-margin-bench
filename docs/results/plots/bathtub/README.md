@@ -26,3 +26,4 @@ chip02 섹터 0, 25MHz `std` — 수정안 #4 A4 런(`bathtub2_chip02_D1642C74E7
 - `bathtub_v2_chip02_s0_deep_20261118T034128Z_p1.png` · `bathtub_v2_chip02_s64_deep_20261118T074821Z_p1.png` — 초심부(벽 N 2,064,384) 섹터 0 · 64. 벽 바깥 오류 0 칸이 BER 7.1e-10 미만, 안쪽 드문 오류는 2e-8 까지 직접 (11/18)
 - `…_s0_deep_20261118T034128Z_edges.png` · `…_s64_deep_20261118T074821Z_edges.png` — 같은 런의 에지 분포. 상승 도착의 99% 가 한 칸에 들어, 상승 폭 1.9-2.3ps 는 격자 위치를 읽은 값이다 (결과 문서 「초심부」 절)
 - `bathtub_v2_chip03_s0_20261118T130721Z_p1.png` · `…_edges.png` — 둘째 칩 chip03(느린 무리) 섹터 0 표준 런. DCD 304ps, 하강 에지가 두 봉우리 (결과 `docs/results/bathtub_v2_chip03.md`)
+- `bathtub_v2_wear_compare_chip02_chip03.png` — 발표용 한 장: 두 칩의 창 8곳 DCD(런별 · 창 평균)와 안 닳은 6창 95% 예측 구간 — 닳은 창이 두 칩 모두 구간 안, 차이 −0.99 · +0.45ps. 산출 `host/analysis/bathtub2_wear_figure.py` (11/18)
