@@ -232,7 +232,9 @@ def run_label(summ, st, stem):
 def plot_p1(plt, label, n_ceil, n_wall, st, geom, out_png):
     n_steps, dphi, length = geom
     ui = n_steps * dphi
-    fig, al, ar = panels(plt, f"{label} — 욕조 v2")
+    fig, al, ar = panels(plt, label)
+    al.set_title("왼쪽 벽 = 덩어리의 오른쪽 벽 (표의 R)", color=INK2, fontsize=9)       # 공용 panels() 의 「욕조 …」 를 v2 에서만 덮는다
+    ar.set_title("오른쪽 벽 = 덩어리의 왼쪽 벽 (표의 L)", color=INK2, fontsize=9)
     x = np.array([t["x_ps"] for t in st])
     y = np.array([t["ber"] for t in st])
     up = np.array([t["ber_upper"] if t["ber_upper"] != "" else np.nan for t in st], float)
@@ -263,7 +265,7 @@ def plot_p1(plt, label, n_ceil, n_wall, st, geom, out_png):
                                    arrowstyle="<->", color=INK2, lw=1.2))
     pa = fig.transFigure.inverted().transform(al.transData.transform((xa, ya)))
     pb = fig.transFigure.inverted().transform(ar.transData.transform((xb, ya)))
-    fig.text((pa[0] + pb[0]) / 2, pa[1] + 0.015, f"바닥(훑기 오류 0) {(n_steps - length) * dphi:,.0f}ps", ha="center",
+    fig.text((pa[0] + pb[0]) / 2, pa[1] + 0.015, f"폭 (1회 훑기 오류 0) {(n_steps - length) * dphi:,.0f}ps", ha="center",
              va="bottom", color=INK, fontsize=9, bbox=dict(boxstyle="round,pad=0.25", fc=SURFACE, ec=BASELINE, lw=0.8))
     if len(x[deep]) and np.abs(x[deep]).max() > W_PS:
         fig.text(0.53, 0.5, f"잘림 — 벽 집중 구간이 W = {W_PS:,.0f}ps 를 넘는다 (최대 {np.abs(x[deep]).max():,.0f}ps)",
