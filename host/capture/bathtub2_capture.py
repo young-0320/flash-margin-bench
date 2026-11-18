@@ -85,8 +85,13 @@ def finalize_main(path, mode, run_flags, gap, reason):
 
 class _Pump:
     """시리얼 줄을 따로 도는 스레드가 계속 읽어 큐에 쌓는다 — readline 만 흉내 낸다.
-    M 줄마다 스풀을 _reads 로 옮기는 동안(deep 벽 스텝 약 2백만 행 — 약 0.3초) 포트를 안 읽으면
-    커널 · FTDI 버퍼(약 10KB, run_sweep_chip.run_xsct)가 넘쳐 다음 스텝 R 행이 빠진다 (2026-11-17 리뷰 F1).
+    M 줄마다 스풀을 _reads 로 옮기는 동안(deep 벽 스텝 약 2백만 행 — 약 0.4초) 포트를 안 읽으면
+    커널 · FTDI 버퍼(유실 위치로 역산하면 약 5KB)가 넘쳐 다음 스텝 R 행이 빠진다 (2026-11-17 리뷰 F1).
+    포트(in_waiting 이 있는 것)는 쌓인 바이트를 한 번에 읽어 줄로 나눈다. pyserial readline 은 1바이트마다
+    read(1) 을 불러 바이트당 비용이 크다 — 11/17 초심부 두 런이 2백만 행 M 직후 0.4초 안에서 벽 스텝마다
+    R 65-225 행 · rescan 130 스텝을 잃고 무효였다(유실 주기로 역산한 옛 펌프 속도 약 53KB/s < 92KB/s).
+    시험 대역(readline 만 있는 것)은 readline 으로 읽는다.
+    덩어리 읽기는 개행으로 끝나지 않은 마지막 조각을 내보내지 않는다 — 펌웨어 줄은 모두 \\r\\n 으로 끝난다.
     포트 예외는 받는 쪽 readline 에서 다시 던진다."""
 
     def __init__(self, ser):
@@ -96,11 +101,21 @@ class _Pump:
         self._th.start()
 
     def _run(self):
+        buf = b""
         try:
+            chunked = hasattr(type(self._ser), "in_waiting")   # 클래스에서 본다 — 프로퍼티를 평가하면 죽은 포트의 예외가 여기서 난다
             while not self._stop.is_set():
-                ln = self._ser.readline()
-                if ln:
-                    self._q.put(ln)
+                if not chunked:
+                    ln = self._ser.readline()
+                    if ln:
+                        self._q.put(ln)
+                    continue
+                b = self._ser.read(max(1, self._ser.in_waiting))   # 포트 timeout 이 지나면 b"" — stop 을 본다
+                if not b:
+                    continue
+                *lines, buf = (buf + b).split(b"\n")
+                for ln in lines:
+                    self._q.put(ln + b"\n")
         except BaseException as e:                  # noqa: BLE001 — 포트 예외 · 시험 대역의 Ctrl-C 를 받는 쪽에서 다시 던진다
             self._err = e
 
@@ -116,7 +131,8 @@ class _Pump:
         self._stop.set()
 
     def join(self):
-        """스레드가 끝나야 다음 소비자(같은 포트의 다음 반복 · UID 대조)가 바이트를 잃지 않는다 — readline timeout 이 있어야 깬다."""
+        """스레드가 끝나야 다음 소비자(같은 포트의 다음 반복 · UID 대조)와 포트를 다투지 않는다 — 포트 timeout 이 있어야 깬다.
+        덩어리 읽기는 END 뒤 바이트까지 가져갈 수 있지만, 펌웨어는 END 뒤 말이 없고 다음 반복은 reset_input_buffer 로 시작한다."""
         self._th.join(timeout=10)
         if self._th.is_alive():
             raise RuntimeError("시리얼 읽기 스레드가 10초 안에 안 끝났다 — 포트 timeout 이 없으면 readline 이 안 깬다")

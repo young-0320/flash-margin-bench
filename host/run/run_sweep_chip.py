@@ -118,6 +118,16 @@ class Drained:
         line, self._buf = self._buf[:i + 1], self._buf[i + 1:]
         return line
 
+    @property
+    def in_waiting(self):                       # 욕조 v2 캡처의 덩어리 읽기 (bathtub2_capture._Pump)
+        return len(self._buf) or self._ser.in_waiting
+
+    def read(self, n=1):
+        if not self._buf:
+            return self._ser.read(n)
+        out, self._buf = self._buf[:n], self._buf[n:]
+        return out
+
 
 def xsct_cmd():
     """Windows 의 xsct 는 .bat 다. CreateProcess 는 .exe 만 자동으로 붙이므로 cmd /c 로 감싼다

@@ -463,6 +463,113 @@ def test_capture_base_sector_expectation_zero(gauss_lines, tmp_path):
     assert capture(gauss_lines, tmp_path / "b", expect_base_sector=0).valid
 
 
+class Chunks:
+    """포트 대역 — in_waiting · read 가 있어 _Pump 가 덩어리로 읽는다. 아무 데서나 끊긴 조각, 가끔 빈 읽기(timeout).
+    빈 읽기는 잠깐 쉰다(헛돌며 GIL 을 쥐지 않게). 다 내보낸 뒤 빈 읽기가 이어지면 Ctrl-C 로 본다 — END 가 안 오는 회귀가 멈추지 않게."""
+    port, baudrate = "sim", 921600
+
+    def __init__(self, data, seed=1):
+        self.data, self.rng, self.idle = data, np.random.default_rng(seed), 0
+
+    @property
+    def in_waiting(self):
+        return int(self.rng.integers(0, 5000)) if self.data else 0
+
+    def read(self, n=1):
+        if not self.data or self.rng.random() < 0.05:
+            import time
+            time.sleep(0.001)
+            self.idle += not self.data
+            if self.idle > 3000:
+                raise KeyboardInterrupt
+            return b""
+        out, self.data = self.data[:n], self.data[n:]
+        return out
+
+
+def _same_capture(a, b):
+    assert a.valid and b.valid and (a.n_main, a.n_reads) == (b.n_main, b.n_reads)
+    for p, q in ((a.main_path, b.main_path), (a.reads_path, b.reads_path)):
+        drop = lambda rows: [{k: v for k, v in x.items() if k not in ("generated_at", "batch_id")} for x in rows]  # noqa: E731
+        assert drop(read_csv(p)) == drop(read_csv(q))
+
+
+@pytest.mark.parametrize("eol", [b"\n", b"\r\n"])
+def test_capture_chunked_port(gauss_lines, tmp_path, eol):
+    """덩어리 읽기(11/17 초심부 행 유실 수정) — 줄 중간에서 끊긴 조각 · 빈 읽기에도 줄 단위 캡처와 같은 파일.
+    펌웨어 줄 끝 \\r\\n 도."""
+    ref = capture(gauss_lines, tmp_path / "ref")
+    data = b"".join(gauss_lines).replace(b"\n", eol)
+    r = cap2.capture_bathtub2(Chunks(data), "loopback", None, tmp_path / "out",
+                              log=open(os.devnull, "w"))
+    _same_capture(r, ref)
+
+
+def test_capture_chunked_through_drained(gauss_lines, tmp_path):
+    """실행기 경로 — xsct 구간 선수신(Drained 버퍼, 줄 중간에서 끝남) 뒤에 포트 조각이 이어진다."""
+    sys.path.insert(0, str(REPO / "host" / "run"))
+    from run_sweep_chip import Drained
+    data = b"".join(gauss_lines)
+    ref = capture(gauss_lines, tmp_path / "ref")
+    r = cap2.capture_bathtub2(Drained(Chunks(data[5003:]), data[:5003]), "loopback", None, tmp_path / "out",
+                              log=open(os.devnull, "w"))
+    _same_capture(r, ref)
+
+
+def test_pump_dead_port_raises(tmp_path):
+    """시작부터 죽은 포트(선수신 0B, in_waiting 이 OSError) — 끝없이 b"" 를 돌지 않고 port_error 로 정리된다 (리뷰 M1)."""
+    class Dead(Chunks):
+        @property
+        def in_waiting(self):
+            raise OSError(5, "Input/output error")
+    with pytest.raises(OSError):
+        cap2.capture_bathtub2(Dead(b""), "loopback", None, tmp_path / "out", log=open(os.devnull, "w"))
+    assert [p.name for p in (tmp_path / "out").glob("*.csv")] and all("_invalid" in p.name for p in (tmp_path / "out").glob("*.csv"))
+
+
+def test_pump_keeps_up_under_gil_contention():
+    """진짜 pyserial 포트(pty)에서, 다른 스레드가 GIL 을 계속 쓰는 동안(스풀 옮기기 흉내) _Pump 가 921600 baud
+    (92KB/s) 를 따라가는가 — 회귀 판별용. 순수 CPU 경합이라 옛 readline(1바이트씩) 은 1KB/s 미만, 새 펌프는
+    약 330KB/s(pty 버퍼 4KB ÷ GIL 전환 5ms 로 정해지는 값이라 실포트 능력은 아니다). 문턱은 둘 사이 20KB/s."""
+    serial = pytest.importorskip("serial")
+    pytest.importorskip("termios")                       # pty 는 POSIX 만
+    import pty
+    import threading
+    import time
+    m, s = pty.openpty()
+    line = b"R,620,17,3,929,0,930,464,0,465\n"
+    n = 60000                                            # 약 1.9MB
+    port = serial.Serial(os.ttyname(s), 921600, timeout=1)
+    stop = threading.Event()
+
+    def writer():
+        v = memoryview(line * n)
+        while v:
+            v = v[os.write(m, v[:4096]):]
+
+    def burner():
+        while not stop.is_set():
+            for r in range(1000):
+                str(r).split(",")
+
+    threading.Thread(target=writer, daemon=True).start()
+    threading.Thread(target=burner, daemon=True).start()
+    p = cap2._Pump(port)
+    try:
+        t, got = time.monotonic(), 0
+        while got < n and time.monotonic() - t < 60:
+            got += bool(p.readline())
+        dt = time.monotonic() - t
+    finally:
+        stop.set()
+        p.stop()
+        p.join()
+        port.close()
+        os.close(m)
+        os.close(s)
+    assert got == n and n * len(line) / dt > 20e3, f"{got}/{n} 줄, {n * len(line) / dt / 1e3:.0f} KB/s"
+
+
 def test_print_set_vars_live_in_data(sims):
     """xsct 가 dow 뒤 print -set 으로 덮어쓰는 변수는 .data 에 있어야 한다 — .bss 면 con 직후 crt0 이 0 으로 지운다
     (2026-11-17 g_base_sector 사건, 로그 49). 시뮬레이션은 덮어쓰기를 .bss 가 지워진 뒤에 해서 동작으로는 못 잡는다(리뷰 F5) —
