@@ -216,15 +216,28 @@ def analyze(path):
     return summ, st, curves, (n_steps, dphi, length)
 
 
-def plot_p1(plt, name, st, geom, out_png):
+MODE_KO = {"std": "표준", "deep": "초심부"}
+
+
+def run_label(summ, st, stem):
+    """그림 제목 — 칩 · 섹터 · 주파수 · 모드 · 원본 CSV 시각(파일 이름 끝). UID 는 뺀다.
+    + 천장 · 벽 N (벽 집중 행이 없으면 None)."""
+    n_of = lambda p: max((t["n_reads"] for t in st if t["pass"] == p), default=None)  # noqa: E731
+    mode = MODE_KO.get(summ["mode"], summ["mode"])
+    label = (f"{summ['target']} · 섹터 {summ['base_sector']} · {summ['f_sclk_hz'] / 1e6:g}MHz · {mode} · "
+             f"{stem.rsplit('_', 1)[-1]}")
+    return label, n_of("ceil"), n_of("wall")
+
+
+def plot_p1(plt, label, n_ceil, n_wall, st, geom, out_png):
     n_steps, dphi, length = geom
     ui = n_steps * dphi
-    fig, al, ar = panels(plt, f"{name} — 욕조 v2 (끊긴 축, 한쪽 {W_PS:,.0f}ps)")
+    fig, al, ar = panels(plt, f"{label} — 욕조 v2")
     x = np.array([t["x_ps"] for t in st])
     y = np.array([t["ber"] for t in st])
     up = np.array([t["ber_upper"] if t["ber_upper"] != "" else np.nan for t in st], float)
     deep = np.array([t["pass"] in DEEP for t in st])
-    styles = ((deep, dict(color=RAMP[2], lw=2, marker="o", ms=3), "벽 집중 (천장 112 · 벽 N)"),
+    styles = ((deep, dict(color=RAMP[2], lw=2, marker="o", ms=3), (f"벽 집중 (천장 {n_ceil:,} · 벽 {n_wall:,})" if n_ceil and n_wall else "벽 집중")),
               (~deep, dict(color=MUTED, lw=0, marker=".", ms=4), "1회 훑기 — 깊이 다름"))
     for m, kw, lab in styles:
         nz = m & (y > 0)
@@ -259,7 +272,7 @@ def plot_p1(plt, name, st, geom, out_png):
     plt.close(fig)
 
 
-def plot_edges(plt, name, summ, cv, out_png):
+def plot_edges(plt, label, summ, cv, out_png):
     plt.rcParams["font.family"] = "Noto Sans CJK JP"
     fig, (a1, a2) = plt.subplots(2, 1, sharex=True, figsize=(7.5, 6.4))
     for ax in (a1, a2):
@@ -275,7 +288,7 @@ def plot_edges(plt, name, summ, cv, out_png):
     a1.text(0.36, 0.55, "위: 누적분포 CDF", transform=a1.transAxes, va="center", fontsize=9, color=INK2)
     a2.text(0.36, 0.97, "아래: 확률밀도 pdf (위 CDF 의 이웃 스텝 차분)", transform=a2.transAxes, va="top", fontsize=9, color=INK2)
     a2.set_xlabel("위상 (ps) — 훑기 덩어리 중점 = 0", color=INK2)
-    a1.set_title(f"{name} — 에지별 도착 분포 (CDF · pdf) · DCD {summ['dcd_ps']:,.1f}ps", color=INK, fontsize=10)
+    a1.set_title(f"{label} — 에지별 도착 분포 (CDF · pdf) · DCD {summ['dcd_ps']:,.1f}ps", color=INK, fontsize=10)
     for ax in (a1, a2):
         leg = ax.legend(frameon=False, fontsize=8.5)
         for t in leg.get_texts():
@@ -319,8 +332,9 @@ def main(argv=None):
         stem = f.name[:-4]
         write_csv(args.outdir / f"{stem}_steps.csv", st)
         if not args.no_plot:
-            plot_p1(plt, stem, st, geom, args.outdir / f"{stem}_p1.png")
-            plot_edges(plt, stem, summ, cv, args.outdir / f"{stem}_edges.png")
+            label, n_ceil, n_wall = run_label(summ, st, stem)
+            plot_p1(plt, label, n_ceil, n_wall, st, geom, args.outdir / f"{stem}_p1.png")
+            plot_edges(plt, label, summ, cv, args.outdir / f"{stem}_edges.png")
         summs.append(summ)
         print(f"  {stem}: 상승 평균 {summ['mu_rise_ps']:,.1f}ps 폭 {summ['width_rise_ps']:,.1f}ps · 하강 평균 "
               f"{summ['mu_fall_ps']:,.1f}ps 폭 {summ['width_fall_ps']:,.1f}ps · DCD {summ['dcd_ps']:,.1f}ps · "
