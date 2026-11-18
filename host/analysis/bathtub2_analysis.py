@@ -235,26 +235,39 @@ def plot_p1(plt, label, n_ceil, n_wall, st, geom, out_png):
     fig, al, ar = panels(plt, label)
     al.set_title("왼쪽 벽 = 덩어리의 오른쪽 벽 (표의 R)", color=INK2, fontsize=9)       # 공용 panels() 의 「욕조 …」 를 v2 에서만 덮는다
     ar.set_title("오른쪽 벽 = 덩어리의 왼쪽 벽 (표의 L)", color=INK2, fontsize=9)
+    fig.set_size_inches(10.5, 5.6)                                          # 범례 세 줄이 축 이름과 안 겹치게 아래를 넓힌다
+    fig.subplots_adjust(top=0.86, bottom=0.30)
+    fig.supxlabel("위상 (ps) — 덩어리 중점 = 0 = 40,000 · 가운데 바닥은 생략", color=INK2, fontsize=9, y=0.19)
     x = np.array([t["x_ps"] for t in st])
     y = np.array([t["ber"] for t in st])
     up = np.array([t["ber_upper"] if t["ber_upper"] != "" else np.nan for t in st], float)
     deep = np.array([t["pass"] in DEEP for t in st])
-    styles = ((deep, dict(color=RAMP[2], lw=2, marker="o", ms=3), (f"벽 집중 (천장 {n_ceil:,} · 벽 {n_wall:,})" if n_ceil and n_wall else "벽 집중")),
-              (~deep, dict(color=MUTED, lw=0, marker=".", ms=4), "1회 훑기 — 깊이 다름"))
-    for m, kw, lab in styles:
+    e = lambda v: f"{v:.1e}".replace("e-0", "e-")                             # noqa: E731 — 7.1e-10 · 1.8e-7
+    ub = lambda m: e(np.nanmax(up[m])) if (m & (y == 0)).any() else ""        # noqa: E731 — 오류 0 칸의 95% 상한 3/(N·B)
+    n_read = (f"{n_wall:,}회" if n_wall else "여러 번")
+    ceil_txt = f" (가운데 천장 칸은 v1 과 같은 {n_ceil:,}회)" if n_ceil else ""
+    styles = ((deep, dict(color=RAMP[2], lw=2, marker="o", ms=3),
+               f"덩어리 근처 칸의 BER — 벽 칸은 {n_read} 읽음{ceil_txt}",
+               f"벽 바깥 칸: {n_read} 읽어 오류 0 — BER 이 이 높이({ub(deep)})보다 낮다"),
+              (~deep, dict(color=MUTED, lw=0, marker=".", ms=4),
+               "나머지 칸: 1회만 읽은 BER (파란 기호와 높이 비교 불가)",
+               f"나머지 칸: 1회만 읽어 오류 0 — BER 이 {ub(~deep)}보다 낮다는 것까지만 안다 (파란 기호와 높이 비교 불가)"))
+    for m, kw, lab, lab0 in styles:                                         # 범례는 그림에 실제로 찍힌 기호만
         nz = m & (y > 0)
         z = m & (y == 0)
         for ax, (px, py) in zip((al, ar), split(x[nz], y[nz], ui)):
             ax.plot(px, py, **kw)
         for ax, (px, py) in zip((al, ar), split(x[z], up[z], ui)):
             ax.plot(px, py, "v", color=kw["color"], ms=4, mfc="none")
-        al.plot([], [], **kw, label=lab)
-        al.plot([], [], "v", color=kw["color"], ms=4, mfc="none", label=f"{lab} — 0 errors, BER < 3/(N·B)")
+        if nz.any():
+            al.plot([], [], **kw, label=lab)
+        if z.any():
+            al.plot([], [], "v", color=kw["color"], ms=4, mfc="none", label=lab0)
     ymin = np.nanmin(np.r_[y[y > 0], up[~np.isnan(up)]])
     al.set_xlim(0, W_PS)
     ar.set_xlim(ui - W_PS, ui)
     al.set_ylim(ymin / 2, 1)
-    leg = fig.legend(*al.get_legend_handles_labels(), frameon=False, fontsize=8, loc="lower center", ncol=2)
+    leg = fig.legend(*al.get_legend_handles_labels(), frameon=False, fontsize=8, loc="lower center", ncol=1)
     for t in leg.get_texts():
         t.set_color(INK2)
     from matplotlib.patches import ConnectionPatch
@@ -265,7 +278,7 @@ def plot_p1(plt, label, n_ceil, n_wall, st, geom, out_png):
                                    arrowstyle="<->", color=INK2, lw=1.2))
     pa = fig.transFigure.inverted().transform(al.transData.transform((xa, ya)))
     pb = fig.transFigure.inverted().transform(ar.transData.transform((xb, ya)))
-    fig.text((pa[0] + pb[0]) / 2, pa[1] + 0.015, f"폭 (1회 훑기 오류 0) {(n_steps - length) * dphi:,.0f}ps", ha="center",
+    fig.text((pa[0] + pb[0]) / 2, pa[1] + 0.015, f"폭 (1회 읽어 오류 0) {(n_steps - length) * dphi:,.0f}ps", ha="center",
              va="bottom", color=INK, fontsize=9, bbox=dict(boxstyle="round,pad=0.25", fc=SURFACE, ec=BASELINE, lw=0.8))
     if len(x[deep]) and np.abs(x[deep]).max() > W_PS:
         fig.text(0.53, 0.5, f"잘림 — 벽 집중 구간이 W = {W_PS:,.0f}ps 를 넘는다 (최대 {np.abs(x[deep]).max():,.0f}ps)",
